@@ -17,7 +17,7 @@ import { AnimatedButton } from '../ui/animated-button';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
 const formSchema = z.object({
@@ -35,7 +35,7 @@ interface PersonalDetailsStepProps {
 }
 
 export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalDetailsStepProps) {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
 
   const form = useForm<PersonalDetailsFormValues>({
