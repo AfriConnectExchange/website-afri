@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface ProductImageGalleryProps {
   images: string[];
@@ -15,8 +15,9 @@ export function ProductImageGallery({ images, productName }: ProductImageGallery
   return (
     <div className="space-y-3">
       <div className="aspect-square overflow-hidden rounded-lg shadow-md bg-muted">
-        <Image
+        <ImageWithFallback
           src={images[selectedImageIndex]}
+          fallbackSrc="/placeholder.svg"
           alt={productName}
           width={600}
           height={600}
@@ -32,8 +33,9 @@ export function ProductImageGallery({ images, productName }: ProductImageGallery
               selectedImageIndex === index ? 'border-primary' : 'border-transparent hover:border-primary/50'
             }`}
           >
-            <Image
+            <ImageWithFallback
               src={image}
+              fallbackSrc="/placeholder.svg"
               alt={`${productName} ${index + 1}`}
               width={150}
               height={150}

@@ -1,9 +1,10 @@
+
 'use client';
 import { Star, Heart, ShoppingCart, Gift } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import Image from 'next/image';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { FreeListingBadge } from './ListingBadges';
 import { motion } from 'framer-motion';
 import type { Product } from '@/app/marketplace/page';
@@ -37,7 +38,7 @@ export function ProductCard({
     onAddToCart(product);
   };
   
-  const imageSrc = product.images && product.images.length > 0 ? product.images[0] : 'https://placehold.co/400x300';
+  const imageSrc = product.images && product.images.length > 0 ? product.images[0] : '';
 
 
   return (
@@ -54,8 +55,9 @@ export function ProductCard({
               className="aspect-[4/3] w-full cursor-pointer"
               onClick={() => onNavigate('product', product.id)}
             >
-              <Image
+              <ImageWithFallback
                 src={imageSrc}
+                fallbackSrc="/placeholder.svg"
                 alt={product.name}
                 width={400}
                 height={300}

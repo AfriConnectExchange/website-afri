@@ -1,6 +1,7 @@
+
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Image from 'next/image';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import type { OrderDetails } from './types';
 
 interface OrderItemsCardProps {
@@ -18,8 +19,9 @@ export function OrderItemsCard({ order, onNavigate }: OrderItemsCardProps) {
         {order.items.map((item) => (
           <div key={item.id} className="flex items-start gap-4">
             <div className="relative h-20 w-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
-              <Image
+              <ImageWithFallback
                 src={item.image}
+                fallbackSrc="/placeholder.svg"
                 alt={item.name}
                 fill
                 className="object-cover"

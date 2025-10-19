@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
-import Image from 'next/image';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { ProductActions } from './product-actions';
 import type { Product } from '@/app/marketplace/page';
 import { useRouter } from 'next/navigation';
@@ -158,11 +159,12 @@ export function ProductsPage() {
                 {products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="hidden sm:table-cell">
-                      <Image
+                      <ImageWithFallback
                         alt={product.title}
                         className="aspect-square rounded-md object-cover"
                         height="64"
-                        src={product.images?.[0] || '/placeholder.svg'}
+                        src={product.images?.[0] || ''}
+                        fallbackSrc="/placeholder.svg"
                         width="64"
                       />
                     </TableCell>

@@ -26,7 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ConfirmationModal,
 } from '@/components/ui/confirmation-modal';
-import Image from 'next/image';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import type { Product } from '@/app/marketplace/page';
 import type { CartItem } from '@/context/cart-context';
 
@@ -268,13 +268,14 @@ export function CartPageComponent({
                 </CardHeader>
                 <CardContent className="divide-y">
                   {cartItems.map((item) => {
-                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : 'https://placehold.co/400x300';
+                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : '';
                     return (
                     <div key={item.id} className="py-4">
                       <div className="flex gap-4">
                         <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                          <Image
+                          <ImageWithFallback
                             src={imageSrc}
+                            fallbackSrc="/placeholder.svg"
                             alt={item.name}
                             width={96}
                             height={96}

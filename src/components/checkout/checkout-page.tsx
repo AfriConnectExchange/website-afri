@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { EscrowPaymentForm } from '@/components/checkout/payments/EscrowPaymentF
 import { BarterProposalForm } from '@/components/checkout/payments/BarterProposalForm';
 import { ArrowLeft, ShoppingCart, MapPin, Truck } from 'lucide-react';
 import type { CartItem } from '@/context/cart-context';
-import Image from 'next/image';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CheckoutForm as EmbeddedCheckout } from './EmbeddedCheckout';
 
 interface CheckoutPageProps {
@@ -200,11 +201,11 @@ export function CheckoutPageComponent({
               <CardContent className="space-y-4">
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                   {cartItems.map((item) => {
-                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : 'https://placehold.co/400x300';
+                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : '';
                     return (
                     <div key={item.id} className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-muted rounded-lg flex-shrink-0">
-                        <Image src={imageSrc} alt={item.name} width={48} height={48} className="object-cover rounded-lg" />
+                        <ImageWithFallback src={imageSrc} fallbackSrc="/placeholder.svg" alt={item.name} width={48} height={48} className="object-cover rounded-lg" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-sm">{item.name}</p>

@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useAuth } from '@/context/auth-context';
 
 export function SellerSidebar() {
@@ -93,10 +93,11 @@ export function SellerSidebar() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Avatar className="h-9 w-9">
-                        <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
+                        <AvatarImage src={user?.avatarUrl} alt={user?.fullName || user?.email} />
+                        <AvatarFallback>{user?.fullName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                     </Avatar>
                     <div className="text-sm">
-                        <div className="font-semibold">Shoapa</div>
+                        <div className="font-semibold">{user?.fullName || 'Seller'}</div>
                         <div className="text-muted-foreground truncate max-w-[120px]">{user?.email}</div>
                     </div>
                 </div>

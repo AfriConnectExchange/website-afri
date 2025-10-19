@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Package, Shield, Handshake, Truck, Download, Share, Home } from 'lucide-react';
-import Image from 'next/image';
+import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 
 interface PaymentConfirmationProps {
   paymentData: any;
@@ -137,11 +138,13 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
           <CardContent className="space-y-4">
             {/* Items */}
             <div className="space-y-3">
-              {orderItems.map((item) => (
+              {orderItems.map((item) => {
+                const imageSrc = item.images && item.images.length > 0 ? item.images[0] : '';
+                return (
                 <div key={item.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                       <Image src={item.image} alt={item.name} width={48} height={48} className="object-cover" />
+                       <ImageWithFallback src={imageSrc} fallbackSrc="/placeholder.svg" alt={item.name} width={48} height={48} className="object-cover" />
                     </div>
                     <div>
                       <p className="font-medium">{item.name}</p>
@@ -150,7 +153,7 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
                   </div>
                   <p className="font-medium">£{(item.price * item.quantity).toFixed(2)}</p>
                 </div>
-              ))}
+              )})}
             </div>
 
             <Separator />
