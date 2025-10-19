@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import {
@@ -266,12 +267,14 @@ export function CartPageComponent({
                   </Button>
                 </CardHeader>
                 <CardContent className="divide-y">
-                  {cartItems.map((item) => (
+                  {cartItems.map((item) => {
+                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : 'https://placehold.co/400x300';
+                    return (
                     <div key={item.id} className="py-4">
                       <div className="flex gap-4">
                         <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                           <Image
-                            src={item.image}
+                            src={imageSrc}
                             alt={item.name}
                             width={96}
                             height={96}
@@ -324,7 +327,7 @@ export function CartPageComponent({
                         </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </CardContent>
               </Card>
             </div>

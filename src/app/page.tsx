@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
@@ -195,10 +196,6 @@ export default function MarketplacePage() {
         return;
     }
     addToCart(product);
-     toast({
-      title: "Added to Cart",
-      description: `${product.name} has been added to your cart.`,
-    });
   };
 
   // Handle search with validation (US014)
