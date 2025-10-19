@@ -25,6 +25,7 @@ export function UserNav() {
   const { toast } = useToast();
   const supabase = createSPAClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -35,8 +36,17 @@ export function UserNav() {
       subscription.unsubscribe();
     };
   }, [supabase]);
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+        if(user) {
+            const { data } = await supabase.from('users').select('*').eq('id', user.id).single();
+            setProfile(data);
+        }
+    }
+    fetchProfile();
+  }, [user, supabase]);
 
-  const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
   const handleLogout = async () => {
     try {
@@ -62,7 +72,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {userAvatar && <AvatarImage src={user?.user_metadata?.avatar_url || userAvatar.imageUrl} alt="User avatar" data-ai-hint={userAvatar.imageHint}/>}
+            <AvatarImage src={profile?.profile_picture_url || user?.user_metadata?.avatar_url} alt="User avatar" />
             <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
           </Avatar>
         </Button>
@@ -70,7 +80,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.user_metadata?.full_name || 'User'}</p>
+            <p className="text-sm font-medium leading-none">{profile?.full_name || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user?.email || 'No email'}
             </p>

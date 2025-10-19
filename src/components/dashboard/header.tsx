@@ -33,6 +33,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { HeaderSearchBar } from '../marketplace/header-search-bar';
+import { createSPAClient } from '@/lib/supabase/client';
+import { type User as SupabaseUser } from '@supabase/supabase-js';
 
 
 interface HeaderProps {
@@ -40,9 +42,8 @@ interface HeaderProps {
 }
 
 export function Header({ cartCount = 0 }: HeaderProps) {
-  // Firebase imports removed
-  const user = null;
-  // TODO: Replace with Supabase or other auth logic
+  const supabase = createSPAClient();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -51,10 +52,24 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   
   useEffect(() => {
-    // TODO: Replace with Supabase profile fetching
-    setProfile(null);
-    setNotificationCount(0);
-  }, [user]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if(user) {
+        const { data: profileData } = await supabase.from('users').select('*').eq('id', user.id).single();
+        setProfile(profileData);
+        const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false);
+        setNotificationCount(count || 0);
+      }
+    };
+    fetchProfileData();
+  }, [user, supabase]);
 
   useEffect(() => {
     if (cartCount > 0) {
@@ -64,13 +79,12 @@ export function Header({ cartCount = 0 }: HeaderProps) {
     }
   }, [cartCount]);
   
-  // TODO: Replace with Supabase logout logic
   const handleLogout = async () => {
-    // Implement Supabase logout here
+    await supabase.auth.signOut();
     router.push('/');
   }
   
-  const canAccessSellerFeatures = profile?.primary_role === 'seller' || profile?.primary_role === 'sme';
+  const canAccessSellerFeatures = profile?.roles?.includes('seller') || profile?.roles?.includes('sme');
 
   const menuItems = {
       mobile: [
@@ -243,7 +257,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || user.email || ''} />
+                                <AvatarImage src={profile?.profile_picture_url || ''} alt={profile?.full_name || user.email || ''} />
                                 <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                             </Avatar>
                         </Button>
@@ -283,7 +297,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               </div>
             ) : (
                 <div className="hidden md:flex">
-                     <Link href="/auth" passHref>
+                     <Link href="/auth/signin">
                         <Button>Sign In</Button>
                      </Link>
                 </div>

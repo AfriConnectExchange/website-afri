@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import { type User as SupabaseUser } from '@supabase/supabase-js';
 
 interface DashboardHeaderProps {
@@ -36,7 +36,7 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -57,7 +57,7 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
     const fetchProfile = async () => {
       if (user) {
         const { data, error } = await supabase
-            .from('profiles')
+            .from('users')
             .select('*')
             .eq('id', user.id)
             .single();

@@ -65,18 +65,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       } else {
         // Default behavior if no callback is provided
         if (data.user) {
-            // Check if the user has completed onboarding
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('onboarding_completed')
-                .eq('id', data.user.id)
-                .single();
-
-            if (profile && profile.onboarding_completed) {
-                router.push('/');
-            } else {
-                router.push('/onboarding');
-            }
+            router.push('/');
         }
       }
     } catch (error: any) {

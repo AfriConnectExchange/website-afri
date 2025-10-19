@@ -62,13 +62,13 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
       setIsLoading(true);
       if (user) {
         const { data, error } = await supabase
-            .from('profiles')
+            .from('users')
             .select('*')
             .eq('id', user.id)
             .single();
 
         if (data) {
-          const profile = data;
+          const profile = data as any; // Using any for notification_preferences flexibility
           form.reset({
             language: profile.language || 'en',
             timezone: profile.timezone || 'UTC',
@@ -95,7 +95,7 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
 
     try {
         const { error } = await supabase
-            .from('profiles')
+            .from('users')
             .update({
                 language: values.language,
                 timezone: values.timezone,

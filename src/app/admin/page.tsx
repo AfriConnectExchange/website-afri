@@ -39,8 +39,8 @@ export default function AdminPage() {
         if (!user) return;
         try {
             const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
+                .from('users')
+                .select('roles')
                 .eq('id', user.id)
                 .single();
             if (error) throw error;
@@ -71,7 +71,7 @@ export default function AdminPage() {
     return <PageLoader />;
   }
 
-  const canAccess = profile?.primary_role === 'admin';
+  const canAccess = profile?.roles?.includes('admin');
   
   const navItems = [
     { id: 'user-management', label: 'User Management', href: '#', icon: UserIcon },

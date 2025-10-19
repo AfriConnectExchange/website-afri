@@ -25,7 +25,7 @@ import { type User } from '@supabase/supabase-js';
 const formSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters.'),
   phone_number: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
-  location: z.string().optional(),
+  address: z.string().optional(),
 });
 
 type PersonalInfoFormValues = z.infer<typeof formSchema>;
@@ -45,7 +45,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     defaultValues: {
       full_name: '',
       phone_number: '',
-      location: '',
+      address: '',
     },
   });
 
@@ -61,7 +61,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     const fetchProfile = async () => {
       if (user) {
         const { data, error } = await supabase
-            .from('profiles')
+            .from('users')
             .select('*')
             .eq('id', user.id)
             .single();
@@ -69,8 +69,8 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
         if (data) {
            form.reset({
               full_name: data.full_name || '',
-              phone_number: data.phone_number || '',
-              location: data.address_line1 || '',
+              phone_number: data.phone || '',
+              address: data.address || '',
             });
         }
       }
@@ -88,10 +88,10 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     }
 
     try {
-        const { error } = await supabase.from('profiles').update({
+        const { error } = await supabase.from('users').update({
             full_name: values.full_name,
-            address_line1: values.location,
-            phone_number: values.phone_number,
+            address: values.address,
+            phone: values.phone_number,
         }).eq('id', user.id);
         
         if (error) throw error;
@@ -166,7 +166,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
              </div>
             <FormField
               control={form.control}
-              name="location"
+              name="address"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Address / Location</FormLabel>

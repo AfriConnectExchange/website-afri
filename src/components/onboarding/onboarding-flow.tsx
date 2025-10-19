@@ -8,7 +8,7 @@ import { PersonalDetailsStep } from './personal-details-step';
 import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
-import { useToast } from '../hooks/use-toast';
+import { useToast } from '../../hooks/use-toast';
 import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
@@ -52,8 +52,8 @@ export function OnboardingFlow() {
       if (user) {
           try {
             const { error } = await supabase
-                .from('profiles')
-                .update({ primary_role: role })
+                .from('users')
+                .update({ roles: [role] })
                 .eq('id', user.id);
             if (error) throw error;
           } catch(error: any) {
@@ -80,18 +80,23 @@ export function OnboardingFlow() {
     }
 
     try {
-      const { error } = await supabase.from('profiles').upsert({
-        id: user.id,
+      const { error } = await supabase.from('users').update({
         full_name: data.full_name,
-        phone_number: data.phone_number,
-        address_line1: data.location, 
-        onboarding_completed: true,
-        primary_role: userData.primary_role,
-        email: user.email,
-        auth_user_id: user.id,
-      }, { onConflict: 'id' });
-
+        phone: data.phone_number,
+        address: data.location,
+        roles: [userData.primary_role],
+      }).eq('id', user.id);
+      
       if (error) throw error;
+      
+      // Update onboarding progress
+      const { error: progressError } = await supabase.from('user_onboarding_progress').upsert({
+        user_id: user.id,
+        walkthrough_completed: true,
+        completed_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      
+      if(progressError) throw progressError;
 
       setCurrentStep((prev) => prev + 1);
     } catch(error: any) {

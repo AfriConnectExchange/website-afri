@@ -7,209 +7,340 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
-      todo_list: {
+      users: {
         Row: {
+          id: string
+          email: string
+          phone: string | null
+          full_name: string | null
+          profile_picture_url: string | null
+          bio: string | null
+          address: string | null
+          city: string | null
+          country: string | null
+          postcode: string | null
+          roles: string[] | null
+          status: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted'
+          verification_status: 'unverified' | 'pending' | 'verified' | 'rejected'
+          email_verified: boolean
+          phone_verified: boolean
           created_at: string
-          description: string | null
-          done: boolean
-          done_at: string | null
-          id: number
-          owner: string
-          title: string
-          urgent: boolean
+          updated_at: string | null
+          auth_user_id: string
         }
         Insert: {
+          id?: string
+          email: string
+          phone?: string | null
+          full_name?: string | null
+          profile_picture_url?: string | null
+          bio?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          postcode?: string | null
+          roles?: string[] | null
+          status?: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted'
+          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected'
+          email_verified?: boolean
+          phone_verified?: boolean
           created_at?: string
-          description?: string | null
-          done?: boolean
-          done_at?: string | null
-          id?: number
-          owner: string
-          title: string
-          urgent?: boolean
+          updated_at?: string | null
+          auth_user_id: string
         }
         Update: {
+          id?: string
+          email?: string
+          phone?: string | null
+          full_name?: string | null
+          profile_picture_url?: string | null
+          bio?: string | null
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          postcode?: string | null
+          roles?: string[] | null
+          status?: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted'
+          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected'
+          email_verified?: boolean
+          phone_verified?: boolean
           created_at?: string
-          description?: string | null
-          done?: boolean
-          done_at?: string | null
-          id?: number
-          owner?: string
-          title?: string
-          urgent?: boolean
+          updated_at?: string | null
+          auth_user_id?: string
         }
-        Relationships: []
       }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
-
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
+      products: {
+        Row: {
+          id: string
+          seller_id: string
+          category_id: string | null
+          title: string
+          description: string
+          price: number | null
+          is_free: boolean
+          currency: string
+          quantity_available: number
+          condition: string | null
+          images: Json | null
+          tags: string[] | null
+          location: string | null
+          is_active: boolean
+          average_rating: number
+          review_count: number
+          created_at: string
+          updated_at: string | null
+          specifications: Json | null
+          shipping_policy: Json | null
+        }
+        Insert: {
+          id?: string
+          seller_id: string
+          category_id?: string | null
+          title: string
+          description: string
+          price?: number | null
+          is_free?: boolean
+          currency?: string
+          quantity_available?: number
+          condition?: string | null
+          images?: Json | null
+          tags?: string[] | null
+          location?: string | null
+          is_active?: boolean
+          average_rating?: number
+          review_count?: number
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          seller_id?: string
+          category_id?: string | null
+          title?: string
+          description?: string
+          price?: number | null
+          is_free?: boolean
+          currency?: string
+          quantity_available?: number
+          condition?: string | null
+          images?: Json | null
+          tags?: string[] | null
+          location?: string | null
+          is_active?: boolean
+          average_rating?: number
+          review_count?: number
+          created_at?: string
+          updated_at?: string | null
+        }
       }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
+      categories: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          parent_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          description?: string | null
+          parent_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          parent_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string | null
+        }
       }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+      orders: {
+        Row: {
+            id: string;
+            buyer_id: string;
+            created_at: string;
+            status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "failed";
+            total_amount: number;
+            shipping_address: Json | null;
+            actual_delivery_date: string | null;
+            courier_name: string | null;
+            tracking_number: string | null;
+            payment_method: string | null;
+        };
+        Insert: {
+            id?: string;
+            buyer_id: string;
+            created_at?: string;
+            status?: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "failed";
+            total_amount: number;
+            shipping_address?: Json | null;
+        };
+        Update: {
+            id?: string;
+            status?: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "failed";
+            actual_delivery_date?: string | null;
+            courier_name?: string | null;
+            tracking_number?: string | null;
+        };
+      };
+      order_items: {
+            Row: {
+                id: string;
+                order_id: string;
+                product_id: string;
+                quantity: number;
+                price_at_purchase: number;
+                seller_id: string;
+            };
+            Insert: {
+                id?: string;
+                order_id: string;
+                product_id: string;
+                quantity: number;
+                price_at_purchase: number;
+                seller_id: string;
+            };
+      };
+      reviews: {
+        Row: {
+          id: string
+          reviewer_id: string
+          reviewee_id: string
+          order_id: string
+          product_id: string
+          rating: number
+          comment: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          reviewer_id: string
+          reviewee_id: string
+          order_id: string
+          product_id: string
+          rating: number
+          comment: string
+        }
+      },
+      transactions: {
+        Row: {
+            id: string;
+            profile_id: string;
+            order_id: string | null;
+            type: string;
+            status: string;
+            amount: number;
+            provider: string | null;
+            description: string | null;
+            metadata: Json | null;
+            created_at: string;
+        };
+        Insert: {
+            profile_id: string;
+            order_id?: string | null;
+            type: string;
+            status: string;
+            amount: number;
+            provider?: string | null;
+            description?: string | null;
+            metadata?: Json | null;
+        };
+       };
+       user_onboarding_progress: {
+        Row: {
+          id: string
+          user_id: string
+          walkthrough_completed: boolean
+        }
+       },
+       activity_logs: {
+        Insert: {
+          user_id: string
+          action: string
+          entity_type?: string
+          entity_id?: string
+          changes?: Json
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+       },
+       notifications: {
+         Row: {
+            id: string;
+            user_id: string;
+            type: "order" | "delivery" | "promotion" | "system" | "barter" | "payment";
+            title: string;
+            message: string;
+            link_url: string | null;
+            read: boolean;
+            created_at: string;
+         };
+         Insert: {
+            user_id: string;
+            type: "order" | "delivery" | "promotion" | "system" | "barter" | "payment";
+            title: string;
+            message: string;
+            link_url?: string | null;
+         };
+         Update: {
+            read?: boolean;
+         };
+       }
+       barter_proposals: {
+         Row: {
+            id: string;
+            proposer_id: string;
+            recipient_id: string;
+            proposer_product_id: string;
+            recipient_product_id: string;
+            notes: string | null;
+            status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+            created_at: string;
+         };
+         Insert: {
+            proposer_id: string;
+            recipient_id: string;
+            proposer_product_id: string;
+            recipient_product_id: string;
+            notes?: string | null;
+            status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+         };
+         Update: {
+            status?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+         };
+       };
+       escrow_transactions: {
+          Row: {
+            id: string;
+            order_id: string;
+            amount: number;
+            status: 'funded' | 'released' | 'refunded' | 'disputed';
+            created_at: string;
+            updated_at: string;
+          };
+          Insert: {
+            order_id: string;
+            amount: number;
+            status?: 'funded' | 'released' | 'refunded' | 'disputed';
+          };
+          Update: {
+            status?: 'funded' | 'released' | 'refunded' | 'disputed';
+            updated_at?: string;
+          };
+       }
     }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
-  public: {
-    Enums: {},
-  },
-} as const

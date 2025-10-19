@@ -22,36 +22,9 @@ export async function GET(request: Request) {
     const user = sessionData.user;
 
     if (user) {
-      // Check if user exists in our public.users table
-      const { data: appUser, error: appUserError } = await supabase
-        .from('users')
-        .select('id, onboarding_completed:user_onboarding_progress(walkthrough_completed)')
-        .eq('id', user.id)
-        .single();
-        
-      if (appUserError && appUserError.code !== 'PGRST116') {
-        console.error('Error fetching app user:', appUserError);
-      }
+      // The handle_new_user trigger in the database will create the user record
+      // in public.users if it doesn't exist.
 
-      // If user does not exist, create them
-      if (!appUser) {
-        const { error: insertError } = await supabase.from('users').insert({
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata.full_name,
-          profile_picture_url: user.user_metadata.avatar_url,
-          // Default role from schema
-          roles: ['buyer'], 
-        });
-
-        if (insertError) {
-          console.error('Error creating user profile:', insertError);
-          // Redirect to an error page or show an error
-           return NextResponse.redirect(new URL('/auth/signin?error=user_creation_failed', request.url));
-        }
-      }
-      
-      // Log the sign-in activity
       await logActivity({
           user_id: user.id,
           action: 'user_signed_in',
@@ -62,8 +35,15 @@ export async function GET(request: Request) {
       });
 
       // Check if onboarding is complete from the user_onboarding_progress table
-      // The type assertion is a bit of a workaround for Supabase's complex generated types.
-      const onboardingProgress = (appUser?.onboarding_completed as any)?.[0];
+      const { data: onboardingProgress, error: onboardingError } = await supabase
+        .from('user_onboarding_progress')
+        .select('walkthrough_completed')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (onboardingError && onboardingError.code !== 'PGRST116') { // Ignore 'no rows found'
+          console.error('Error fetching onboarding progress:', onboardingError);
+      }
 
       if (!onboardingProgress || !onboardingProgress.walkthrough_completed) {
         // New user or incomplete onboarding, redirect to onboarding flow

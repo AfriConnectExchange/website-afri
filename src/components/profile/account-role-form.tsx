@@ -58,14 +58,14 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
       setIsLoading(true);
       if (user) {
         const { data, error } = await supabase
-          .from('profiles')
-          .select('primary_role')
+          .from('users')
+          .select('roles')
           .eq('id', user.id)
           .single();
         
-        if (data) {
+        if (data && data.roles) {
           form.reset({
-            primary_role: data.primary_role || 'buyer',
+            primary_role: data.roles[0] || 'buyer',
           });
         }
       }
@@ -84,8 +84,8 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
     
     try {
         const { error } = await supabase
-            .from('profiles')
-            .update({ primary_role: values.primary_role })
+            .from('users')
+            .update({ roles: [values.primary_role] })
             .eq('id', user.id);
         if (error) throw error;
         onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');

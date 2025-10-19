@@ -47,7 +47,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   useEffect(() => {
     const fetchProfile = async () => {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', user.id)
         .single();
@@ -84,14 +84,14 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
         <CardContent className="pt-6">
           <div className="text-center">
             <Avatar className="w-20 h-20 mx-auto mb-4 border-2 border-primary/20 p-1">
-              <AvatarImage src={userProfile?.avatar_url || user.user_metadata.avatar_url || undefined} alt={userName} />
+              <AvatarImage src={userProfile?.profile_picture_url || user.user_metadata.avatar_url || undefined} alt={userName} />
               <AvatarFallback className="text-2xl bg-muted">
                 {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
               </AvatarFallback>
             </Avatar>
             <h3 className="font-semibold text-lg mb-1">{userName}</h3>
-            <Badge className={cn('mb-3', getRoleColor(userProfile?.primary_role))}>
-              {getRoleLabel(userProfile?.primary_role)}
+            <Badge className={cn('mb-3', getRoleColor(userProfile?.roles?.[0]))}>
+              {getRoleLabel(userProfile?.roles?.[0])}
             </Badge>
             <div className="text-sm text-muted-foreground space-y-1 my-4">
               {user.email && (
@@ -100,16 +100,16 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                   <span className="truncate">{user.email}</span>
                 </div>
               )}
-              {userProfile?.phone_number && (
+              {userProfile?.phone && (
                 <div className="flex items-center justify-center gap-2">
                   <Phone className="w-4 h-4" />
-                  <span>{userProfile.phone_number}</span>
+                  <span>{userProfile.phone}</span>
                 </div>
               )}
-              {userProfile?.address_line1 && (
+              {userProfile?.address && (
                 <div className="flex items-center justify-center gap-2 text-center">
                   <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{userProfile.address_line1}</span>
+                  <span>{userProfile.address}</span>
                 </div>
               )}
             </div>
