@@ -9,6 +9,7 @@ import { Card, CardContent } from '../ui/card';
 import Image from 'next/image';
 import type { Product } from '@/app/marketplace/page';
 import { useRouter } from 'next/navigation';
+import allProducts from '@/data/mock-products.json';
 
 export function HeaderSearchBar() {
   const [query, setQuery] = useState('');
@@ -31,19 +32,28 @@ export function HeaderSearchBar() {
   }, []);
 
   useEffect(() => {
-    if (query.length < 3) {
+    if (query.length < 2) {
       setSuggestions([]);
       return;
     }
 
-    const fetchSuggestions = async () => {
+    const fetchSuggestions = () => {
       setIsLoading(true);
-      const params = new URLSearchParams({ q: query, limit: '5' });
-      const res = await fetch(`/api/products?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data.products || []);
-      }
+      
+      const searchTerms = query.toLowerCase().split(' ').filter(term => term);
+      const filteredProducts = allProducts.filter(p => {
+        const productText = [
+          p.title,
+          p.description,
+          p.seller,
+          p.category,
+          ...(p.tags || [])
+        ].join(' ').toLowerCase();
+        
+        return searchTerms.some(term => productText.includes(term));
+      }).slice(0, 5); // Limit to 5 suggestions
+
+      setSuggestions(filteredProducts as Product[]);
       setIsLoading(false);
     };
 
@@ -55,12 +65,14 @@ export function HeaderSearchBar() {
     if (query.trim()) {
       router.push(`/marketplace?q=${encodeURIComponent(query)}`);
       setIsFocused(false);
+      setQuery('');
     }
   };
   
   const handleSuggestionClick = (product: Product) => {
     router.push(`/product/${product.id}`);
     setIsFocused(false);
+    setQuery('');
   };
 
   return (
@@ -112,7 +124,7 @@ export function HeaderSearchBar() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-muted rounded-md overflow-hidden flex-shrink-0">
-                        <Image src={product.image} alt={product.name} width={48} height={48} className="object-cover" />
+                        <Image src={product.images[0]} alt={product.name} width={48} height={48} className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{product.name}</p>
