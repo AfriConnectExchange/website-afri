@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
-import { testDbConnection } from '@/ai/flows/test-db-connection';
+// import { testDbConnection } from '@/ai/flows/test-db-connection';
 
 export default function TestDbPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +15,8 @@ export default function TestDbPage() {
     setResult(null);
     setError(null);
     try {
-      const response = await testDbConnection();
+      // const response = await testDbConnection();
+      const response: any = { error: "Test function is currently disabled." };
       if (response.error) {
         setError(response.error);
       } else {
@@ -38,14 +39,14 @@ export default function TestDbPage() {
           <p className="text-muted-foreground mb-4">
             Click the button below to attempt to create a new test user directly in the `public.users` table using an admin client. Check your Supabase live logs for detailed query information.
           </p>
-          <Button onClick={handleTest} disabled={isLoading} className="w-full">
+          <Button onClick={handleTest} disabled={isLoading || true} className="w-full">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Running Test...
               </>
             ) : (
-              'Run DB Connection Test'
+              'Run DB Connection Test (Disabled)'
             )}
           </Button>
 
