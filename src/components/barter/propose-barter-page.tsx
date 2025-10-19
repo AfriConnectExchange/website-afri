@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import mockProducts from '@/data/mock-products.json';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
@@ -28,25 +29,17 @@ export function ProposeBarterPage() {
                 return;
             }
             setIsLoading(true);
-            
             try {
-                // In a real app, this would fetch from a live API
-                // For now, we simulate fetching mock data
-                const response = await fetch(`/api/products?id=${productId}`); // This API doesn't exist, we'll just mock it
-                
-                // MOCK DATA SIMULATION
-                const mockProducts = (await (await fetch('/api/products')).json()).products;
+                // Use mock data directly
                 const product = mockProducts.find((p: Product) => p.id === productId);
-
                 if (!product) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Product not found.' });
                 } else {
                     setTargetProduct(product);
                 }
             } catch (error) {
-                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load product.' });
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to load product.' });
             }
-
             setIsLoading(false);
         };
         fetchProduct();

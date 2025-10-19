@@ -12,7 +12,7 @@ import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
 import { Review } from './reviews-section';
 import { Skeleton } from '../ui/skeleton';
-import { createSPAClient } from '@/lib/supabase/client';
+import mockProducts from '@/data/mock-products.json';
 
 interface ProductPageProps {
   productId: string;
@@ -58,76 +58,44 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createSPAClient();
   const { toast } = useToast();
 
   const fetchProductAndReviews = async () => {
-    if (!productId || !supabase) return;
+    if (!productId) return;
     setLoading(true);
-    
     try {
-      const { data: productData, error: productError } = await supabase
-        .from('products')
-        .select(`*, seller:profiles(full_name, kyc_status)`)
-        .eq('id', productId)
-        .single();
-      
-      if (productError || !productData) {
+      // Find product in mock data
+      const productData = mockProducts.find((p) => p.id === productId);
+      if (!productData) {
         toast({
           variant: 'destructive',
           title: 'Error fetching product',
-          description: "This product could not be found.",
+          description: 'This product could not be found.',
         });
         setProduct(null);
       } else {
-        const mappedProduct = {
-          ...productData,
-          id: productData.id,
-          name: productData.title,
-          image: productData.images?.[0] || 'https://placehold.co/600x600',
-          images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
-          seller: productData.seller?.full_name || 'Unknown Seller',
-          sellerVerified: productData.seller?.kyc_status === 'verified',
-          category: 'Uncategorized', // This would need a join in a real query
-          isFree: productData.listing_type === 'freebie' || productData.price === 0,
-          rating: productData.average_rating || 0,
-          reviews: productData.review_count || 0,
-          stockCount: productData.quantity_available || 1,
-          sellerDetails: {
-            id: productData.seller_id,
-            name: productData.seller?.full_name || 'Unknown Seller',
-            avatar: '',
-            location: 'Unknown',
-            verified: productData.seller?.kyc_status === 'verified',
-            rating: 4.8,
-            totalSales: 100,
-            memberSince: 'N/A'
-          },
-          specifications: productData.specifications,
-          shipping_policy: productData.shipping_policy
-        };
-        setProduct(mappedProduct as unknown as Product);
-
-        const res = await fetch(`/api/reviews/product?productId=${productId}`);
-        if(res.ok) {
-            const reviewData = await res.json();
-            setReviews(reviewData);
-        }
+        setProduct(productData as Product);
+        // Optionally, fetch reviews from API if needed
+        // const res = await fetch(`/api/reviews/product?productId=${productId}`);
+        // if(res.ok) {
+        //     const reviewData = await res.json();
+        //     setReviews(reviewData);
+        // }
       }
     } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: error.message || "Failed to fetch product details.",
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message || 'Failed to fetch product details.',
+      });
     }
-
     setLoading(false);
   };
 
   useEffect(() => {
     fetchProductAndReviews();
-  }, [productId, supabase, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
   
 
   if (loading) {
