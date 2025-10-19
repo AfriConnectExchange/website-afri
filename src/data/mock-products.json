@@ -1,0 +1,176 @@
+
+[
+  {
+    "id": "prod_001",
+    "seller_id": "user_001",
+    "title": "Authentic Kente Cloth from Ghana",
+    "name": "Authentic Kente Cloth from Ghana",
+    "description": "A beautiful, hand-woven Kente cloth with traditional Ghanaian patterns. Made from 100% pure cotton, this fabric is perfect for clothing, upholstery, or as a decorative piece. Measures 2 yards.",
+    "price": 75.00,
+    "currency": "GBP",
+    "category_id": 1,
+    "category": "Textiles",
+    "listing_type": "sale",
+    "status": "active",
+    "images": ["https://picsum.photos/seed/kente/600/400"],
+    "location_text": "London, UK",
+    "created_at": "2024-07-22T10:00:00Z",
+    "updated_at": "2024-07-22T10:00:00Z",
+    "quantity_available": 10,
+    "stockCount": 10,
+    "specifications": {
+      "material": "100% Cotton",
+      "dimensions": "2 yards x 45 inches",
+      "origin": "Ghana"
+    },
+    "shipping_policy": {
+       "domestic_shipping_cost": 5.99,
+       "international_shipping_cost": 15.99
+    },
+    "average_rating": 4.8,
+    "rating": 4.8,
+    "review_count": 112,
+    "reviews": 112,
+    "seller": "Adinkra Crafts",
+    "sellerVerified": true,
+    "sellerDetails": { "id": "user_001", "name": "Adinkra Crafts", "avatar": "https://picsum.photos/seed/seller1/100/100", "location": "London, UK", "verified": true, "rating": 4.8, "totalSales": 150, "memberSince": "2023" }
+  },
+  {
+    "id": "prod_002",
+    "seller_id": "user_002",
+    "title": "Hand-Carved Makonde Sculpture",
+    "name": "Hand-Carved Makonde Sculpture",
+    "description": "An intricate 'Ujamaa' (family tree) sculpture, hand-carved from African blackwood by a master Makonde artist from Tanzania. A true collector's item.",
+    "price": 250.00,
+    "currency": "GBP",
+    "category_id": 2,
+    "category": "Woodwork & Carvings",
+    "listing_type": "sale",
+    "status": "active",
+    "images": ["https://picsum.photos/seed/sculpture/600/400"],
+    "location_text": "Manchester, UK",
+    "created_at": "2024-07-21T14:30:00Z",
+    "updated_at": "2024-07-21T14:30:00Z",
+    "quantity_available": 1,
+    "stockCount": 1,
+    "specifications": {
+      "material": "African Blackwood (Mpingo)",
+      "height": "45 cm",
+      "origin": "Tanzania"
+    },
+     "shipping_policy": {
+       "domestic_shipping_cost": 10.00,
+       "international_shipping_cost": 25.00
+    },
+    "average_rating": 4.9,
+    "rating": 4.9,
+    "review_count": 45,
+    "reviews": 45,
+    "seller": "Sanaa Gallery",
+    "sellerVerified": true,
+     "sellerDetails": { "id": "user_002", "name": "Sanaa Gallery", "avatar": "https://picsum.photos/seed/seller2/100/100", "location": "Manchester, UK", "verified": true, "rating": 4.9, "totalSales": 75, "memberSince": "2022" }
+  },
+  {
+    "id": "prod_003",
+    "seller_id": "user_003",
+    "title": "Nigerian Terracotta Pot Set",
+    "name": "Nigerian Terracotta Pot Set",
+    "description": "Set of three handmade terracotta pots, traditionally used for cooking and water storage. Features beautiful incised decorations. Perfect for rustic home decor.",
+    "price": 45.00,
+    "currency": "GBP",
+    "category_id": 3,
+    "category": "Pottery & Ceramics",
+    "listing_type": "sale",
+    "status": "active",
+    "images": ["https://picsum.photos/seed/pottery/600/400"],
+    "location_text": "Birmingham, UK",
+    "created_at": "2024-07-20T18:00:00Z",
+    "updated_at": "2024-07-20T18:00:00Z",
+    "quantity_available": 5,
+    "stockCount": 5,
+    "specifications": {
+      "material": "Terracotta Clay",
+      "set": "3 pots of varying sizes",
+      "origin": "Nigeria"
+    },
+     "shipping_policy": {
+       "domestic_shipping_cost": 8.50
+    },
+    "average_rating": 4.7,
+    "rating": 4.7,
+    "review_count": 88,
+    "reviews": 88,
+    "seller": "Yoruba Heritage",
+    "sellerVerified": false,
+    "sellerDetails": { "id": "user_003", "name": "Yoruba Heritage", "avatar": "https://picsum.photos/seed/seller3/100/100", "location": "Birmingham, UK", "verified": false, "rating": 4.7, "totalSales": 92, "memberSince": "2024" }
+  },
+  {
+    "id": "prod_004",
+    "seller_id": "user_004",
+    "title": "Maasai Beaded Necklace",
+    "name": "Maasai Beaded Necklace",
+    "description": "A vibrant, multi-layered beaded necklace handmade by Maasai women in Kenya. Each color carries a special meaning in Maasai culture.",
+    "price": 35.00,
+    "currency": "GBP",
+    "category_id": 4,
+    "category": "Jewelry",
+    "listing_type": "sale",
+    "status": "active",
+    "images": ["https://picsum.photos/seed/necklace/600/400"],
+    "location_text": "Bristol, UK",
+    "created_at": "2024-07-22T11:00:00Z",
+    "updated_at": "2024-07-22T11:00:00Z",
+    "quantity_available": 15,
+    "stockCount": 15,
+    "specifications": {
+      "material": "Glass beads, leather",
+      "style": "Traditional Maasai",
+      "origin": "Kenya"
+    },
+     "shipping_policy": {
+       "domestic_shipping_cost": 3.99,
+       "international_shipping_cost": 9.99
+    },
+    "average_rating": 4.9,
+    "rating": 4.9,
+    "review_count": 210,
+    "reviews": 210,
+    "seller": "Kenyan Krafts",
+    "sellerVerified": true,
+    "sellerDetails": { "id": "user_004", "name": "Kenyan Krafts", "avatar": "https://picsum.photos/seed/seller4/100/100", "location": "Bristol, UK", "verified": true, "rating": 4.9, "totalSales": 300, "memberSince": "2023" }
+  },
+  {
+    "id": "prod_005",
+    "seller_id": "user_001",
+    "title": "Free 'Adire' Fabric Scraps",
+    "name": "Free 'Adire' Fabric Scraps",
+    "description": "A small bundle of 'Adire' (tie-dye) fabric off-cuts from Nigeria. Perfect for small craft projects, quilting, or jewelry making. Just pay for shipping.",
+    "price": 0,
+    "isFree": true,
+    "currency": "GBP",
+    "category_id": 1,
+    "category": "Textiles",
+    "listing_type": "freebie",
+    "status": "active",
+    "images": ["https://picsum.photos/seed/fabric/600/400"],
+    "location_text": "London, UK",
+    "created_at": "2024-07-19T09:00:00Z",
+    "updated_at": "2024-07-19T09:00:00Z",
+    "quantity_available": 20,
+    "stockCount": 20,
+    "specifications": {
+      "material": "100% Cotton",
+      "origin": "Nigeria"
+    },
+    "shipping_policy": {
+       "domestic_shipping_cost": 2.99
+    },
+    "average_rating": 5.0,
+    "rating": 5.0,
+    "review_count": 50,
+    "reviews": 50,
+    "seller": "Adinkra Crafts",
+    "sellerVerified": true,
+    "sellerDetails": { "id": "user_001", "name": "Adinkra Crafts", "avatar": "https://picsum.photos/seed/seller1/100/100", "location": "London, UK", "verified": true, "rating": 4.8, "totalSales": 150, "memberSince": "2023" }
+  }
+]

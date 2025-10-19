@@ -1,0 +1,11 @@
+
+[
+  { "id": "all", "name": "All Categories", "count": 20 },
+  { "id": "textiles", "name": "Textiles", "count": 5 },
+  { "id": "woodwork", "name": "Woodwork & Carvings", "count": 3 },
+  { "id": "pottery", "name": "Pottery & Ceramics", "count": 2 },
+  { "id": "jewelry", "name": "Jewelry", "count": 4 },
+  { "id": "art", "name": "Art & Paintings", "count": 3 },
+  { "id": "leather", "name": "Leather Goods", "count": 2 },
+  { "id": "beauty", "name": "Health & Beauty", "count": 1 }
+]

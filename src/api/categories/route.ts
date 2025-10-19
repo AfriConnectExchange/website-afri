@@ -1,8 +1,11 @@
+
 'use server';
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import mockCategories from '@/data/mock-categories.json';
 
 export async function GET() {
+  // We are now using mock data. The original Supabase call is commented out.
+  /*
   const supabase = createClient();
   const { data: categoriesData, error: categoriesError } = await supabase
     .from('categories')
@@ -31,6 +34,8 @@ export async function GET() {
     { id: 'all', name: 'All Categories', count: productsData?.length || 0 },
     ...mappedCategories,
   ];
+  */
 
-  return NextResponse.json(allCategories);
+  // Return the mock data
+  return NextResponse.json(mockCategories);
 }
