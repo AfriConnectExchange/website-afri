@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
@@ -24,6 +23,8 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
+import allProducts from '@/data/mock-products.json';
+import allCategories from '@/data/mock-categories.json';
 
 export interface Product {
   id: string;
@@ -85,7 +86,7 @@ export default function MarketplacePage() {
   const { cart, addToCart, cartCount } = useCart();
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('created_at_desc');
   const [searchError, setSearchError] = useState('');
 
@@ -104,77 +105,74 @@ export default function MarketplacePage() {
     freeListingsOnly: false,
   });
 
-  const fetchProducts = useCallback(async (currentFilters: FilterState, currentSortBy: string) => {
+  const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (currentFilters.searchQuery.length >= 3) {
-        params.append('q', currentFilters.searchQuery);
-      }
-      if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-        // The API expects the category name, not the ID
-        const selectedCategoryName = categories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
-        if(selectedCategoryName) {
-            params.append('category', selectedCategoryName);
-        }
-      }
-      if (currentFilters.priceRange.min !== null) {
-        params.append('minPrice', String(currentFilters.priceRange.min));
-      }
-      if (currentFilters.priceRange.max !== null) {
-        params.append('maxPrice', String(currentFilters.priceRange.max));
-      }
-      if (currentFilters.freeListingsOnly) {
-        params.append('isFree', 'true');
-      }
-      if (currentFilters.verifiedSellersOnly) {
-        params.append('verified', 'true');
-      }
-      params.append('sortBy', currentSortBy);
-
-      const res = await fetch(`/api/products?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch products');
-      
-      const data = await res.json();
-      setProducts(data.products);
-      setTotalProducts(data.total);
-
-    } catch (error) {
-       toast({
-          variant: 'destructive',
-          title: 'Error fetching products',
-          description: (error as Error).message,
-        });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast, categories]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const categoriesRes = await fetch('/api/categories');
-        if (!categoriesRes.ok) throw new Error('Failed to fetch categories');
-        const categoriesData = await categoriesRes.json();
-        setCategories(categoriesData);
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error fetching categories',
-          description: (error as Error).message,
-        });
-      }
-    };
     
-    fetchCategories();
-  }, [toast]);
+    let filteredProducts: Product[] = [...allProducts] as unknown as Product[];
+
+    // Search query
+    if (currentFilters.searchQuery.length >= 3) {
+      const query = currentFilters.searchQuery.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => 
+        p.title.toLowerCase().includes(query) || 
+        p.description.toLowerCase().includes(query) ||
+        p.seller.toLowerCase().includes(query)
+      );
+    }
+
+    // Category
+    if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
+      const selectedCategoryName = allCategories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
+      if (selectedCategoryName) {
+        filteredProducts = filteredProducts.filter(p => p.category === selectedCategoryName);
+      }
+    }
+
+    // Price range
+    if (currentFilters.priceRange.min !== null) {
+      filteredProducts = filteredProducts.filter(p => p.price >= currentFilters.priceRange.min!);
+    }
+    if (currentFilters.priceRange.max !== null) {
+      filteredProducts = filteredProducts.filter(p => p.price <= currentFilters.priceRange.max!);
+    }
+    
+     // Free listings
+    if (currentFilters.freeListingsOnly) {
+      filteredProducts = filteredProducts.filter(p => p.price === 0);
+    }
+    
+    // Verified sellers
+    if (currentFilters.verifiedSellersOnly) {
+        filteredProducts = filteredProducts.filter(p => p.sellerVerified === true);
+    }
+
+    // Sorting
+    switch (currentSortBy) {
+      case 'price_asc':
+        filteredProducts.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_desc':
+        filteredProducts.sort((a, b) => b.price - a.price);
+        break;
+      case 'average_rating_desc':
+        filteredProducts.sort((a, b) => b.average_rating - a.average_rating);
+        break;
+      case 'created_at_desc':
+      default:
+        filteredProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+    }
+    
+    setProducts(filteredProducts);
+    setTotalProducts(filteredProducts.length);
+    setCategories(allCategories as Category[]);
+    setLoading(false);
+
+  }, []);
   
   useEffect(() => {
-     // Fetch products only after categories are loaded
-    if(categories.length > 0) {
-        fetchProducts(filters, sortBy);
-    }
-  }, [fetchProducts, filters, sortBy, categories]);
+    fetchProducts(filters, sortBy);
+  }, [fetchProducts, filters, sortBy]);
 
 
   const onNavigate = (page: string, productId?: string) => {
@@ -198,11 +196,13 @@ export default function MarketplacePage() {
     setSearchError('');
     if (query.length > 0 && query.length < 3) {
       setSearchError('Please enter at least 3 letters or numbers.');
+      setFilters(prev => ({ ...prev, searchQuery: query }));
       return;
     }
     const alphanumericCount = query.replace(/[^a-zA-Z0-9]/g, '').length;
     if (query.length > 0 && alphanumericCount < 3) {
       setSearchError('Please enter at least 3 letters or numbers.');
+      setFilters(prev => ({ ...prev, searchQuery: query }));
       return;
     }
     setFilters(prev => ({ ...prev, searchQuery: query }));
