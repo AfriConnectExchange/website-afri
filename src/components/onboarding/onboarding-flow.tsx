@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -54,7 +53,7 @@ export function OnboardingFlow() {
             const { error } = await supabase
                 .from('users')
                 .update({ roles: [role] })
-                .eq('id', user.id);
+                .eq('id', user.id); // Correctly use 'id' as the key
             if (error) throw error;
           } catch(error: any) {
               toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
@@ -85,7 +84,7 @@ export function OnboardingFlow() {
         phone: data.phone_number,
         address: data.location,
         roles: [userData.primary_role],
-      }).eq('id', user.id);
+      }).eq('id', user.id); // Correctly use 'id' as the key
       
       if (error) throw error;
       

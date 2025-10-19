@@ -1,66 +1,91 @@
-// src/lib/context/GlobalContext.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import { createSPAClient } from '@/lib/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-
-type User = {
-    email: string;
-    id: string;
-    registered_at: Date;
-};
+// Define a more specific type for your public.users table row
+export interface UserProfile {
+  id: string;
+  email: string;
+  phone: string | null;
+  full_name: string | null;
+  // Add other fields from your users table as needed
+  roles: string[] | null;
+  status: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted';
+  verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
+}
 
 interface GlobalContextType {
-    loading: boolean;
-    user: User | null;  // Add this
+  isLoading: boolean;
+  user: SupabaseUser | null;
+  profile: UserProfile | null;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
-export function GlobalProvider({ children }: { children: React.ReactNode }) {
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);  // Add this
+export function GlobalProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => createSPAClient(), []);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-    useEffect(() => {
-        async function loadData() {
-            try {
-                const supabase = await createSPASassClient();
-                const client = supabase.getSupabaseClient();
+  useEffect(() => {
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(userProfile as UserProfile | null);
+      }
+      setIsLoading(false);
+    };
 
-                // Get user data
-                const { data: { user } } = await client.auth.getUser();
-                if (user) {
-                    setUser({
-                        email: user.email!,
-                        id: user.id,
-                        registered_at: new Date(user.created_at)
-                    });
-                } else {
-                    throw new Error('User not found');
-                }
+    getInitialSession();
 
-            } catch (error) {
-                console.error('Error loading data:', error);
-            } finally {
-                setLoading(false);
-            }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        if (event === 'SIGNED_IN' && session?.user) {
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          setProfile(userProfile as UserProfile | null);
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null);
         }
-
-        loadData();
-    }, []);
-
-    return (
-        <GlobalContext.Provider value={{ loading, user }}>
-            {children}
-        </GlobalContext.Provider>
+        setIsLoading(false);
+      }
     );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  const value = useMemo(() => ({
+    isLoading,
+    user,
+    profile,
+  }), [isLoading, user, profile]);
+
+  return (
+    <GlobalContext.Provider value={value}>
+      {children}
+    </GlobalContext.Provider>
+  );
 }
 
 export const useGlobal = () => {
-    const context = useContext(GlobalContext);
-    if (context === undefined) {
-        throw new Error('useGlobal must be used within a GlobalProvider');
-    }
-    return context;
+  const context = useContext(GlobalContext);
+  if (context === undefined) {
+    throw new Error('useGlobal must be used within a GlobalProvider');
+  }
+  return context;
 };
