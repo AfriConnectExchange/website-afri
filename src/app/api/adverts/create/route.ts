@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 
 // Define the schema for the product data
 const productSchema = z.object({
@@ -19,7 +19,7 @@ const productSchema = z.object({
 
 
 export async function POST(request: Request) {
-  const supabase = createClient();
+  const supabase = createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
   }
   
-  const { images, ...productData } = validation.data;
+  // Destructure category_id out to prevent it from being sent to the DB
+  const { images, category_id, ...productData } = validation.data;
 
   // In a real app, you would upload the base64 images to a storage service like Supabase Storage
   // and get back the public URLs. For now, we'll just log that we received them.
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
       ...productData,
       seller_id: user.id,
       images: imageUrls,
+      // category_id is now omitted from the insert
     })
     .select()
     .single();
@@ -61,4 +63,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ success: true, message: 'Advert created successfully.', data: newProduct });
 }
-
