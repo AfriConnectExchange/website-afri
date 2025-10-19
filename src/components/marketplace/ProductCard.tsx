@@ -36,6 +36,9 @@ export function ProductCard({
     }
     onAddToCart(product);
   };
+  
+  const imageSrc = product.images && product.images.length > 0 ? product.images[0] : 'https://placehold.co/400x300';
+
 
   return (
     <motion.div
@@ -52,7 +55,7 @@ export function ProductCard({
               onClick={() => onNavigate('product', product.id)}
             >
               <Image
-                src={product.image}
+                src={imageSrc}
                 alt={product.name}
                 width={400}
                 height={300}
