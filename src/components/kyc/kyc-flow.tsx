@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -11,7 +10,7 @@ import { DocumentUploadStep } from './steps/document-upload-step';
 import { ReviewStep } from './steps/review-step';
 import { CompletionStep } from './steps/completion-step';
 import { KycProgress } from './kyc-progress';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 
 interface KYCPageProps {
   onNavigate: (page: string) => void;
@@ -62,7 +61,7 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const supabase = createClient();
+  const supabase = createSPAClient();
 
   const [kycData, setKycData] = useState<KYCData>({
     fullName: '',
