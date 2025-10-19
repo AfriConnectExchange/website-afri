@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +41,7 @@ const paymentMethods: PaymentMethod[] = [
         id: 'flutterwave',
         name: 'Flutterwave',
         type: 'online',
-        icon: <Image src="/flutter.svg" alt="Flutterwave" width={100} height={20} />,
+        icon: <Image src="/flutter.svg" alt="Flutterwave" width={80} height={16} />,
         description: 'Mobile money & more',
         fees: 'Varies'
     },
