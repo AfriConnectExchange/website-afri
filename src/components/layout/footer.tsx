@@ -11,48 +11,29 @@ const socialLinks = [
   { name: 'LinkedIn', href: '#', icon: <LinkedInIcon className="h-5 w-5" /> },
 ];
 
-const paymentIcons = [
-  { name: 'Visa', src: '/visa.svg' },
-  { name: 'Mastercard', src: '/mastercard.svg' },
-  { name: 'Paypal', src: '/paypal.svg' },
-  { name: 'Stripe', src: '/stripe.svg' },
-];
-
 const footerLinks = [
     {
         title: 'Company',
         links: [
             { label: 'About Us', href: '/about' },
-            { label: 'Our Sponsors / Partners', href: '/sponsors' },
-            { label: 'Careers', href: '/careers' },
-            { label: 'Blog / News', href: '/blog' },
+            { label: 'Our Sponsors', href: '/sponsors' },
+            { label: 'Contact Us', href: '/support' },
         ],
     },
     {
-        title: 'For Buyers',
+        title: 'How It Works',
         links: [
             { label: 'How to Buy', href: '/help/how-to-buy' },
-            { label: 'Buyer Protection (Escrow)', href: '/buyer-protection' },
-            { label: 'Track Your Order', href: '/orders' },
-            { label: 'Marketplace Categories', href: '/marketplace' },
-        ],
-    },
-    {
-        title: 'For Sellers & SMEs',
-        links: [
             { label: 'How to Sell', href: '/help/how-to-sell' },
-            { label: 'Seller Dashboard', href: '/seller' },
-            { label: 'Advertise', href: '/advertise' },
-            { label: 'Become a Trainer (LMS)', href: '/become-a-trainer' },
+            { label: 'Buyer Protection (Escrow)', href: '/buyer-protection' },
         ],
     },
     {
-        title: 'Support & Resources',
+        title: 'Support',
         links: [
             { label: 'Help Center', href: '/help' },
-            { label: 'Contact Us', href: '/support' },
             { label: 'Dispute Resolution', href: '/disputes' },
-            { label: 'Chat with Us', href: '#chat' },
+            { label: 'FAQs', href: '/faq' },
         ],
     },
 ];
@@ -62,9 +43,10 @@ export default function Footer() {
   return (
     <footer className="bg-secondary/50 border-t">
       <div className="container mx-auto px-4 md:px-6 py-12">
-        {/* Top section with columns and newsletter */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-8">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
+          
+          <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-8">
             {footerLinks.map((section) => (
               <div key={section.title}>
                 <h3 className="font-semibold mb-4 text-foreground">{section.title}</h3>
@@ -95,7 +77,6 @@ export default function Footer() {
 
         <div className="border-t my-8"></div>
 
-        {/* Bottom bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
              <Logo withText={false} className="text-foreground" />
@@ -151,3 +132,5 @@ function LinkedInIcon(props: React.SVGProps<SVGSVGElement>) {
     <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19M18.5,18.5V13.2A3.26,3.26 0 0,0 15.24,9.94C14.39,9.94 13.4,10.43 12.92,11.24V10.13H10.13V18.5H12.92V13.57C12.92,12.8 13.54,12.17 14.31,12.17A1.4,1.4 0 0,1 15.71,13.57V18.5H18.5M6.88,8.56A1.68,1.68 0 0,0 8.56,6.88C8.56,6 7.81,5.25 6.88,5.25A1.68,1.68 0 0,0 5.2,6.88C5.2,7.81 5.95,8.56 6.88,8.56M8.27,18.5V10.13H5.5V18.5H8.27Z" /></svg>
   );
 }
+
+    
