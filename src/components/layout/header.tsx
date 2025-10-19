@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import {
-  Search,
+  Search, 
   ShoppingCart,
   User,
   Menu,
@@ -23,8 +23,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { UserNav } from './UserNav';
-import { createSPAClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 interface HeaderProps {
     cartCount?: number;
@@ -32,21 +31,10 @@ interface HeaderProps {
 
 export function Header({ cartCount = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const { user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
-  
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
   
   useEffect(() => {
     if (cartCount > 0) {

@@ -24,8 +24,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
-import { createSPAClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 
 export interface Product {
@@ -84,8 +83,7 @@ export interface FilterState {
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const { toast } = useToast();
   const { cart, addToCart, cartCount } = useCart();
   
@@ -108,16 +106,6 @@ export default function MarketplacePage() {
     freeShippingOnly: false,
     freeListingsOnly: false,
   });
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   const fetchProducts = useCallback(async (currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);

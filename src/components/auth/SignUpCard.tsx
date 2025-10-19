@@ -12,17 +12,9 @@ import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { PasswordStrength } from './PasswordStrength';
 import { useToast } from '@/hooks/use-toast';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User as SupabaseUser } from '@supabase/supabase-js';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-
-type Props = {
-    onSwitch?: () => void;
-    onAuthSuccess?: (user: SupabaseUser) => void;
-    onNeedsOtp?: (phone: string, resend: () => Promise<void>) => void;
-};
+import { useAuth } from '@/context/auth-context';
+import Link from 'next/link';
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
@@ -39,8 +31,8 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
-  const supabase = createSPAClient();
+export default function SignUpCard() {
+  const { login } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -56,65 +48,38 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   
   const handleEmailRegistration = async () => {
     setIsLoading(true);
-    try {
-        const { data, error } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-                data: {
-                    full_name: formData.name,
-                },
-                emailRedirectTo: `${window.location.origin}/api/auth/callback`
-            }
-        });
-      if (error) throw error;
-      
-      if (data.user) {
-        if (data.user.identities && data.user.identities.length === 0) {
-            showAlert('destructive', 'Registration Incomplete', 'This email may already be in use with a social provider. Please try signing in with Google or Facebook.');
-        } else {
-            toast({ title: 'Registration Successful!', description: "We've sent a verification link to your email." });
-            router.push('/auth/verify-email');
-        }
-      }
-
-    } catch (error: any) {
-      if (error.message.includes('already exists')) {
-        showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
-      } else {
-        showAlert('destructive', 'Registration Failed', error.message);
-      }
-    }
-    setIsLoading(false);
+    setTimeout(() => {
+      toast({ title: 'Registration Successful!', description: "We've sent a verification link to your email." });
+      login({
+        email: formData.email,
+        fullName: formData.name,
+        roles: ['buyer'],
+      });
+      router.push('/onboarding');
+      setIsLoading(false);
+    }, 1000);
   };
   
   const handlePhoneRegistration = async () => {
     setIsLoading(true);
-    try {
-      // Supabase phone logic would go here
-    } catch (error: any) {
-      if (error.code === 'auth/invalid-phone-number') {
-        showAlert('destructive', 'Failed to Start Signup', 'Invalid phone number provided.');
-      } else {
-        showAlert('destructive', 'Failed to Start Signup', error.message);
-      }
-    } finally {
-        setIsLoading(false);
-    }
+    setTimeout(() => {
+      showAlert('destructive', 'Failed to Start Signup', "Phone signup is not implemented in this demo.");
+      setIsLoading(false);
+    }, 1000);
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    try {
-        await supabase.auth.signInWithOAuth({
-            provider,
-            options: { redirectTo: `${window.location.origin}/api/auth/callback` },
-        });
-    } catch (error: any) {
-        showAlert('destructive', 'Sign Up Failed', error.message);
-    } finally {
+    setTimeout(() => {
+      toast({ title: 'Sign-up Successful!', description: `Welcome via ${provider}!` });
+      login({
+        email: `new.${provider}@example.com`,
+        fullName: `New ${provider} User`,
+        roles: ['buyer'],
+      });
+      router.push('/onboarding');
       setIsLoading(false);
-    }
+    }, 1000);
   }
 
   const handleFormSubmit = (e: React.FormEvent) => {

@@ -1,13 +1,25 @@
+
 'use client';
 import { Header } from '@/components/dashboard/header';
 import { ProfilePage } from '@/components/profile/profile-page';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { useEffect, useState } from 'react';
-
+import { useEffect } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 export default function UserProfilePage() {
-  // TODO: Add authentication logic or remove this comment if not needed
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/auth/signin');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading || !isAuthenticated) {
+    return <PageLoader />;
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">

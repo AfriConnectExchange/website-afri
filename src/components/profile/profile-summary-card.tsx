@@ -7,14 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User as SupabaseUser } from '@supabase/supabase-js';
+import { useAuth, MockUser } from '@/context/auth-context';
 
 interface ProfileSummaryCardProps {
-  user: SupabaseUser;
+  user: MockUser;
   onNavigate: (page: string) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -39,38 +38,20 @@ const getRoleLabel = (role?: string) => {
 };
 
 export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }: ProfileSummaryCardProps) {
-  const supabase = createSPAClient();
+  const { logout } = useAuth();
   const { toast } = useToast();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
   
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      if (data) {
-        setUserProfile(data);
-      }
-    };
-    if(user) {
-        fetchProfile();
-    }
-  }, [user, supabase]);
-
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await logout();
     setShowLogoutConfirm(false);
     toast({
       title: 'Logged Out',
       description: 'You have been successfully logged out.',
     });
-    onNavigate('/');
   };
 
-  const userName = userProfile?.full_name || user.email || 'Unnamed User';
+  const userName = user.fullName || user.email || 'Unnamed User';
   
   const menuItems = [
     { id: 'profile', label: 'My Account', icon: User },
@@ -84,32 +65,20 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
         <CardContent className="pt-6">
           <div className="text-center">
             <Avatar className="w-20 h-20 mx-auto mb-4 border-2 border-primary/20 p-1">
-              <AvatarImage src={userProfile?.profile_picture_url || user.user_metadata.avatar_url || undefined} alt={userName} />
+              <AvatarImage src={user.avatarUrl} alt={userName} />
               <AvatarFallback className="text-2xl bg-muted">
                 {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
               </AvatarFallback>
             </Avatar>
             <h3 className="font-semibold text-lg mb-1">{userName}</h3>
-            <Badge className={cn('mb-3', getRoleColor(userProfile?.roles?.[0]))}>
-              {getRoleLabel(userProfile?.roles?.[0])}
+            <Badge className={cn('mb-3', getRoleColor(user.roles?.[0]))}>
+              {getRoleLabel(user.roles?.[0])}
             </Badge>
             <div className="text-sm text-muted-foreground space-y-1 my-4">
               {user.email && (
                 <div className="flex items-center justify-center gap-2">
                   <Mail className="w-4 h-4" />
                   <span className="truncate">{user.email}</span>
-                </div>
-              )}
-              {userProfile?.phone && (
-                <div className="flex items-center justify-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span>{userProfile.phone}</span>
-                </div>
-              )}
-              {userProfile?.address && (
-                <div className="flex items-center justify-center gap-2 text-center">
-                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{userProfile.address}</span>
                 </div>
               )}
             </div>

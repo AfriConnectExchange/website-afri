@@ -11,13 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { useToast } from '@/hooks/use-toast';
-import { createSPAClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import { useAuth, MockUser } from '@/context/auth-context';
 
 type Props = {
     onSwitch?: () => void;
-    onAuthSuccess?: (user: User) => void;
+    onAuthSuccess?: (user: MockUser) => void;
     onNeedsOtp?: (phone: string, resend: () => Promise<void>) => void;
 };
 
@@ -36,9 +35,8 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-
 export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
-  const supabase = createSPAClient();
+  const { login } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
@@ -51,33 +49,20 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   
   const handleEmailLogin = async () => {
     setIsLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-      });
-      if (error) throw error;
-      
-      toast({ title: 'Sign-in Successful', description: 'Welcome back!' });
-      
-      if (onAuthSuccess) {
-          onAuthSuccess(data.user as User);
+    // Simulate API call
+    setTimeout(() => {
+      if (formData.email === 'test@example.com' && formData.password === 'password') {
+        toast({ title: 'Sign-in Successful', description: 'Welcome back!' });
+        login({
+          email: 'test.user@africonnect.com',
+          fullName: 'Test User',
+          roles: ['buyer', 'seller'],
+        });
       } else {
-        // Default behavior if no callback is provided
-        if (data.user) {
-            router.push('/');
-        }
-      }
-    } catch (error: any) {
-      if (error.message.includes('Email not confirmed')) {
-          showAlert('destructive', 'Email Not Verified', 'Please check your inbox for a verification link.');
-      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         showAlert('destructive', 'Login Failed', 'Invalid email or password. Please try again.');
-      } else {
-        showAlert('destructive', 'Login Failed', error.message);
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    }, 1000);
   };
 
   const handlePhoneLogin = async () => {
@@ -86,27 +71,23 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       return;
     }
     setIsLoading(true);
-    try {
-      // Supabase phone logic would go here
-    } catch (error: any) {
-      showAlert('destructive', 'Failed to Send OTP', error.message);
-    } finally {
-      setIsLoading(false);
-    }
+    setTimeout(() => {
+        showAlert('destructive', 'Failed to Send OTP', "Phone login is not implemented in this demo.");
+        setIsLoading(false);
+    }, 1000);
   };
   
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    try {
-      await supabase.auth.signInWithOAuth({
-          provider,
-          options: { redirectTo: `${window.location.origin}/api/auth/callback` },
-      });
-    } catch (error: any) {
-        showAlert('destructive', 'Login Failed', error.message);
-    } finally {
-      setIsLoading(false);
-    }
+    setTimeout(() => {
+        toast({ title: 'Sign-in Successful', description: `Welcome back via ${provider}!` });
+        login({
+          email: `test.${provider}@africonnect.com`,
+          fullName: `Test ${provider} User`,
+          roles: ['buyer'],
+        });
+        setIsLoading(false);
+    }, 1000);
   }
 
   return (

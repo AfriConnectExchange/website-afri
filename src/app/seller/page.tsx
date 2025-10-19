@@ -9,6 +9,7 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useAuth } from '@/context/auth-context';
 
 const VendorCenterLogo = () => (
     <div className="flex items-center gap-3 mb-4">
@@ -29,8 +30,8 @@ export default function SellerAuthPage() {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
+    const { login } = useAuth();
 
-    // TODO: Replace with Supabase or other auth provider
     const handleLogin = async () => {
         setIsLoading(true);
         try {
@@ -38,6 +39,11 @@ export default function SellerAuthPage() {
             setTimeout(() => {
                 setIsLoading(false);
                 toast({ title: 'Login successful', description: 'Redirecting to dashboard...', variant: 'default' });
+                login({
+                    email: email || 'seller@example.com',
+                    fullName: 'Test Seller',
+                    roles: ['seller'],
+                });
                 router.push('/seller/dashboard');
             }, 1000);
         } catch (error: any) {

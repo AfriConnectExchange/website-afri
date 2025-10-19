@@ -4,32 +4,21 @@
 import { Header } from '@/components/dashboard/header';
 import { BarterManagementPage } from '@/components/barter/barter-management-page';
 import { PageLoader } from '@/components/ui/loader';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 export default function BarterPage() {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (!session?.user) {
-        router.push('/');
-      }
-    });
+    if (!isLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [router, isLoading, isAuthenticated]);
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
-
-  if (isUserLoading || !user) {
+  if (isLoading || !user) {
     return <PageLoader />;
   }
   

@@ -5,34 +5,22 @@ import { Header } from '@/components/dashboard/header';
 import { NotificationsPage } from '@/components/notifications/notifications-page';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { createSPAClient } from '@/lib/supabase/client';
+import { useEffect } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 export default function Notifications() {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (!session?.user) {
-        router.push('/');
-      }
-    });
+    if (!isLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [router, isLoading, isAuthenticated]);
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
-
-  if (isUserLoading || !user) {
+  if (isLoading || !user) {
     return <PageLoader />;
   }
-
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">

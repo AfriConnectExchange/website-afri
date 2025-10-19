@@ -2,41 +2,40 @@
 'use client';
 import { PageLoader } from '@/components/ui/loader';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { SellerSidebar } from '@/components/seller/seller-sidebar';
+import { useAuth } from '@/context/auth-context';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
-  // TODO: Replace with Supabase or other auth provider
-  const [user, setUser] = useState(null);
-  const [isUserLoading, setIsUserLoading] = useState(false);
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const isAuthPage = pathname === '/seller';
 
   useEffect(() => {
-    // TODO: Replace with real auth check
-    setIsUserLoading(false);
-    // setUser(null); // or setUser({}) if authenticated
-    if (!isUserLoading) {
-      if (!user && !isAuthPage) {
+    if (!isLoading) {
+      if (!isAuthenticated && !isAuthPage) {
         router.push('/seller');
-      } else if (user && isAuthPage) {
+      } else if (isAuthenticated && isAuthPage) {
         router.push('/seller/dashboard');
+      } else if (isAuthenticated && !user?.roles.includes('seller')) {
+        // Optional: Redirect if user is not a seller
+        // router.push('/'); 
       }
     }
-  }, [user, isUserLoading, router, isAuthPage, pathname]);
+  }, [user, isLoading, isAuthenticated, router, isAuthPage, pathname]);
 
-  if (isUserLoading && !isAuthPage) {
+  if (isLoading && !isAuthPage) {
     return <PageLoader />;
   }
 
-  if (!user && !isAuthPage) {
+  if (!isAuthenticated && !isAuthPage) {
     return <PageLoader />;
   }
 
   // For the login page, we don't want the sidebar
-  if (isAuthPage || !user) {
+  if (isAuthPage || !isAuthenticated) {
     return <main className="bg-gray-100">{children}</main>;
   }
 

@@ -9,69 +9,23 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, User as UserIcon, Shield, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 export default function AdminPage() {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-  const [profile, setProfile] = useState<any | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (!session?.user) {
-        router.push('/auth/signin');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-        if (!user) return;
-        try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('roles')
-                .eq('id', user.id)
-                .single();
-            if (error) throw error;
-            if (data) {
-                setProfile(data);
-            }
-        } catch (error) {
-            console.error("Failed to fetch user profile:", error);
-        } finally {
-            setLoadingProfile(false);
-        }
-    };
-
-    if(user) {
-        fetchProfile();
-    } else {
-        setLoadingProfile(false);
+    if (!isLoading && !isAuthenticated) {
+      router.push('/auth/signin');
     }
-  }, [user, supabase]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (isUserLoading || loadingProfile) {
+  if (isLoading || !isAuthenticated) {
     return <PageLoader />;
   }
-
-  if (!user) {
-    // This case is handled by the redirect in onAuthStateChange,
-    // but as a fallback, we can show a loader or a message.
-    return <PageLoader />;
-  }
-
-  const canAccess = profile?.roles?.includes('admin');
+  
+  const canAccess = user?.roles?.includes('admin');
   
   const navItems = [
     { id: 'user-management', label: 'User Management', href: '#', icon: UserIcon },

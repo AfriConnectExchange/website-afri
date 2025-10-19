@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { CartProvider } from '@/context/cart-context';
 import Footer from '@/components/layout/footer';
+import { AuthProvider } from '@/context/auth-context';
 
 
 export const metadata: Metadata = {
@@ -32,13 +33,15 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased flex flex-col'
         )}
       >
-        <CartProvider>
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
-          <Toaster />
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
+            <Toaster />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

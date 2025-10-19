@@ -3,32 +3,21 @@
 import { Header } from '@/components/dashboard/header';
 import { MyOrdersPage } from '@/components/orders/my-orders-page';
 import { PageLoader } from '@/components/ui/loader';
-import { createSPAClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import { useEffect } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 export default function OrdersPage() {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (!session?.user) {
-        router.push('/');
-      }
-    });
+    if (!isLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [isLoading, isAuthenticated, router]);
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
-
-  if (isUserLoading || !user) {
+  if (isLoading || !user) {
     return <PageLoader />;
   }
 
