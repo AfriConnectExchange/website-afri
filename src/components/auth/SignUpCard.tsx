@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { createSPAClient } from '@/lib/supabase/client';
 import { type User as SupabaseUser } from '@supabase/supabase-js';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 
 type Props = {
     onSwitch?: () => void;
@@ -40,6 +42,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
   const supabase = createSPAClient();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false });
   const [showPassword, setShowPassword] = useState(false);
@@ -60,14 +63,23 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
             options: {
                 data: {
                     full_name: formData.name,
-                }
+                },
+                emailRedirectTo: `${window.location.origin}/api/auth/callback`
             }
         });
       if (error) throw error;
-      if (data.user && onAuthSuccess) onAuthSuccess(data.user);
+      
+      if (data.user) {
+        if (data.user.identities && data.user.identities.length === 0) {
+            showAlert('destructive', 'Registration Incomplete', 'This email may already be in use with a social provider. Please try signing in with Google or Facebook.');
+        } else {
+            toast({ title: 'Registration Successful!', description: "We've sent a verification link to your email." });
+            router.push('/auth/verify-email');
+        }
+      }
 
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.message.includes('already exists')) {
         showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
       } else {
         showAlert('destructive', 'Registration Failed', error.message);

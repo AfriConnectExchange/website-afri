@@ -13,6 +13,7 @@ import PhoneInput from 'react-phone-number-input';
 import { useToast } from '@/hooks/use-toast';
 import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
 type Props = {
     onSwitch?: () => void;
@@ -39,6 +40,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
   const supabase = createSPAClient();
   const { toast } = useToast();
+  const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,9 +57,32 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
           password: formData.password,
       });
       if (error) throw error;
-      if (onAuthSuccess) onAuthSuccess(data.user as User);
+      
+      toast({ title: 'Sign-in Successful', description: 'Welcome back!' });
+      
+      if (onAuthSuccess) {
+          onAuthSuccess(data.user as User);
+      } else {
+        // Default behavior if no callback is provided
+        if (data.user) {
+            // Check if the user has completed onboarding
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('onboarding_completed')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profile && profile.onboarding_completed) {
+                router.push('/');
+            } else {
+                router.push('/onboarding');
+            }
+        }
+      }
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.message.includes('Email not confirmed')) {
+          showAlert('destructive', 'Email Not Verified', 'Please check your inbox for a verification link.');
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         showAlert('destructive', 'Login Failed', 'Invalid email or password. Please try again.');
       } else {
         showAlert('destructive', 'Login Failed', error.message);

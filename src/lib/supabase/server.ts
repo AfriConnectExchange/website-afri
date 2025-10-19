@@ -1,40 +1,37 @@
-import {createServerClient} from '@supabase/ssr'
-import {cookies} from 'next/headers'
-import {ClientType, SassClient} from "@/lib/supabase/unified";
-import {Database} from "@/lib/types";
 
-export async function createSSRClient() {
-    const cookieStore = await cookies()
+import { createServerClient as createClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-    return createServerClient<Database, "public", Database["public"]>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll()
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
-                    } catch {
-                        // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
-                    }
-                },
-            }
-        }
-    )
-}
+export function createServerClient() {
+  const cookieStore = cookies()
 
-
-
-export async function createSSRSassClient() {
-    const client = await createSSRClient();
-    // This must be some bug that SupabaseClient is not properly recognized, so must be ignored
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new SassClient(client as any, ClientType.SERVER);
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+        remove(name: string, options) {
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch (error) {
+            // The `delete` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
 }
