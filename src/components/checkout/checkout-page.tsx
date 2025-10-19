@@ -199,10 +199,12 @@ export function CheckoutPageComponent({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                  {cartItems.map((item) => (
+                  {cartItems.map((item) => {
+                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : 'https://placehold.co/400x300';
+                    return (
                     <div key={item.id} className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-muted rounded-lg flex-shrink-0">
-                        <Image src={item.image} alt={item.name} width={48} height={48} className="object-cover rounded-lg" />
+                        <Image src={imageSrc} alt={item.name} width={48} height={48} className="object-cover rounded-lg" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-sm">{item.name}</p>
@@ -216,7 +218,7 @@ export function CheckoutPageComponent({
                         </p>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 <Separator />

@@ -49,7 +49,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
     switch(paymentType) {
         case 'card': return <CreditCard className="w-5 h-5" />;
         case 'wallet': return <Wallet className="w-5 h-5" />;
-        case 'flutterwave': return <Image src="/flutterwave.svg" alt="Flutterwave" width={20} height={20} />;
+        case 'flutterwave': return <Image src="/flutter.svg" alt="Flutterwave" width={20} height={20} />;
         default: return <CreditCard className="w-5 h-5" />;
     }
   }
