@@ -46,6 +46,7 @@ export interface Product {
   shipping_policy?: any;
   average_rating: number;
   review_count: number;
+  tags?: string[];
   
   // Properties from old interface, to be mapped or joined
   name: string; // Will map from title
@@ -111,14 +112,20 @@ export default function MarketplacePage() {
     
     let filteredProducts: Product[] = [...allProducts] as unknown as Product[];
 
-    // Search query
+    // Smart search query
     if (currentFilters.searchQuery.length >= 3) {
-      const query = currentFilters.searchQuery.toLowerCase();
-      filteredProducts = filteredProducts.filter(p => 
-        p.title.toLowerCase().includes(query) || 
-        p.description.toLowerCase().includes(query) ||
-        p.seller.toLowerCase().includes(query)
-      );
+      const searchTerms = currentFilters.searchQuery.toLowerCase().split(' ').filter(term => term);
+      filteredProducts = filteredProducts.filter(p => {
+        const productText = [
+          p.title,
+          p.description,
+          p.seller,
+          p.category,
+          ...(p.tags || [])
+        ].join(' ').toLowerCase();
+
+        return searchTerms.some(term => productText.includes(term));
+      });
     }
 
     // Category
@@ -368,3 +375,5 @@ export default function MarketplacePage() {
     </>
   );
 }
+
+    

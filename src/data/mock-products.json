@@ -1,3 +1,4 @@
+
 [
   {
     "id": "prod_001",
@@ -9,6 +10,7 @@
     "currency": "GBP",
     "category_id": 1,
     "category": "Home & Textiles",
+    "tags": ["home decor", "textile", "blanket", "cozy", "artisan"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -56,6 +58,7 @@
     "currency": "GBP",
     "category_id": 3,
     "category": "Kitchenware",
+    "tags": ["kitchen", "mug", "coffee", "tea", "ceramic", "gift"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -103,6 +106,7 @@
     "currency": "GBP",
     "category_id": 2,
     "category": "Furniture & Decor",
+    "tags": ["furniture", "shelf", "wood", "oak", "minimalist", "decor"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -149,6 +153,7 @@
     "currency": "GBP",
     "category_id": 2,
     "category": "Furniture & Decor",
+    "tags": ["plant", "hanger", "macrame", "boho", "decor", "handmade"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -197,6 +202,7 @@
     "currency": "GBP",
     "category_id": 1,
     "category": "Home & Textiles",
+    "tags": ["fabric", "craft", "sewing", "quilting", "remnants", "free"],
     "listing_type": "freebie",
     "status": "active",
     "images": [
@@ -241,6 +247,7 @@
     "currency": "GBP",
     "category_id": 5,
     "category": "Bags & Accessories",
+    "tags": ["bag", "leather", "vintage", "messenger", "laptop", "work"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -288,6 +295,7 @@
     "currency": "GBP",
     "category_id": 6,
     "category": "Health & Wellness",
+    "tags": ["essential oil", "aromatherapy", "wellness", "relax", "natural"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -335,6 +343,7 @@
     "currency": "GBP",
     "category_id": 6,
     "category": "Health & Wellness",
+    "tags": ["water bottle", "reusable", "eco-friendly", "gym", "travel", "steel"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -382,6 +391,7 @@
     "currency": "GBP",
     "category_id": 2,
     "category": "Furniture & Decor",
+    "tags": ["candle", "scented", "soy wax", "handmade", "gift", "home decor"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -429,6 +439,7 @@
     "currency": "GBP",
     "category_id": 6,
     "category": "Health & Wellness",
+    "tags": ["yoga", "fitness", "mat", "pilates", "workout", "eco-friendly"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -475,6 +486,7 @@
     "currency": "GBP",
     "category_id": 5,
     "category": "Bags & Accessories",
+    "tags": ["tote bag", "organic", "cotton", "reusable", "eco-friendly", "shopping"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -522,6 +534,7 @@
     "currency": "GBP",
     "category_id": 7,
     "category": "Stationery & Books",
+    "tags": ["journal", "notebook", "leather", "writing", "gift", "handmade"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -570,6 +583,7 @@
     "currency": "GBP",
     "category_id": 7,
     "category": "Stationery & Books",
+    "tags": ["books", "recipes", "cooking", "food", "freebie"],
     "listing_type": "freebie",
     "status": "active",
     "images": [
@@ -614,6 +628,7 @@
     "currency": "GBP",
     "category_id": 3,
     "category": "Kitchenware",
+    "tags": ["kitchen", "bamboo", "utensils", "eco-friendly", "cooking", "set"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -661,6 +676,7 @@
     "currency": "GBP",
     "category_id": 8,
     "category": "Electronics",
+    "tags": ["lamp", "led", "desk", "office", "tech", "usb"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -708,11 +724,12 @@
     "currency": "GBP",
     "category_id": 9,
     "category": "Plants & Garden",
+    "tags": ["plants", "succulent", "garden", "indoor", "decor", "set"],
     "listing_type": "sale",
     "status": "active",
     "images": [
       "https://images.unsplash.com/photo-1459156212016-c812468e2115?w=800&q=80",
-      "https://images.unsplash.com/photo-1466781783364-36c955e42a7f?w=800&q=80"
+      "https://images.unsplash.com/photo-1466781783364-3f331566c6d9?w=800&q=80"
     ],
     "location_text": "Bath, UK",
     "created_at": "2024-07-08T11:30:00Z",
@@ -754,6 +771,7 @@
     "currency": "GBP",
     "category_id": 8,
     "category": "Electronics",
+    "tags": ["speaker", "bluetooth", "wireless", "audio", "portable", "waterproof"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -801,6 +819,7 @@
     "currency": "GBP",
     "category_id": 10,
     "category": "Beauty & Personal Care",
+    "tags": ["soap", "handmade", "natural", "organic", "vegan", "gift set"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -848,6 +867,7 @@
     "currency": "GBP",
     "category_id": 2,
     "category": "Furniture & Decor",
+    "tags": ["clock", "wall clock", "vintage", "decor", "home"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -895,6 +915,7 @@
     "currency": "GBP",
     "category_id": 7,
     "category": "Stationery & Books",
+    "tags": ["books", "reading", "fiction", "bundle", "thriller", "novel"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -942,6 +963,7 @@
     "currency": "GBP",
     "category_id": 11,
     "category": "Kids & Baby",
+    "tags": ["kids", "toys", "freebie", "children", "play", "bundle"],
     "listing_type": "freebie",
     "status": "active",
     "images": [
@@ -987,6 +1009,7 @@
     "currency": "GBP",
     "category_id": 3,
     "category": "Kitchenware",
+    "tags": ["lunch box", "steel", "eco-friendly", "meal prep", "food container"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -1034,6 +1057,7 @@
     "currency": "GBP",
     "category_id": 3,
     "category": "Kitchenware",
+    "tags": ["kitchen scale", "digital", "baking", "cooking", "measurement"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -1081,6 +1105,7 @@
     "currency": "GBP",
     "category_id": 2,
     "category": "Furniture & Decor",
+    "tags": ["lamp", "salt lamp", "himalayan", "decor", "wellness", "light"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -1128,6 +1153,7 @@
     "currency": "GBP",
     "category_id": 6,
     "category": "Health & Wellness",
+    "tags": ["fitness", "resistance bands", "workout", "gym", "strength", "exercise"],
     "listing_type": "sale",
     "status": "active",
     "images": [
@@ -1166,3 +1192,5 @@
     }
   }
 ]
+
+    
