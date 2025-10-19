@@ -40,7 +40,7 @@ const paymentMethods: PaymentMethod[] = [
         id: 'flutterwave',
         name: 'Flutterwave',
         type: 'online',
-        icon: <Image src="/flutterwave.svg" alt="Flutterwave" width={100} height={20} />,
+        icon: <Image src="/flutter.svg" alt="Flutterwave" width={100} height={20} />,
         description: 'Mobile money & more',
         fees: 'Varies'
     },
