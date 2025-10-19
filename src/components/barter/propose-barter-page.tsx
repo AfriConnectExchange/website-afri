@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,11 +10,13 @@ import { PageLoader } from '../ui/loader';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '../ui/button';
 import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
 
 export function ProposeBarterPage() {
     const searchParams = useSearchParams();
     const productId = searchParams.get('productId');
     const { toast } = useToast();
+    const { user } = useAuth();
 
     const [targetProduct, setTargetProduct] = useState<Product | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -25,23 +28,25 @@ export function ProposeBarterPage() {
                 return;
             }
             setIsLoading(true);
-            // This needs to be updated to fetch from a valid API endpoint
-            // const { data, error } = await supabase
-            //     .from('products')
-            //     .select(`*, seller:profiles(full_name)`)
-            //     .eq('id', productId)
-            //     .single();
             
-            // if (error || !data) {
-            //     toast({ variant: 'destructive', title: 'Error', description: 'Product not found.' });
-            // } else {
-            //     setTargetProduct({
-            //         ...data,
-            //         name: data.title,
-            //         image: data.images?.[0] || '',
-            //         seller: data.seller?.full_name || 'Unknown',
-            //     } as Product);
-            // }
+            try {
+                // In a real app, this would fetch from a live API
+                // For now, we simulate fetching mock data
+                const response = await fetch(`/api/products?id=${productId}`); // This API doesn't exist, we'll just mock it
+                
+                // MOCK DATA SIMULATION
+                const mockProducts = (await (await fetch('/api/products')).json()).products;
+                const product = mockProducts.find((p: Product) => p.id === productId);
+
+                if (!product) {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Product not found.' });
+                } else {
+                    setTargetProduct(product);
+                }
+            } catch (error) {
+                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load product.' });
+            }
+
             setIsLoading(false);
         };
         fetchProduct();
@@ -49,36 +54,14 @@ export function ProposeBarterPage() {
 
     const handleBarterConfirm = async (proposalData: BarterFormData) => {
         if (!targetProduct) return;
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to propose a barter.' });
+            return;
+        }
         
         try {
-            // This logic needs to be updated
-            // const { data: { user } } = await supabase.auth.getUser();
-            // if (!user) throw new Error("You must be logged in to propose a barter.");
-            
-            // const { data: userProducts, error: userProductsError } = await supabase
-            //     .from('products')
-            //     .select('id')
-            //     .eq('seller_id', user.id)
-            //     .limit(1);
-                
-            // if (userProductsError || userProducts.length === 0) {
-            //     throw new Error("You must have at least one active listing to propose a barter.");
-            // }
-
-            // const payload = {
-            //     recipient_product_id: targetProduct.id,
-            //     proposer_product_id: userProducts[0].id, // Using first product for demo
-            //     notes: `Offering: ${proposalData.itemName}. Est. Value: £${proposalData.estimatedValue}. ${proposalData.additionalNotes}`
-            // };
-
-            // const response = await fetch('/api/barter/propose', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(payload),
-            // });
-
-            // const result = await response.json();
-            // if (!response.ok) throw new Error(result.error || "Failed to send proposal.");
+            // MOCK API CALL
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
             toast({
                 title: 'Proposal Sent!',

@@ -18,8 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2, Shield } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useRouter } from 'next/navigation';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   primary_role: z.string().min(1, 'Please select a role.'),
@@ -32,10 +31,8 @@ interface AccountRoleFormProps {
 }
 
 export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, updateUser, isLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const form = useForm<RoleFormValues>({
@@ -46,33 +43,12 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
   });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      setIsLoading(true);
-      if (user) {
-        const { data, error } = await supabase
-          .from('users')
-          .select('roles')
-          .eq('id', user.id)
-          .single();
-        
-        if (data && data.roles) {
-          form.reset({
-            primary_role: data.roles[0] || 'buyer',
-          });
-        }
-      }
-      setIsLoading(false);
-    };
-    fetchProfile();
-  }, [form, user, supabase]);
+    if (user && user.roles) {
+      form.reset({
+        primary_role: user.roles[0] || 'buyer',
+      });
+    }
+  }, [form, user]);
 
   const onSubmit = async (values: RoleFormValues) => {
     setIsSaving(true);
@@ -83,11 +59,9 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
     }
     
     try {
-        const { error } = await supabase
-            .from('users')
-            .update({ roles: [values.primary_role] })
-            .eq('id', user.id);
-        if (error) throw error;
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        updateUser({ roles: [values.primary_role] });
         onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');
         setTimeout(() => window.location.reload(), 1500);
     } catch(error: any) {

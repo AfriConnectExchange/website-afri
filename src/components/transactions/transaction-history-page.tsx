@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { Input } from '../ui/input';
+import { useAuth } from '@/context/auth-context';
+
 
 export interface Transaction {
     id: string;
@@ -60,28 +63,22 @@ export function TransactionHistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) return;
     const fetchTransactions = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch('/api/transactions/list');
-        if (res.ok) {
-            const data = await res.json();
-            setTransactions(data);
-        } else {
-            const errorData = await res.json();
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: errorData.error || 'Failed to fetch transactions.',
-            });
-        }
+        // In a real app, this would be an API call.
+        // For the mock, we simulate fetching and return an empty array.
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setTransactions([]);
       } catch (error) {
           toast({
                 variant: 'destructive',
-                title: 'Network Error',
-                description: 'Could not connect to the server.',
+                title: 'Error',
+                description: 'Failed to fetch transactions.',
             });
       } finally {
         setIsLoading(false);
@@ -89,7 +86,7 @@ export function TransactionHistoryPage() {
     };
 
     fetchTransactions();
-  }, [toast]);
+  }, [toast, user]);
 
 
   const getStatusVariant = (status: string) => {

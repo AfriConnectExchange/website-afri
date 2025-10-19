@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { createSPAClient } from '@/lib/supabase/client';
+import { useAuth } from '@/context/auth-context';
 
 
 interface AccountActionsProps {
@@ -16,7 +16,7 @@ interface AccountActionsProps {
 }
 
 export function AccountActions({ onFeedback }: AccountActionsProps) {
-  const supabase = createSPAClient();
+  const { logout } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -29,9 +29,8 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   
   const confirmDeactivate = async () => {
      try {
-      await supabase.auth.signOut();
+      await logout();
       toast({ title: 'Account Deactivated', description: 'You have been signed out. Sign in again to reactivate.' });
-      router.push('/');
     } catch (e: any) {
       onFeedback('error', e.message || 'Failed to sign out.');
     } finally {

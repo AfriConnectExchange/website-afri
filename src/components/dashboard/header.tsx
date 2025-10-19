@@ -33,8 +33,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { HeaderSearchBar } from '../marketplace/header-search-bar';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User as SupabaseUser } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 
 interface HeaderProps {
@@ -42,9 +41,7 @@ interface HeaderProps {
 }
 
 export function Header({ cartCount = 0 }: HeaderProps) {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const { user, logout } = useAuth();
   const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -52,24 +49,13 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      if(user) {
-        const { data: profileData } = await supabase.from('users').select('*').eq('id', user.id).single();
-        setProfile(profileData);
-        const { count } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false);
-        setNotificationCount(count || 0);
-      }
-    };
-    fetchProfileData();
-  }, [user, supabase]);
+    if (user) {
+        // In a real app, fetch notifications
+        setNotificationCount(2);
+    } else {
+        setNotificationCount(0);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (cartCount > 0) {
@@ -80,17 +66,16 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
+    await logout();
   }
   
-  const canAccessSellerFeatures = profile?.roles?.includes('seller') || profile?.roles?.includes('sme');
+  const canAccessSellerFeatures = user?.roles?.includes('seller') || user?.roles?.includes('sme');
 
   const menuItems = {
       mobile: [
         { id: '/', label: 'Marketplace', href: '/', show: true, icon: ShoppingCart },
-        { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
-        { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
+        { id: '/notifications', label: 'Notifications', href: '/notifications', show: !!user, icon: Bell },
+        { id: '/profile', label: 'My Account', href: '/profile', show: !!user, icon: User },
       ],
       dropdown: [
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
@@ -168,7 +153,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                           </Button>
                         </>
                     ) : (
-                         <Link href="/auth" passHref>
+                         <Link href="/auth/signin" passHref>
                             <Button
                                 className="w-full justify-start"
                                 onClick={handleMobileLinkClick}
@@ -257,7 +242,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src={profile?.profile_picture_url || ''} alt={profile?.full_name || user.email || ''} />
+                                <AvatarImage src={user.avatarUrl || ''} alt={user.fullName || user.email} />
                                 <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                             </Avatar>
                         </Button>
@@ -265,7 +250,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{profile?.full_name || user.email}</p>
+                            <p className="text-sm font-medium leading-none">{user.fullName || user.email}</p>
                             <p className="text-xs leading-none text-muted-foreground">
                             {user.email}
                             </p>

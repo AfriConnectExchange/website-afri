@@ -19,12 +19,12 @@ import { useEffect, useState } from 'react';
 import { Textarea } from '../ui/textarea';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
-  full_name: z.string().min(2, 'Full name must be at least 2 characters.'),
-  phone_number: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
+  fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
+  // Note: Phone number is not part of the mock user, so we make it optional here.
+  phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
   address: z.string().optional(),
 });
 
@@ -35,49 +35,27 @@ interface PersonalInfoFormProps {
 }
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, updateUser, isLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<PersonalInfoFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      full_name: '',
-      phone_number: '',
+      fullName: '',
+      phoneNumber: '',
       address: '',
     },
   });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (data) {
-           form.reset({
-              full_name: data.full_name || '',
-              phone_number: data.phone || '',
-              address: data.address || '',
-            });
-        }
-      }
-      setIsLoading(false);
-    };
-    fetchProfile();
-  }, [user, supabase, form]);
+    if (user) {
+        form.reset({
+            fullName: user.fullName || '',
+            phoneNumber: '', // Not in mock data
+            address: '', // Not in mock data
+        });
+    }
+  }, [user, form]);
 
   const onSubmit = async (values: PersonalInfoFormValues) => {
     setIsSaving(true);
@@ -88,19 +66,15 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     }
 
     try {
-        const { error } = await supabase.from('users').update({
-            full_name: values.full_name,
-            address: values.address,
-            phone: values.phone_number,
-        }).eq('id', user.id);
-        
-        if (error) throw error;
-
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        updateUser({
+            fullName: values.fullName,
+            // phone and address are not in our mock user, but in a real app you'd update them
+        });
         onFeedback('success', 'Profile updated successfully!');
-        // Consider if a reload is necessary or if state can be managed locally
-        // setTimeout(() => window.location.reload(), 1500);
     } catch(error: any) {
-        onFeedback('error', error.message);
+        onFeedback('error', 'Failed to update profile: ' + error.message);
     }
     setIsSaving(false);
   };
@@ -133,7 +107,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                     control={form.control}
-                    name="full_name"
+                    name="fullName"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Full Name</FormLabel>
@@ -146,7 +120,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="phone_number"
+                  name="phoneNumber"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>

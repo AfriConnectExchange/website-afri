@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,13 +9,11 @@ import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
 import { useToast } from '../../hooks/use-toast';
-import { createSPAClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 
 export function OnboardingFlow() {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, updateUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -27,19 +26,15 @@ export function OnboardingFlow() {
   });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if(session?.user) {
+    if(user) {
         setUserData((prev) => ({
           ...prev,
-          full_name: session.user.user_metadata.full_name || session.user.email || '',
-          phone_number: session.user.phone || '',
+          full_name: user.fullName || user.email || '',
+          phone_number: '',
+          primary_role: user.roles?.[0] || 'buyer',
         }));
       }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [user]);
 
   const handleRoleSelection = async (data: { role: string }) => {
     const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
@@ -48,13 +43,9 @@ export function OnboardingFlow() {
     if (role === 'buyer') {
       setCurrentStep((prev) => prev + 1);
     } else {
-      if (user) {
+       if (user) {
           try {
-            const { error } = await supabase
-                .from('users')
-                .update({ roles: [role] })
-                .eq('id', user.id); // Correctly use 'id' as the key
-            if (error) throw error;
+            updateUser({ roles: [role] });
           } catch(error: any) {
               toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
               return;
@@ -79,23 +70,15 @@ export function OnboardingFlow() {
     }
 
     try {
-      const { error } = await supabase.from('users').update({
-        full_name: data.full_name,
-        phone: data.phone_number,
-        address: data.location,
-        roles: [userData.primary_role],
-      }).eq('id', user.id); // Correctly use 'id' as the key
+      updateUser({ 
+          fullName: data.full_name,
+          roles: [userData.primary_role],
+          // In a real app, you might have a separate field for phone,
+          // but we'll just log it for now.
+      });
       
-      if (error) throw error;
-      
-      // Update onboarding progress
-      const { error: progressError } = await supabase.from('user_onboarding_progress').upsert({
-        user_id: user.id,
-        walkthrough_completed: true,
-        completed_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
-      
-      if(progressError) throw progressError;
+      // Simulate saving onboarding progress
+      localStorage.setItem('onboarding_completed', 'true');
 
       setCurrentStep((prev) => prev + 1);
     } catch(error: any) {

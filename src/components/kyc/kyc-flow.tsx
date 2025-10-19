@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +11,7 @@ import { DocumentUploadStep } from './steps/document-upload-step';
 import { ReviewStep } from './steps/review-step';
 import { CompletionStep } from './steps/completion-step';
 import { KycProgress } from './kyc-progress';
-import { createSPAClient } from '@/lib/supabase/client';
+import { useAuth } from '@/context/auth-context';
 
 interface KYCPageProps {
   onNavigate: (page: string) => void;
@@ -61,10 +62,10 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const supabase = createSPAClient();
+  const { user, updateUser } = useAuth();
 
   const [kycData, setKycData] = useState<KYCData>({
-    fullName: '',
+    fullName: user?.fullName || '',
     dateOfBirth: '',
     nationality: '',
     idNumber: '',
@@ -85,7 +86,7 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
     estimatedMonthlyVolume: '',
     primaryPhone: '',
     secondaryPhone: '',
-    businessEmail: '',
+    businessEmail: user?.email || '',
     website: '',
   });
 
@@ -161,9 +162,14 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
     setError('');
 
     try {
-      // In a real app, you would upload files and submit data to your KYC service
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      // Simulate API call and file upload
+      await new Promise(resolve => setTimeout(resolve, 2000)); 
       
+      // Update user context to reflect KYC submission (in a real app, this state would come from the backend)
+      if (user) {
+        updateUser({ roles: [...(user.roles || []), 'seller'] }); // Add seller role
+      }
+
       setVerificationStatus('pending');
       setCurrentStep('complete');
       setSuccess('KYC application submitted successfully! We will review your information within 2-3 business days.');
@@ -182,7 +188,7 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
         case 'business':
             return <BusinessInfoStep kycData={kycData} onInputChange={handleInputChange} />;
         case 'documents':
-            return <DocumentUploadStep documents={documents} setDocuments={setDocuments} setError={setError} supabase={supabase} />;
+            return <DocumentUploadStep documents={documents} setDocuments={setDocuments} setError={setError} />;
         case 'review':
             return <ReviewStep kycData={kycData} documents={documents} />;
         case 'complete':

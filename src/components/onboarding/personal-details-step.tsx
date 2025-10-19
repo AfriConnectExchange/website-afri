@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,9 +16,8 @@ import { Input } from '@/components/ui/input';
 import { AnimatedButton } from '../ui/animated-button';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { useEffect, useState } from 'react';
-import { createSPAClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { useEffect } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
@@ -34,26 +34,17 @@ interface PersonalDetailsStepProps {
 }
 
 export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalDetailsStepProps) {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
 
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
   
   useEffect(() => {
     form.reset({
-        fullName: user?.user_metadata.full_name || defaultValues.fullName || '',
-        phoneNumber: user?.phone || defaultValues.phoneNumber || '',
+        fullName: user?.fullName || defaultValues.fullName || '',
+        phoneNumber: defaultValues.phoneNumber || '',
         location: defaultValues.location || '',
       })
   }, [user, form, defaultValues])

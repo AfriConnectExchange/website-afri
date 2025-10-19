@@ -1,15 +1,16 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingCart } from 'lucide-react';
 import { ProfileSummaryCard } from '../profile/profile-summary-card';
-import { useUser } from '@/firebase';
+import { useAuth } from '@/context/auth-context';
 
 // This would be a more detailed type in a real app
 interface Order {
@@ -36,10 +37,11 @@ export function MyOrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useUser();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!user) return;
       setIsLoading(true);
       try {
         // This would fetch from a real API
@@ -56,7 +58,7 @@ export function MyOrdersPage() {
     };
 
     fetchOrders();
-  }, [toast]);
+  }, [user, toast]);
   
   const EmptyOrdersState = () => (
     <Card className="border-dashed">

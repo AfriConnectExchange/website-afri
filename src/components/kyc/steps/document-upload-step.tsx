@@ -6,27 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { DocumentUpload } from "../kyc-flow";
-import { useState, useEffect } from 'react';
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { useState } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 interface DocumentUploadStepProps {
     documents: DocumentUpload[];
     setDocuments: React.Dispatch<React.SetStateAction<DocumentUpload[]>>;
     setError: (error: string) => void;
-    supabase: SupabaseClient;
 }
 
-export function DocumentUploadStep({ documents, setDocuments, setError, supabase }: DocumentUploadStepProps) {
-    const [user, setUser] = useState<User | null>(null);
+export function DocumentUploadStep({ documents, setDocuments, setError }: DocumentUploadStepProps) {
+    const { user } = useAuth();
     const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
-
-    useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          setUser(session?.user ?? null);
-        });
-    
-        return () => subscription.unsubscribe();
-      }, [supabase]);
 
     const handleFileUpload = async (documentId: string, event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -51,15 +42,9 @@ export function DocumentUploadStep({ documents, setDocuments, setError, supabase
                 throw new Error("You must be logged in to upload documents.");
             }
             
-            // This logic needs to be connected to a storage service like Supabase Storage
-            const filePath = `${user.id}/${documentId}_${file.name}`;
-            const { error: uploadError } = await supabase.storage
-              .from('kyc_documents')
-              .upload(filePath, file);
-
-            if (uploadError) {
-              throw uploadError;
-            }
+            // In a real app, this would upload to a storage service
+            // For now, we simulate success after a delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
             
             setDocuments(prev => 
                 prev.map(doc => 

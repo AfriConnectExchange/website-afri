@@ -6,8 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { WriteReviewForm } from './write-review-form';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 export interface Review {
   id: string;
@@ -29,57 +28,29 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
   const [canReview, setCanReview] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+  const { user } = useAuth();
 
   useEffect(() => {
     const checkPurchaseAndReviewStatus = async () => {
       if (!user) return;
       
       try {
-        const { data: ordersData, error: ordersError } = await supabase
-            .from('orders')
-            .select('id, order_items(product_id)')
-            .eq('buyer_id', user.id);
-
-        if (ordersError) throw ordersError;
+        // This is a mock implementation. In a real app, you would:
+        // 1. Fetch the user's orders that contain this productId.
+        // 2. Check if a review already exists for this user and productId/orderId.
         
-        let purchasedOrderId: string | null = null;
-        for (const order of ordersData) {
-            const itemFound = order.order_items.some((item: any) => item.product_id === productId);
-            if (itemFound) {
-                purchasedOrderId = order.id;
-                break;
-            }
-        }
-
-        if (!purchasedOrderId) {
-            setCanReview(false);
-            return;
-        }
-        
+        // Simulating that the user purchased this item in order 'mock_order_123'
+        const purchasedOrderId = 'mock_order_123';
         setOrderId(purchasedOrderId);
 
-        const { data: reviewData, error: reviewError } = await supabase
-            .from('reviews')
-            .select('id')
-            .eq('product_id', productId)
-            .eq('reviewer_id', user.id)
-            .eq('order_id', purchasedOrderId)
-            .single();
-        
-        if (reviewData) {
-            setHasReviewed(true);
+        // Simulating that the user has not reviewed this product yet
+        const alreadyReviewed = reviews.some(review => review.reviewer_name === user.fullName);
+        if (alreadyReviewed) {
+             setHasReviewed(true);
+             setCanReview(false);
         } else {
             setCanReview(true);
+            setHasReviewed(false);
         }
 
       } catch(error) {
@@ -87,7 +58,7 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
       }
     };
     checkPurchaseAndReviewStatus();
-  }, [productId, user, supabase]);
+  }, [productId, user, reviews]);
 
 
   return (

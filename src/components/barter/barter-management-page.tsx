@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { Handshake, Repeat, Check, X, Package, ArrowRight, Loader2, Info } from 
 import Image from 'next/image';
 import { Badge } from '../ui/badge';
 import { ConfirmationModal } from '../ui/confirmation-modal';
-import { useUser } from '@/firebase';
+import { useAuth } from '@/context/auth-context';
 
 interface BarterProposal {
     id: string;
@@ -52,7 +53,7 @@ export function BarterManagementPage() {
     const [proposals, setProposals] = useState<BarterProposal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
-    const { user } = useUser();
+    const { user } = useAuth();
     const [showConfirmModal, setShowConfirmModal] = useState<{ proposal: BarterProposal; action: 'accepted' | 'rejected' } | null>(null);
     const [isResponding, setIsResponding] = useState(false);
 
@@ -64,10 +65,9 @@ export function BarterManagementPage() {
         const fetchProposals = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(`/api/barter/list?type=${activeTab}`);
-                if (!res.ok) throw new Error('Failed to fetch proposals.');
-                const data = await res.json();
-                setProposals(data.proposals);
+                // In a real app, you'd fetch this. For the mock, we'll show an empty state.
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                setProposals([]);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error', description: error.message });
             } finally {
@@ -89,13 +89,8 @@ export function BarterManagementPage() {
         const { proposal, action } = showConfirmModal;
 
         try {
-            const response = await fetch('/api/barter/respond', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proposal_id: proposal.id, action }),
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || `Failed to ${action} proposal.`);
+            // Mock API call
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
             toast({ title: 'Success', description: `Proposal has been ${action}.` });
             
@@ -110,7 +105,7 @@ export function BarterManagementPage() {
     };
 
     const ProposalCard = ({ proposal }: { proposal: BarterProposal }) => {
-        const isReceived = proposal.recipient_id === user?.uid;
+        const isReceived = proposal.recipient_id === user?.id;
         const myItem = isReceived ? proposal.recipient_product : proposal.proposer_product;
         const theirItem = isReceived ? proposal.proposer_product : proposal.recipient_product;
         const theirName = isReceived ? proposal.proposer.full_name : proposal.recipient.full_name;
