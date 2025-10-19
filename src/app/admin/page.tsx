@@ -9,11 +9,11 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, User as UserIcon, Shield, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import { type User } from '@supabase/supabase-js';
 
 export default function AdminPage() {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [profile, setProfile] = useState<any | null>(null);

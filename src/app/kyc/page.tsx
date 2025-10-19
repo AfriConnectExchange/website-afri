@@ -6,10 +6,10 @@ import { Header } from '@/components/dashboard/header';
 import { PageLoader } from '@/components/ui/loader';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 
 export default function KycPage() {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const router = useRouter();

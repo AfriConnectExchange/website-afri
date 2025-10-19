@@ -4,12 +4,12 @@ import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { PageLoader } from '@/components/ui/loader';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = createSPAClient();
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 

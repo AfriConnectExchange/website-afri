@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { useToast } from '@/hooks/use-toast';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
 type Props = {
@@ -37,7 +37,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);

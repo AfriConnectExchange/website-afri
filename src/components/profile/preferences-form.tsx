@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import { type User } from '@supabase/supabase-js';
 
 const formSchema = z.object({
@@ -31,7 +31,7 @@ interface PreferencesFormProps {
 }
 
 export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

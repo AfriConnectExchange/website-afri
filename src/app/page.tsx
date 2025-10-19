@@ -24,7 +24,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
 
@@ -84,7 +84,7 @@ export interface FilterState {
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
   const { cart, addToCart, cartCount } = useCart();

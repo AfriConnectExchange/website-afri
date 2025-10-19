@@ -8,13 +8,13 @@ import { PersonalDetailsStep } from './personal-details-step';
 import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
-import { useToast } from '@/hooks/use-toast';
-import { createClient } from '@/lib/supabase/client';
+import { useToast } from '../hooks/use-toast';
+import { createSPAClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 
 
 export function OnboardingFlow() {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const { toast } = useToast();

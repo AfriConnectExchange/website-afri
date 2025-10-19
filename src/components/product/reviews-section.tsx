@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { WriteReviewForm } from './write-review-form';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import { type User } from '@supabase/supabase-js';
 
 export interface Review {
@@ -29,7 +29,7 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
   const [canReview, setCanReview] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {

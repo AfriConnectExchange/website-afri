@@ -19,7 +19,7 @@ import { useEffect, useState } from 'react';
 import { Textarea } from '../ui/textarea';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import { type User } from '@supabase/supabase-js';
 
 const formSchema = z.object({
@@ -35,7 +35,7 @@ interface PersonalInfoFormProps {
 }
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

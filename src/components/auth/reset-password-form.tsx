@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatedButton } from '../ui/animated-button';
 import { PasswordStrength } from './PasswordStrength';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 
 const formSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters.'),
@@ -37,7 +37,7 @@ const formSchema = z.object({
 
 export function ResetPasswordForm() {
   const { toast } = useToast();
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);

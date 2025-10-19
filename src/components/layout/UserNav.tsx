@@ -16,14 +16,14 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
 import { type User as SupabaseUser } from '@supabase/supabase-js';
 
 export function UserNav() {
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
 
   useEffect(() => {

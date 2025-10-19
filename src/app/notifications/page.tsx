@@ -7,10 +7,10 @@ import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 
 export default function Notifications() {
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const [user, setUser] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const router = useRouter();

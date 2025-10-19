@@ -12,7 +12,7 @@ import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
 import { Review } from './reviews-section';
 import { Skeleton } from '../ui/skeleton';
-import { createClient } from '@/lib/supabase/client';
+import { createSPAClient } from '@/lib/supabase/client';
 
 interface ProductPageProps {
   productId: string;
@@ -58,7 +58,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = createSPAClient();
   const { toast } = useToast();
 
   const fetchProductAndReviews = async () => {
