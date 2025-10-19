@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const shipOrderSchema = z.object({
@@ -20,7 +20,7 @@ async function verifyTrackingNumber(courier: string, trackingNumber: string): Pr
 
 
 export async function POST(request: Request) {
-  const supabase = createClient();
+  const supabase = createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
