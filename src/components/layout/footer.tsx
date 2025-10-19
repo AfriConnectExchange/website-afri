@@ -1,52 +1,153 @@
 
 import Link from 'next/link';
-import { Layers } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Logo } from '@/components/logo';
 
-const TwitterIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 4s-.7 2.1-2 3.4c1.6 1.4 3.3 4.9 3.3 4.9-6.1-1.4-12.1-4.1-16.1-6.4 0 0-2.2 4.1 3.2 8.1-1.3 1-3.3 2.1-3.3 2.1s1.3 2.1 4.3 3.4c-2.1 1.4-4.3 2.1-4.3 2.1s-1.8-1.4 1.3-4.4c0 0-2.1-1.4-4.3-4.4 0 0 3.3 1.4 6.3 1.4s4.3-1.4 4.3-1.4-1.3-1.4-2.3-2.4c1.3-1.4 3.3-3.4 3.3-3.4s-1.3 1.4-2.3 2.4c0 0 1.3-1.4 2.3-2.4 0 0 .5-1.4-2.3 1.4z" />
-    </svg>
-);
+const socialLinks = [
+  { name: 'Facebook', href: '#', icon: <FacebookIcon className="h-5 w-5" /> },
+  { name: 'Twitter', href: '#', icon: <TwitterIcon className="h-5 w-5" /> },
+  { name: 'Instagram', href: '#', icon: <InstagramIcon className="h-5 w-5" /> },
+  { name: 'LinkedIn', href: '#', icon: <LinkedInIcon className="h-5 w-5" /> },
+];
 
-const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-    </svg>
-);
+const paymentIcons = [
+  { name: 'Visa', src: '/visa.svg' },
+  { name: 'Mastercard', src: '/mastercard.svg' },
+  { name: 'Paypal', src: '/paypal.svg' },
+  { name: 'Stripe', src: '/stripe.svg' },
+];
 
-const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-    </svg>
-);
+const footerLinks = [
+    {
+        title: 'Company',
+        links: [
+            { label: 'About Us', href: '/about' },
+            { label: 'Our Sponsors / Partners', href: '/sponsors' },
+            { label: 'Careers', href: '/careers' },
+            { label: 'Blog / News', href: '/blog' },
+        ],
+    },
+    {
+        title: 'For Buyers',
+        links: [
+            { label: 'How to Buy', href: '/help/how-to-buy' },
+            { label: 'Buyer Protection (Escrow)', href: '/buyer-protection' },
+            { label: 'Track Your Order', href: '/orders' },
+            { label: 'Marketplace Categories', href: '/marketplace' },
+        ],
+    },
+    {
+        title: 'For Sellers & SMEs',
+        links: [
+            { label: 'How to Sell', href: '/help/how-to-sell' },
+            { label: 'Seller Dashboard', href: '/seller' },
+            { label: 'Advertise', href: '/advertise' },
+            { label: 'Become a Trainer (LMS)', href: '/become-a-trainer' },
+        ],
+    },
+    {
+        title: 'Support & Resources',
+        links: [
+            { label: 'Help Center', href: '/help' },
+            { label: 'Contact Us', href: '/support' },
+            { label: 'Dispute Resolution', href: '/disputes' },
+            { label: 'Chat with Us', href: '#chat' },
+        ],
+    },
+];
+
 
 export default function Footer() {
   return (
-    <footer className="bg-secondary">
-      <div className="container mx-auto px-4 md:px-6 py-8 max-w-7xl">
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center space-x-2 mb-4 md:mb-0">
-            <Layers className="h-6 w-6 text-primary" />
-            <span className="font-bold">AfriConnect</span>
+    <footer className="bg-secondary/50 border-t">
+      <div className="container mx-auto px-4 md:px-6 py-12">
+        {/* Top section with columns and newsletter */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-8">
+            {footerLinks.map((section) => (
+              <div key={section.title}>
+                <h3 className="font-semibold mb-4 text-foreground">{section.title}</h3>
+                <ul className="space-y-3">
+                  {section.links.map((link) => (
+                    <li key={link.label}>
+                      <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-          <nav className="flex flex-wrap justify-center gap-4 md:gap-6 text-sm font-medium mb-4 md:mb-0">
-            <Link href="#" className="text-foreground/70 hover:text-foreground">About</Link>
-            <Link href="#" className="text-foreground/70 hover:text-foreground">Contact</Link>
-            <Link href="#" className="text-foreground/70 hover:text-foreground">Terms of Service</Link>
-            <Link href="#" className="text-foreground/70 hover:text-foreground">Privacy Policy</Link>
-          </nav>
-          <div className="flex items-center space-x-4">
-            <Link href="#" aria-label="Twitter" className="text-foreground/70 hover:text-foreground"><TwitterIcon className="w-5 h-5" /></Link>
-            <Link href="#" aria-label="Facebook" className="text-foreground/70 hover:text-foreground"><FacebookIcon className="w-5 h-5" /></Link>
-            <Link href="#" aria-label="Instagram" className="text-foreground/70 hover:text-foreground"><InstagramIcon className="w-5 h-5" /></Link>
+
+          <div className="lg:col-span-2 bg-background p-6 rounded-lg border">
+            <h3 className="font-semibold text-foreground mb-2">Stay Connected</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Get the latest updates, promotions, and news from AfriConnect directly to your inbox.
+            </p>
+            <form className="flex flex-col sm:flex-row gap-2">
+              <Input type="email" placeholder="Enter your email" className="flex-1" />
+              <Button type="submit">Subscribe</Button>
+            </form>
           </div>
         </div>
-        <div className="mt-8 border-t pt-8 text-center text-sm text-foreground/70">
-          © {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.
+
+        <div className="border-t my-8"></div>
+
+        {/* Bottom bar */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+             <Logo withText={false} className="text-foreground" />
+             <span className="font-semibold text-foreground">AfriConnect Exchange</span>
+          </div>
+
+          <div className="text-center text-xs text-muted-foreground order-last md:order-none">
+            <p>&copy; {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.</p>
+            <div className="mt-1 space-x-3">
+                <Link href="/terms-of-service" className="hover:text-primary">Terms of Service</Link>
+                <span>&middot;</span>
+                <Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
+                <span>&middot;</span>
+                <Link href="/cookie-policy" className="hover:text-primary">Cookie Policy</Link>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {socialLinks.map((link) => (
+              <a key={link.name} href={link.href} aria-label={link.name} className="text-muted-foreground hover:text-primary">
+                {link.icon}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </footer>
+  );
+}
+
+
+// --- SVG Icons for Social Media ---
+function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
+  );
+}
+
+function TwitterIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M22.46,6C21.69,6.35 20.86,6.58 20,6.69C20.88,6.16 21.56,5.32 21.88,4.31C21.05,4.81 20.13,5.16 19.16,5.36C18.37,4.5 17.26,4 16,4C13.65,4 11.73,5.92 11.73,8.29C11.73,8.63 11.77,8.96 11.84,9.27C8.28,9.09 5.11,7.38 3,4.79C2.63,5.42 2.42,6.16 2.42,6.94C2.42,8.43 3.17,9.75 4.33,10.5C3.62,10.5 2.96,10.3 2.38,10C2.38,10 2.38,10 2.38,10.03C2.38,12.11 3.86,13.85 5.82,14.24C5.46,14.34 5.08,14.39 4.69,14.39C4.42,14.39 4.15,14.36 3.89,14.31C4.43,16 6,17.26 7.89,17.29C6.43,18.45 4.58,19.13 2.56,19.13C2.22,19.13 1.88,19.11 1.54,19.07C3.44,20.29 5.7,21 8.12,21C16,21 20.33,14.46 20.33,8.79C20.33,8.6 20.33,8.42 20.32,8.23C21.16,7.63 21.88,6.87 22.46,6Z" /></svg>
+  );
+}
+
+function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M7.8,2H16.2C19.4,2 22,4.6 22,7.8V16.2A5.8,5.8 0 0,1 16.2,22H7.8C4.6,22 2,19.4 2,16.2V7.8A5.8,5.8 0 0,1 7.8,2M7.6,4A3.6,3.6 0 0,0 4,7.6V16.4C4,18.39 5.61,20 7.6,20H16.4A3.6,3.6 0 0,0 20,16.4V7.6C20,5.61 18.39,4 16.4,4H7.6M17.25,5.5A1.25,1.25 0 0,1 18.5,6.75A1.25,1.25 0 0,1 17.25,8A1.25,1.25 0 0,1 16,6.75A1.25,1.25 0 0,1 17.25,5.5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z" /></svg>
+  );
+}
+
+function LinkedInIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} fill="currentColor" viewBox="0 0 24 24"><path d="M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19M18.5,18.5V13.2A3.26,3.26 0 0,0 15.24,9.94C14.39,9.94 13.4,10.43 12.92,11.24V10.13H10.13V18.5H12.92V13.57C12.92,12.8 13.54,12.17 14.31,12.17A1.4,1.4 0 0,1 15.71,13.57V18.5H18.5M6.88,8.56A1.68,1.68 0 0,0 8.56,6.88C8.56,6 7.81,5.25 6.88,5.25A1.68,1.68 0 0,0 5.2,6.88C5.2,7.81 5.95,8.56 6.88,8.56M8.27,18.5V10.13H5.5V18.5H8.27Z" /></svg>
   );
 }
