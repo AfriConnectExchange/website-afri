@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -31,9 +32,7 @@ export default function RootLayout({
         )}
       >
         <CartProvider>
-          <div className="container mx-auto px-4">
-            {children}
-          </div>
+          {children}
           <Toaster />
         </CartProvider>
       </body>

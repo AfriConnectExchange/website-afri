@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +19,8 @@ import { useEffect, useState } from 'react';
 import { Textarea } from '../ui/textarea';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
+import { createClient } from '@/lib/supabase/client';
+import { type User } from '@supabase/supabase-js';
 
 const formSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters.'),
@@ -32,8 +35,8 @@ interface PersonalInfoFormProps {
 }
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,23 +50,34 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
   });
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
-        const docRef = doc(firestore, "profiles", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const profile = docSnap.data();
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+        if (data) {
            form.reset({
-              full_name: profile.full_name || '',
-              phone_number: profile.phone_number || '',
-              location: profile.address_line1 || '',
+              full_name: data.full_name || '',
+              phone_number: data.phone_number || '',
+              location: data.address_line1 || '',
             });
         }
       }
       setIsLoading(false);
     };
     fetchProfile();
-  }, [user, firestore, form]);
+  }, [user, supabase, form]);
 
   const onSubmit = async (values: PersonalInfoFormValues) => {
     setIsSaving(true);
@@ -74,11 +88,14 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     }
 
     try {
-        await setDoc(doc(firestore, "profiles", user.uid), {
+        const { error } = await supabase.from('profiles').update({
             full_name: values.full_name,
-            location: values.location,
+            address_line1: values.location,
             phone_number: values.phone_number,
-        }, { merge: true });
+        }).eq('id', user.id);
+        
+        if (error) throw error;
+
         onFeedback('success', 'Profile updated successfully!');
         // Consider if a reload is necessary or if state can be managed locally
         // setTimeout(() => window.location.reload(), 1500);

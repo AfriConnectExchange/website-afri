@@ -23,7 +23,7 @@ import {
 import { Mail, MailCheck } from 'lucide-react';
 import { useState } from 'react';
 import { AnimatedButton } from '../ui/animated-button';
-// Firebase imports removed
+import { createClient } from '@/lib/supabase/client';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -31,7 +31,7 @@ const formSchema = z.object({
 
 export function ForgotPasswordForm() {
   const { toast } = useToast();
-  // TODO: Replace with Supabase auth logic
+  const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -43,7 +43,10 @@ export function ForgotPasswordForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await sendPasswordResetEmail(auth, values.email);
+      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      if (error) throw error;
        toast({
         title: 'Password Reset Link Sent',
         description:

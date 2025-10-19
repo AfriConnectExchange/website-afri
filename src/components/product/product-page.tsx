@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -11,8 +12,7 @@ import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
 import { Review } from './reviews-section';
 import { Skeleton } from '../ui/skeleton';
-import { useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { createClient } from '@/lib/supabase/client';
 
 interface ProductPageProps {
   productId: string;
@@ -58,18 +58,21 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const firestore = useFirestore();
+  const supabase = createClient();
   const { toast } = useToast();
 
   const fetchProductAndReviews = async () => {
-    if (!productId || !firestore) return;
+    if (!productId || !supabase) return;
     setLoading(true);
     
     try {
-      const productDocRef = doc(firestore, 'products', productId);
-      const productSnap = await getDoc(productDocRef);
-
-      if (!productSnap.exists()) {
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select(`*, seller:profiles(full_name, kyc_status)`)
+        .eq('id', productId)
+        .single();
+      
+      if (productError || !productData) {
         toast({
           variant: 'destructive',
           title: 'Error fetching product',
@@ -77,28 +80,25 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
         });
         setProduct(null);
       } else {
-        const productData = productSnap.data();
-        // This mapping needs to be improved based on actual data structure
         const mappedProduct = {
           ...productData,
-          id: productSnap.id,
+          id: productData.id,
           name: productData.title,
           image: productData.images?.[0] || 'https://placehold.co/600x600',
           images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
-          // Mocking seller data for now
-          seller: 'Unknown Seller',
-          sellerVerified: false,
-          category: 'Uncategorized',
+          seller: productData.seller?.full_name || 'Unknown Seller',
+          sellerVerified: productData.seller?.kyc_status === 'verified',
+          category: 'Uncategorized', // This would need a join in a real query
           isFree: productData.listing_type === 'freebie' || productData.price === 0,
           rating: productData.average_rating || 0,
           reviews: productData.review_count || 0,
           stockCount: productData.quantity_available || 1,
-          sellerDetails: { // Mock data
+          sellerDetails: {
             id: productData.seller_id,
-            name: 'Unknown Seller',
+            name: productData.seller?.full_name || 'Unknown Seller',
             avatar: '',
             location: 'Unknown',
-            verified: false,
+            verified: productData.seller?.kyc_status === 'verified',
             rating: 4.8,
             totalSales: 100,
             memberSince: 'N/A'
@@ -127,7 +127,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
   useEffect(() => {
     fetchProductAndReviews();
-  }, [productId, firestore, toast]);
+  }, [productId, supabase, toast]);
   
 
   if (loading) {

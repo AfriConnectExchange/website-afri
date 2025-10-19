@@ -24,6 +24,8 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 
 export interface Product {
@@ -82,6 +84,8 @@ export interface FilterState {
 
 export default function MarketplacePage() {
   const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
   const { cart, addToCart, cartCount } = useCart();
   
@@ -104,6 +108,16 @@ export default function MarketplacePage() {
     freeShippingOnly: false,
     freeListingsOnly: false,
   });
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const fetchProducts = useCallback(async (currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
@@ -191,7 +205,7 @@ export default function MarketplacePage() {
         toast({
             title: "Authentication Required",
             description: "Please sign in to add items to your cart.",
-            action: <Button variant="link" onClick={() => router.push('/auth')}>Sign In</Button>
+            action: <Button variant="link" onClick={() => router.push('/auth/signin')}>Sign In</Button>
         })
         return;
     }

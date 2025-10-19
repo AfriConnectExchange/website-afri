@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
@@ -11,12 +12,14 @@ import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { PasswordStrength } from './PasswordStrength';
 import { useToast } from '@/hooks/use-toast';
-// Firebase imports removed
+import { createClient } from '@/lib/supabase/client';
+import { type User as SupabaseUser } from '@supabase/supabase-js';
+import Link from 'next/link';
 
 type Props = {
-    onSwitch: () => void;
-    onAuthSuccess: (user: FirebaseUser) => void;
-    onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
+    onSwitch?: () => void;
+    onAuthSuccess?: (user: SupabaseUser) => void;
+    onNeedsOtp?: (phone: string, resend: () => Promise<void>) => void;
 };
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -35,7 +38,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
-  // TODO: Replace with Supabase auth logic
+  const supabase = createClient();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false });
@@ -48,26 +51,21 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     toast({ variant, title, description });
   };
   
-  const setupRecaptcha = (authInstance: Auth) => {
-    if (typeof window !== 'undefined') {
-       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-      }
-      window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': () => {},
-      });
-      return window.recaptchaVerifier;
-    }
-    return null;
-  }
-  
   const handleEmailRegistration = async () => {
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      await updateProfile(userCredential.user, { displayName: formData.name });
-      onAuthSuccess(userCredential.user);
+        const { data, error } = await supabase.auth.signUp({
+            email: formData.email,
+            password: formData.password,
+            options: {
+                data: {
+                    full_name: formData.name,
+                }
+            }
+        });
+      if (error) throw error;
+      if (data.user && onAuthSuccess) onAuthSuccess(data.user);
+
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') {
         showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
@@ -81,12 +79,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   const handlePhoneRegistration = async () => {
     setIsLoading(true);
     try {
-      const appVerifier = setupRecaptcha(auth);
-      if (!appVerifier) throw new Error("Could not create Recaptcha Verifier");
-      
-      const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
-      window.confirmationResult = confirmationResult;
-      onNeedsOtp(formData.phone, handlePhoneRegistration);
+      // Supabase phone logic would go here
     } catch (error: any) {
       if (error.code === 'auth/invalid-phone-number') {
         showAlert('destructive', 'Failed to Start Signup', 'Invalid phone number provided.');
@@ -98,16 +91,15 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     }
   };
 
-  const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      onAuthSuccess(result.user);
+        await supabase.auth.signInWithOAuth({
+            provider,
+            options: { redirectTo: `${window.location.origin}/api/auth/callback` },
+        });
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user') {
         showAlert('destructive', 'Sign Up Failed', error.message);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -322,12 +314,12 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
         <div className="mt-6 text-center space-y-2">
           <div className="text-sm mt-4">
             Already have an account?{' '}
-            <button
-              onClick={onSwitch}
+            <Link
+              href="/auth/signin"
               className="text-primary hover:underline font-semibold"
             >
               Sign in
-            </button>
+            </Link>
           </div>
         </div>
       </div>

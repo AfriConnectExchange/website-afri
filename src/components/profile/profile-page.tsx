@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -9,20 +10,32 @@ import { AccountRoleForm } from './account-role-form';
 import { PreferencesForm } from './preferences-form';
 import { AccountActions } from './account-actions';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 
 export function ProfilePage() {
-  const { user, isLoading: isUserLoading } = useUser();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/');
-    }
-  }, [user, isUserLoading, router]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsUserLoading(false);
+      if (!session?.user) {
+        router.push('/');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
 
   const handleFeedback = (type: 'success' | 'error', message: string) => {
     if (type === 'success') {

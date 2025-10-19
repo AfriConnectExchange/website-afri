@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -10,6 +11,8 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
+import { createClient } from '@/lib/supabase/client';
+import { type User } from '@supabase/supabase-js';
 
 const formSchema = z.object({
   language: z.string(),
@@ -28,8 +31,8 @@ interface PreferencesFormProps {
 }
 
 export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,14 +50,25 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
   });
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  useEffect(() => {
     const fetchPreferences = async () => {
       setIsLoading(true);
       if (user) {
-        const docRef = doc(firestore, 'profiles', user.uid);
-        const docSnap = await getDoc(docRef);
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
 
-        if (docSnap.exists()) {
-          const profile = docSnap.data();
+        if (data) {
+          const profile = data;
           form.reset({
             language: profile.language || 'en',
             timezone: profile.timezone || 'UTC',
@@ -69,7 +83,7 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
       setIsLoading(false);
     };
     fetchPreferences();
-  }, [user, firestore, form]);
+  }, [user, supabase, form]);
 
   const onSubmit = async (values: PreferencesFormValues) => {
     setIsSaving(true);
@@ -80,17 +94,21 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
     }
 
     try {
-        await setDoc(doc(firestore, "profiles", user.uid), {
-            language: values.language,
-            timezone: values.timezone,
-            notification_preferences: {
-            email_marketing: values.notifications_email_marketing,
-            push_marketing: values.notifications_push_marketing,
-            email_orders: values.notifications_email_orders,
-            push_orders: values.notifications_push_orders,
-            sms_orders: values.notifications_sms_orders,
-            },
-        }, { merge: true });
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                language: values.language,
+                timezone: values.timezone,
+                notification_preferences: {
+                email_marketing: values.notifications_email_marketing,
+                push_marketing: values.notifications_push_marketing,
+                email_orders: values.notifications_email_orders,
+                push_orders: values.notifications_push_orders,
+                sms_orders: values.notifications_sms_orders,
+                },
+            })
+            .eq('id', user.id);
+        if (error) throw error;
         onFeedback('success', 'Preferences updated successfully!');
     } catch(error: any) {
         onFeedback('error', 'Failed to update preferences: ' + error.message);

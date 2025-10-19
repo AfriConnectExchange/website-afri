@@ -22,8 +22,9 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useUser } from '@/firebase';
 import { UserNav } from './UserNav';
+import { createClient } from '@/lib/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface HeaderProps {
     cartCount?: number;
@@ -31,10 +32,21 @@ interface HeaderProps {
 
 export function Header({ cartCount = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user } = useUser();
+  const supabase = createClient();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
+  
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
   
   useEffect(() => {
     if (cartCount > 0) {
@@ -185,7 +197,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                             </Button>
                         </>
                     ) : (
-                         <Link href="/auth" passHref>
+                         <Link href="/auth/signin" passHref>
                             <Button
                                 className="w-full justify-start"
                                 onClick={handleMobileLinkClick}
@@ -280,7 +292,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               </div>
             ) : (
                 <div className="hidden md:flex">
-                     <Link href="/auth" passHref>
+                     <Link href="/auth/signin" passHref>
                         <Button>Sign In</Button>
                      </Link>
                 </div>

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
@@ -5,8 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { WriteReviewForm } from './write-review-form';
-import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { createClient } from '@/lib/supabase/client';
+import { type User } from '@supabase/supabase-js';
 
 export interface Review {
   id: string;
@@ -28,32 +29,34 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
   const [canReview, setCanReview] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   useEffect(() => {
     const checkPurchaseAndReviewStatus = async () => {
-      if (!user || !firestore) return;
+      if (!user) return;
       
       try {
-        // Check if user has purchased this product
-        // This is a simplified check. A real implementation would need more robust logic,
-        // potentially querying a dedicated 'orders' collection where buyer_id is indexed.
-        const ordersQuery = query(
-            collection(firestore, 'orders'), 
-            where('buyer_id', '==', user.uid),
-        );
-        const orderSnapshots = await getDocs(ordersQuery);
-        let purchasedOrderId: string | null = null;
+        const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('id, order_items(product_id)')
+            .eq('buyer_id', user.id);
 
-        for (const orderDoc of orderSnapshots.docs) {
-             const itemsQuery = query(
-                collection(firestore, `orders/${orderDoc.id}/order_items`), 
-                where('product_id', '==', productId)
-            );
-            const itemsSnapshot = await getDocs(itemsQuery);
-            if (!itemsSnapshot.empty) {
-                purchasedOrderId = orderDoc.id;
+        if (ordersError) throw ordersError;
+        
+        let purchasedOrderId: string | null = null;
+        for (const order of ordersData) {
+            const itemFound = order.order_items.some((item: any) => item.product_id === productId);
+            if (itemFound) {
+                purchasedOrderId = order.id;
                 break;
             }
         }
@@ -65,16 +68,15 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
         
         setOrderId(purchasedOrderId);
 
-        // Check if user has already reviewed this product for this order
-        const reviewsQuery = query(
-            collection(firestore, 'reviews'),
-            where('product_id', '==', productId),
-            where('reviewer_id', '==', user.uid),
-            where('order_id', '==', purchasedOrderId)
-        );
-        const reviewSnapshot = await getDocs(reviewsQuery);
+        const { data: reviewData, error: reviewError } = await supabase
+            .from('reviews')
+            .select('id')
+            .eq('product_id', productId)
+            .eq('reviewer_id', user.id)
+            .eq('order_id', purchasedOrderId)
+            .single();
         
-        if (!reviewSnapshot.empty) {
+        if (reviewData) {
             setHasReviewed(true);
         } else {
             setCanReview(true);
@@ -85,7 +87,7 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
       }
     };
     checkPurchaseAndReviewStatus();
-  }, [productId, user, firestore]);
+  }, [productId, user, supabase]);
 
 
   return (

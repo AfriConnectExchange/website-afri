@@ -4,17 +4,28 @@ import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { PageLoader } from '@/components/ui/loader';
-import { useUser } from '@/firebase';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 export default function OnboardingPage() {
     const router = useRouter();
-    const { user, isLoading } = useUser();
+    const supabase = createClient();
+    const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!isLoading && !user) {
-            router.push('/auth');
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+        if (!session?.user) {
+          router.push('/auth/signin');
         }
-    }, [user, isLoading, router]);
+      });
+  
+      return () => {
+        subscription.unsubscribe();
+      };
+    }, [router, supabase]);
 
     if(isLoading || !user) {
          return <PageLoader />;

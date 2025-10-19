@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -17,6 +18,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2, Shield } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { type User } from '@supabase/supabase-js';
 
 const formSchema = z.object({
   primary_role: z.string().min(1, 'Please select a role.'),
@@ -29,8 +32,8 @@ interface AccountRoleFormProps {
 }
 
 export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -43,23 +46,33 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
   });
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
       setIsLoading(true);
       if (user) {
-        const docRef = doc(firestore, 'profiles', user.uid);
-        const docSnap = await getDoc(docRef);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('primary_role')
+          .eq('id', user.id)
+          .single();
         
-        if (docSnap.exists()) {
-          const profile = docSnap.data();
+        if (data) {
           form.reset({
-            primary_role: profile.primary_role || 'buyer',
+            primary_role: data.primary_role || 'buyer',
           });
         }
       }
       setIsLoading(false);
     };
     fetchProfile();
-  }, [form, user, firestore]);
+  }, [form, user, supabase]);
 
   const onSubmit = async (values: RoleFormValues) => {
     setIsSaving(true);
@@ -70,7 +83,11 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
     }
     
     try {
-        await setDoc(doc(firestore, "profiles", user.uid), { primary_role: values.primary_role }, { merge: true });
+        const { error } = await supabase
+            .from('profiles')
+            .update({ primary_role: values.primary_role })
+            .eq('id', user.id);
+        if (error) throw error;
         onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');
         setTimeout(() => window.location.reload(), 1500);
     } catch(error: any) {

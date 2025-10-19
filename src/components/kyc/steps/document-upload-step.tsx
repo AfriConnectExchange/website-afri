@@ -1,3 +1,4 @@
+
 'use client';
 import { Upload, FileText, CheckCircle, XCircle, Shield, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,18 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { DocumentUpload } from "../kyc-flow";
-import { useUser } from '@/firebase';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 interface DocumentUploadStepProps {
     documents: DocumentUpload[];
     setDocuments: React.Dispatch<React.SetStateAction<DocumentUpload[]>>;
     setError: (error: string) => void;
+    supabase: SupabaseClient;
 }
 
-export function DocumentUploadStep({ documents, setDocuments, setError }: DocumentUploadStepProps) {
-    const { user } = useUser();
+export function DocumentUploadStep({ documents, setDocuments, setError, supabase }: DocumentUploadStepProps) {
+    const [user, setUser] = useState<User | null>(null);
     const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          setUser(session?.user ?? null);
+        });
+    
+        return () => subscription.unsubscribe();
+      }, [supabase]);
 
     const handleFileUpload = async (documentId: string, event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -41,12 +51,16 @@ export function DocumentUploadStep({ documents, setDocuments, setError }: Docume
                 throw new Error("You must be logged in to upload documents.");
             }
             
-            // This logic needs to be connected to a storage service like Firebase Storage
-            console.log(`Uploading ${file.name} for document ${documentId}`);
-            
-            // Simulate upload
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // This logic needs to be connected to a storage service like Supabase Storage
+            const filePath = `${user.id}/${documentId}_${file.name}`;
+            const { error: uploadError } = await supabase.storage
+              .from('kyc_documents')
+              .upload(filePath, file);
 
+            if (uploadError) {
+              throw uploadError;
+            }
+            
             setDocuments(prev => 
                 prev.map(doc => 
                     doc.id === documentId 

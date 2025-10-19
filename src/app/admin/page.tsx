@@ -9,28 +9,43 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, User as UserIcon, Shield, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { createClient } from '@/lib/supabase/client';
+import { type User } from '@supabase/supabase-js';
 
 export default function AdminPage() {
-  const { user, isLoading: isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [profile, setProfile] = useState<any | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/auth');
-      return;
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsUserLoading(false);
+      if (!session?.user) {
+        router.push('/auth/signin');
+      }
+    });
 
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
+
+  useEffect(() => {
     const fetchProfile = async () => {
-        if (!user || !firestore) return;
+        if (!user) return;
         try {
-            const profileDoc = await getDoc(doc(firestore, "profiles", user.uid));
-            if (profileDoc.exists()) {
-                setProfile(profileDoc.data());
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            if (error) throw error;
+            if (data) {
+                setProfile(data);
             }
         } catch (error) {
             console.error("Failed to fetch user profile:", error);
@@ -41,10 +56,18 @@ export default function AdminPage() {
 
     if(user) {
         fetchProfile();
+    } else {
+        setLoadingProfile(false);
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, supabase]);
 
-  if (isUserLoading || loadingProfile || !user) {
+  if (isUserLoading || loadingProfile) {
+    return <PageLoader />;
+  }
+
+  if (!user) {
+    // This case is handled by the redirect in onAuthStateChange,
+    // but as a fallback, we can show a loader or a message.
     return <PageLoader />;
   }
 

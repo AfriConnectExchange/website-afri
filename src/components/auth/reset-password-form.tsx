@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatedButton } from '../ui/animated-button';
 import { PasswordStrength } from './PasswordStrength';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
-// Firebase imports removed
+import { createClient } from '@/lib/supabase/client';
 
 const formSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters.'),
@@ -37,42 +37,37 @@ const formSchema = z.object({
 
 export function ResetPasswordForm() {
   const { toast } = useToast();
-  // TODO: Replace with Supabase auth logic
+  const supabase = createClient();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [oobCode, setOobCode] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Firebase sends the oobCode (out-of-band code) in the URL query parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('oobCode');
-    if (code) {
-      setOobCode(code);
-    } else {
-      setError('Invalid or missing password reset code. Please request a new link.');
-    }
-  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { password: '', confirmPassword: '' },
   });
+  
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+            // Nothing to do here, user will reset password.
+        }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!oobCode) {
-      setError('Password reset code is missing. Please use the link from your email again.');
-      return;
-    }
-    
     setIsLoading(true);
     setError(null);
 
     try {
-      await confirmPasswordReset(auth, oobCode, values.password);
+        const { error } = await supabase.auth.updateUser({ password: values.password });
+        if (error) throw error;
+      
       toast({
         title: 'Password Updated',
         description: 'Your password has been successfully updated. You can now log in.',
@@ -188,7 +183,7 @@ export function ResetPasswordForm() {
 
              {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <AnimatedButton type="submit" className="w-full" isLoading={isLoading} disabled={!oobCode}>
+            <AnimatedButton type="submit" className="w-full" isLoading={isLoading}>
               Update Password
             </AnimatedButton>
           </form>

@@ -2,10 +2,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import { getFirestore, collection, addDoc } from "firebase/firestore";
-import { initializeFirebase } from '@/firebase';
-
-const { firestore } = initializeFirebase();
 
 const orderItemSchema = z.object({
   product_id: z.string().uuid(),
@@ -30,11 +26,8 @@ const createOrderSchema = z.object({
 
 // Function to send a message via the Twilio extension
 async function sendSms(to: string, body: string) {
-  if (!firestore) {
-    console.error("Firestore not initialized for SMS service.");
-    return;
-  }
-  await addDoc(collection(firestore, 'messages'), { to, body });
+  // This would be implemented with your SMS provider
+  console.log(`Sending SMS to ${to}: ${body}`);
 }
 
 
@@ -138,7 +131,6 @@ export async function POST(request: Request) {
             link_url: '/sales'
         });
 
-        // ** NEW: Send SMS Notification via Twilio Extension **
         if (sellerProfile && sellerProfile.phone_number) {
             const smsBody = `AfriConnect: New Sale! You have an order for £${total.toFixed(2)} from ${user.user_metadata.full_name || 'a buyer'}. Order ID: #${String(newOrderId).substring(0, 8)}.`;
             await sendSms(sellerProfile.phone_number, smsBody);

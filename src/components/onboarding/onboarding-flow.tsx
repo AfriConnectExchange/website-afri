@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,13 +9,13 @@ import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 
 export function OnboardingFlow() {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
@@ -27,14 +28,19 @@ export function OnboardingFlow() {
   });
 
   useEffect(() => {
-    if (user) {
-      setUserData((prev) => ({
-        ...prev,
-        full_name: user.displayName || user.email || '',
-        phone_number: user.phoneNumber || '',
-      }));
-    }
-  }, [user]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if(session?.user) {
+        setUserData((prev) => ({
+          ...prev,
+          full_name: session.user.user_metadata.full_name || session.user.email || '',
+          phone_number: session.user.phone || '',
+        }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   const handleRoleSelection = async (data: { role: string }) => {
     const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
@@ -45,7 +51,11 @@ export function OnboardingFlow() {
     } else {
       if (user) {
           try {
-            await setDoc(doc(firestore, "profiles", user.uid), { primary_role: role }, { merge: true });
+            const { error } = await supabase
+                .from('profiles')
+                .update({ primary_role: role })
+                .eq('id', user.id);
+            if (error) throw error;
           } catch(error: any) {
               toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
               return;
@@ -70,16 +80,18 @@ export function OnboardingFlow() {
     }
 
     try {
-      await setDoc(doc(firestore, "profiles", user.uid), {
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
         full_name: data.full_name,
         phone_number: data.phone_number,
         address_line1: data.location, 
         onboarding_completed: true,
         primary_role: userData.primary_role,
         email: user.email,
-        id: user.uid,
-        auth_user_id: user.uid,
-      }, { merge: true });
+        auth_user_id: user.id,
+      }, { onConflict: 'id' });
+
+      if (error) throw error;
 
       setCurrentStep((prev) => prev + 1);
     } catch(error: any) {

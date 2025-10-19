@@ -27,6 +27,8 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { type User as SupabaseUser } from '@supabase/supabase-js';
 
 interface DashboardHeaderProps {
   title: string;
@@ -34,16 +36,35 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
-  const auth = useAuth();
-  const { user } = useUser();
+  const supabase = createClient();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
   
   useEffect(() => {
     const fetchProfile = async () => {
-      // This logic will need to be re-implemented with Firestore
+      if (user) {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+        if (data) {
+            setProfile(data);
+        }
+      }
     };
     
     if (user) {
@@ -51,10 +72,10 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
     } else {
       setProfile(null);
     }
-  }, [user]);
+  }, [user, supabase]);
   
   const handleLogout = async () => {
-    await auth.signOut();
+    await supabase.auth.signOut();
     router.push('/');
   }
 

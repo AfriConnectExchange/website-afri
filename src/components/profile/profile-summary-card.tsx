@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Mail, Phone, MapPin, User, Settings, Receipt, LogOut, ShoppingCart } from 'lucide-react';
@@ -9,9 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
-// Firebase imports removed
+import { createClient } from '@/lib/supabase/client';
+import { type User as SupabaseUser } from '@supabase/supabase-js';
 
 interface ProfileSummaryCardProps {
+  user: SupabaseUser;
   onNavigate: (page: string) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -35,17 +38,30 @@ const getRoleLabel = (role?: string) => {
   }
 };
 
-export function ProfileSummaryCard({ onNavigate, activeTab, setActiveTab }: ProfileSummaryCardProps) {
+export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }: ProfileSummaryCardProps) {
+  const supabase = createClient();
   const { toast } = useToast();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
-  // TODO: Replace with Supabase profile fetch logic
+  
   useEffect(() => {
-    // Example: fetch profile from Supabase and setUserProfile
-  }, []);
+    const fetchProfile = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (data) {
+        setUserProfile(data);
+      }
+    };
+    if(user) {
+        fetchProfile();
+    }
+  }, [user, supabase]);
 
   const handleSignOut = async () => {
-    // TODO: Implement Supabase sign out logic
+    await supabase.auth.signOut();
     setShowLogoutConfirm(false);
     toast({
       title: 'Logged Out',
@@ -54,7 +70,7 @@ export function ProfileSummaryCard({ onNavigate, activeTab, setActiveTab }: Prof
     onNavigate('/');
   };
 
-  const userName = userProfile?.full_name || userProfile?.email || 'Unnamed User';
+  const userName = userProfile?.full_name || user.email || 'Unnamed User';
   
   const menuItems = [
     { id: 'profile', label: 'My Account', icon: User },
@@ -68,7 +84,7 @@ export function ProfileSummaryCard({ onNavigate, activeTab, setActiveTab }: Prof
         <CardContent className="pt-6">
           <div className="text-center">
             <Avatar className="w-20 h-20 mx-auto mb-4 border-2 border-primary/20 p-1">
-              <AvatarImage src={userProfile?.avatar_url || undefined} alt={userName} />
+              <AvatarImage src={userProfile?.avatar_url || user.user_metadata.avatar_url || undefined} alt={userName} />
               <AvatarFallback className="text-2xl bg-muted">
                 {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
               </AvatarFallback>
@@ -78,10 +94,10 @@ export function ProfileSummaryCard({ onNavigate, activeTab, setActiveTab }: Prof
               {getRoleLabel(userProfile?.primary_role)}
             </Badge>
             <div className="text-sm text-muted-foreground space-y-1 my-4">
-              {userProfile?.email && (
+              {user.email && (
                 <div className="flex items-center justify-center gap-2">
                   <Mail className="w-4 h-4" />
-                  <span className="truncate">{userProfile.email}</span>
+                  <span className="truncate">{user.email}</span>
                 </div>
               )}
               {userProfile?.phone_number && (
@@ -90,10 +106,10 @@ export function ProfileSummaryCard({ onNavigate, activeTab, setActiveTab }: Prof
                   <span>{userProfile.phone_number}</span>
                 </div>
               )}
-              {userProfile?.location && (
+              {userProfile?.address_line1 && (
                 <div className="flex items-center justify-center gap-2 text-center">
                   <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{userProfile.location}</span>
+                  <span>{userProfile.address_line1}</span>
                 </div>
               )}
             </div>
