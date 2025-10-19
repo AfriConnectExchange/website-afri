@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -19,11 +20,11 @@ import { Button } from '@/components/ui/button';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '../ui/avatar';
+import { useAuth } from '@/context/auth-context';
 
 export function SellerSidebar() {
   const pathname = usePathname();
-  // TODO: Replace with Supabase user context/hook
-  const user = { email: '' };
+  const { user } = useAuth();
 
   const navItems = [
     {
@@ -92,7 +93,7 @@ export function SellerSidebar() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Avatar className="h-9 w-9">
-                        <AvatarFallback>{user?.email?.[0].toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                     </Avatar>
                     <div className="text-sm">
                         <div className="font-semibold">Shoapa</div>
