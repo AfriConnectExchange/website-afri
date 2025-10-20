@@ -3,13 +3,13 @@ env:
   # SUPABASE (public)
   # ────────────────
   - variable: NEXT_PUBLIC_SUPABASE_URL
-    value: "<SUPABASE_URL>"
+    secret: SUPABASE_URL
     availability:
       - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
-    value: "<SUPABASE_ANON_KEY>"
+    secret: SUPABASE_ANON_KEY
     availability:
       - BUILD
       - RUNTIME
@@ -18,13 +18,13 @@ env:
   # STRIPE
   # ────────────────
   - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-    value: "<STRIPE_PUBLISHABLE_KEY>"
+    secret: STRIPE_PUBLISHABLE_KEY
     availability:
       - BUILD
       - RUNTIME
 
   - variable: STRIPE_SECRET_KEY
-    value: "<STRIPE_SECRET_KEY>"
+    secret: STRIPE_SECRET_KEY
     availability:
       - RUNTIME
 
@@ -32,10 +32,6 @@ env:
   # GEMINI (Firebase AI / Vertex)
   # ────────────────
   - variable: GEMINI_API_KEY
-    value: "<GEMINI_API_KEY>"
+    secret: GEMINI_API_KEY
     availability:
       - RUNTIME
-  - variable: SUPABASE_URL
-    secret: SUPABASE_URL
-  - variable: SUPABASE_ANON_KEY
-    secret: SUPABASE_ANON_KEY
