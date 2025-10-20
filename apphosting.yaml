@@ -1,3 +1,4 @@
+
 env:
   # ────────────────
   # SUPABASE (public)
@@ -5,11 +6,13 @@ env:
   - variable: NEXT_PUBLIC_SUPABASE_URL
     secret: SUPABASE_URL
     availability:
+      - BUILD
       - RUNTIME
 
   - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
     secret: SUPABASE_ANON_KEY
     availability:
+      - BUILD
       - RUNTIME
 
   # ────────────────
