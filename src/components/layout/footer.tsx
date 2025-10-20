@@ -89,14 +89,18 @@ export default function Footer() {
           </div>
 
           <div className="text-center text-xs text-muted-foreground order-last md:order-none">
-            <p>&copy; {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.</p>
+            <p className="font-semibold text-foreground/90">A project of McBenLeo CIC (Company Number: SC859990)</p>
+            <p>4 Orkney Drive, Kilmarnock, KA3 2HP, Scotland</p>
             <div className="mt-1 space-x-3">
-                <Link href="/terms-of-service" className="hover:text-primary">Terms of Service</Link>
+                <Link href="/terms-of-service" className="hover:text-primary">Terms</Link>
                 <span>&middot;</span>
-                <Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
+                <Link href="/privacy-policy" className="hover:text-primary">Privacy</Link>
                 <span>&middot;</span>
-                <Link href="/cookie-policy" className="hover:text-primary">Cookie Policy</Link>
+                <Link href="/cookie-policy" className="hover:text-primary">Cookies</Link>
+                 <span>&middot;</span>
+                <a href="mailto:info@africonnectexchange.org" className="hover:text-primary">info@africonnectexchange.org</a>
             </div>
+            <p className="mt-2">&copy; {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.</p>
           </div>
           
           <div className="flex items-center space-x-4">
