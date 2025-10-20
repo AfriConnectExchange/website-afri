@@ -90,7 +90,6 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
           </div>
           <span className="text-lg sm:text-2xl font-bold">AfriConnect Exchange</span>
         </div>
-        <h1 className="text-base sm:text-xl font-semibold mb-1">Join AfriConnect Exchange</h1>
         <p className="text-xs sm:text-sm text-muted-foreground">
           Connect, trade, and thrive
         </p>
