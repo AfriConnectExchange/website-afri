@@ -4,7 +4,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { CartProvider } from '@/context/cart-context';
-import Footer from '@/components/layout/footer';
+import ConditionalFooter from '@/components/layout/ConditionalFooter';
+
 import { AuthProvider } from '@/context/auth-context';
 
 
@@ -18,6 +19,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Only show footer on main content pages
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const hideFooterRoutes = [
+    '/auth', '/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email',
+    '/onboarding', '/kyc', '/support', '/help', '/error', '/not-found'
+  ];
+  const shouldHideFooter = hideFooterRoutes.some(route => pathname.startsWith(route));
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -38,7 +46,7 @@ export default function RootLayout({
             <div className="flex-1">
               {children}
             </div>
-            <Footer />
+            <ConditionalFooter />
             <Toaster />
           </CartProvider>
         </AuthProvider>
