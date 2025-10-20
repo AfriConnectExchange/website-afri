@@ -23,10 +23,6 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
 
   const handleAddToCartClick = () => {
     onAddToCart(product, quantity);
-    toast({
-        title: 'Added to Cart',
-        description: `${quantity} x ${product.name} has been added to your cart.`,
-    });
   };
   
   const handleProposeBarter = () => {
