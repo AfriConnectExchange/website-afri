@@ -26,6 +26,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -202,6 +205,10 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="top-0 translate-y-0 pt-12">
+                   <DialogHeader>
+                    <DialogTitle className="sr-only">Search</DialogTitle>
+                    <DialogDescription className="sr-only">Search for products, brands, and categories.</DialogDescription>
+                   </DialogHeader>
                    <HeaderSearchBar onSearchPerformed={() => setMobileSearchOpen(false)} />
                 </DialogContent>
               </Dialog>
