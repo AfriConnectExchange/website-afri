@@ -2,6 +2,7 @@
 "use client";
 
 import SignInCard from '@/components/auth/SignInCard';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function SignInPage() {
   return (
@@ -16,10 +17,14 @@ export default function SignInPage() {
                 </div>
                 <h1 className="text-xl font-semibold mb-2">Welcome Back!</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Sign in to continue your journey
+                  Sign in to continue your journey. Use <strong>test@example.com</strong> and <strong>password</strong> to sign in.
                 </p>
             </div>
-            <SignInCard />
+            <Card>
+                <CardContent className="p-6">
+                    <SignInCard />
+                </CardContent>
+            </Card>
         </div>
     </div>
   );

@@ -2,6 +2,8 @@
 "use client";
 
 import SignUpCard from '@/components/auth/SignUpCard';
+import { Card, CardContent } from '@/components/ui/card';
+
 
 export default function SignUpPage() {
   return (
@@ -19,7 +21,11 @@ export default function SignUpPage() {
                   Join our community to start buying and selling.
                 </p>
             </div>
-            <SignUpCard />
+            <Card>
+                <CardContent className="p-6">
+                    <SignUpCard />
+                </CardContent>
+            </Card>
         </div>
     </div>
   );
