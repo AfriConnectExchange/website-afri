@@ -82,10 +82,8 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
   };
   
   return (
-    <>
-      <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
-      <div className="p-4 sm:p-8 text-xs sm:text-base">
-          <div className="flex flex-col sm:flex-row gap-2">
+    <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden p-4 sm:p-8">
+        <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
                 variant="outline"
                 className="w-full"
@@ -265,8 +263,6 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
               </Link>
             </div>
           </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
