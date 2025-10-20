@@ -82,20 +82,9 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
   };
   
   return (
-    <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
-      <div className="p-8 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">AE</span>
-          </div>
-          <span className="text-2xl font-bold">AfriConnect Exchange</span>
-        </div>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Connect, trade, and thrive
-        </p>
-      </div>
-      <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden max-w-3xl w-full mx-auto px-2 sm:px-4">
-        <div className="p-4 sm:p-8 text-xs sm:text-base">
+    <>
+      <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
+      <div className="p-4 sm:p-8 text-xs sm:text-base">
           <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
                 variant="outline"
