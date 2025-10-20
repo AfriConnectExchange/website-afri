@@ -26,7 +26,7 @@ const LegalPageLayout = ({ title, children, lastUpdated }: { title: string; chil
         </Card>
         <footer className="text-center mt-12 text-sm text-muted-foreground">
             <p><strong>AfriConnect Exchange</strong> is a project of <strong>McBenLeo CIC</strong></p>
-            <p>Company Number: SC859990</p>
+            <p>Company Number: SC859990 | <a href="mailto:info@africonnectexchange.org" className="hover:underline">info@africonnectexchange.org</a></p>
             <p>4 Orkney Drive, Kilmarnock, KA3 2HP, Scotland</p>
         </footer>
       </main>
