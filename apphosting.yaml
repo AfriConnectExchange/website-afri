@@ -1,7 +1,37 @@
-# Settings to manage and configure a Firebase App Hosting backend.
-# https://firebase.google.com/docs/app-hosting/configure
+env:
+  # ────────────────
+  # SUPABASE (public)
+  # ────────────────
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: "<SUPABASE_URL>"
+    availability:
+      - BUILD
+      - RUNTIME
 
-runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
-  maxInstances: 1
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    value: "<SUPABASE_ANON_KEY>"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ────────────────
+  # STRIPE
+  # ────────────────
+  - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    value: "<STRIPE_PUBLISHABLE_KEY>"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: STRIPE_SECRET_KEY
+    value: "<STRIPE_SECRET_KEY>"
+    availability:
+      - RUNTIME
+
+  # ────────────────
+  # GEMINI (Firebase AI / Vertex)
+  # ────────────────
+  - variable: GEMINI_API_KEY
+    value: "<GEMINI_API_KEY>"
+    availability:
+      - RUNTIME
