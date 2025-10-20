@@ -20,9 +20,10 @@ import { useAuth, MockUser } from '@/context/auth-context';
 
 type Props = {
   onAuthSuccess?: (user: MockUser) => void;
+  onNeedsOtp?: (phone: string, resend: () => Promise<void>) => void;
 };
 
-export default function SignUpCard({ onAuthSuccess }: Props) {
+export default function SignUpCard({ onAuthSuccess, onNeedsOtp }: Props) {
   const { login } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
     }, 1000);
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       showAlert('destructive', 'Passwords do not match', 'Please re-enter your password.');
@@ -70,19 +71,33 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      showAlert('default', 'Account Created!', 'Welcome! You are now being signed in.');
-      login({
-        email: formData.email,
-        fullName: formData.name,
-        roles: ['buyer'],
-      });
-      setIsLoading(false);
-    }, 1000);
+    
+    if (signupMethod === 'phone') {
+        const resend = async () => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log('Resending OTP to', formData.phone);
+        };
+        setTimeout(() => {
+            if (onNeedsOtp) {
+                onNeedsOtp(formData.phone, resend);
+            }
+            setIsLoading(false);
+        }, 1000);
+    } else {
+        setTimeout(() => {
+          showAlert('default', 'Account Created!', 'Welcome! You are now being signed in.');
+          login({
+            email: formData.email,
+            fullName: formData.name,
+            roles: ['buyer'],
+          });
+          setIsLoading(false);
+        }, 1000);
+    }
   };
   
   return (
-    <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden p-4 sm:p-8">
+    <>
         <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
                 variant="outline"
@@ -249,7 +264,7 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
               isLoading={isLoading}
               animationType="glow"
             >
-              Create Account
+              {signupMethod === 'phone' ? 'Send OTP' : 'Create Account'}
             </AnimatedButton>
           </form>
           <div className="mt-6 text-center space-y-2">
@@ -263,6 +278,6 @@ export default function SignUpCard({ onAuthSuccess }: Props) {
               </Link>
             </div>
           </div>
-    </div>
+    </>
   );
 }

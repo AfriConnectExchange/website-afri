@@ -60,8 +60,19 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       return;
     }
     setIsLoading(true);
+
+    const resend = async () => {
+        // This is a mock resend function
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('Resending OTP to', formData.phone);
+    };
+
     setTimeout(() => {
-        showAlert('destructive', 'Failed to Send OTP', "Phone login is not implemented in this demo.");
+        if (onNeedsOtp) {
+            onNeedsOtp(formData.phone, resend);
+        } else {
+            showAlert('destructive', 'Error', 'OTP flow not configured correctly.');
+        }
         setIsLoading(false);
     }, 1000);
   };
@@ -80,7 +91,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   }
 
   return (
-    <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden p-8">
+    <>
         <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
                 variant="outline"
@@ -221,6 +232,6 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
             </Link>
         </div>
         </div>
-    </div>
+    </>
   );
 }
