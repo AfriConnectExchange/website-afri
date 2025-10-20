@@ -35,6 +35,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import Link from 'next/link';
@@ -116,6 +119,10 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 p-4">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Mobile Menu</SheetTitle>
+                  <SheetDescription>Main navigation links for mobile users.</SheetDescription>
+                </SheetHeader>
               <div className="flex flex-col h-full">
                 <div className="flex items-center gap-2 mb-6 px-2">
                   <Link
