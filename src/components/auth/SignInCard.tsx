@@ -139,7 +139,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="Enter your email"
+                                placeholder="test@example.com"
                                 className="pl-10"
                                 value={formData.email}
                                 onChange={(e) =>
@@ -155,7 +155,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                             <Input
                                 id="password"
                                 type={showPassword ? 'text' : 'password'}
-                                placeholder="Enter your password"
+                                placeholder="password"
                                 value={formData.password}
                                 onChange={(e) =>
                                 setFormData((prev: any) => ({ ...prev, password: e.target.value }))
@@ -196,7 +196,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                         <Label htmlFor="phone">Phone Number</Label>
                         <PhoneInput
                             id="phone"
-                            placeholder="Enter your phone number"
+                            placeholder="Enter phone number for OTP"
                             international
                             defaultCountry="GB"
                             value={formData.phone}

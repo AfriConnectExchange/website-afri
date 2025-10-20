@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,7 +91,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </div>
         </div>
 
-        {paymentType === 'card' && (
+        {(paymentType === 'card' || paymentType === 'wallet') && (
           <div className="space-y-4">
             <div className="flex items-center justify-end gap-2 h-6">
                 <p className="text-xs text-muted-foreground">Powered by</p>
@@ -104,14 +105,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
                 </AlertDescription>
             </Alert>
           </div>
-        )}
-
-        {paymentType === 'wallet' && (
-           <Alert>
-            <AlertDescription>
-                Digital wallet payments are not yet supported. Please choose another payment method.
-            </AlertDescription>
-          </Alert>
         )}
 
         {paymentType === 'flutterwave' && (
@@ -133,7 +126,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </Button>
           <Button
             onClick={handleProceedToStripe}
-            disabled={isProcessing || paymentType !== 'card'}
+            disabled={isProcessing || paymentType === 'flutterwave'}
             className="flex-1"
           >
             {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
