@@ -4,10 +4,10 @@ import SignInCard from '@/components/auth/SignInCard';
 
 export default function SignInPage() {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-background">
-  <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:max-w-xl p-4 lg:p-8">
-        <SignInCard />
-      </div>
+    <div className="w-full min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-xl">
+            <SignInCard />
+        </div>
     </div>
   );
 }
