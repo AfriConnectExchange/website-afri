@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,20 +7,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Product } from '@/app/marketplace/page';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductPurchasePanelProps {
   product: Product;
-  onAddToCart: (product: any) => void;
+  onAddToCart: (product: any, quantity: number) => void;
 }
 
 export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePanelProps) {
   const [quantity, setQuantity] = useState(1);
   const router = useRouter();
+  const { toast } = useToast();
 
   const formatPrice = (price: number) => `£${price.toLocaleString()}`;
 
   const handleAddToCartClick = () => {
-    onAddToCart({ ...product, quantity });
+    onAddToCart(product, quantity);
+    toast({
+        title: 'Added to Cart',
+        description: `${quantity} x ${product.name} has been added to your cart.`,
+    });
   };
   
   const handleProposeBarter = () => {

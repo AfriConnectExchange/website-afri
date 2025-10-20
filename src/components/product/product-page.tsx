@@ -17,7 +17,7 @@ import mockProducts from '@/data/mock-products.json';
 interface ProductPageProps {
   productId: string;
   onNavigate: (page: string, productId?: string) => void;
-  onAddToCart: (product: any) => void;
+  onAddToCart: (product: any, quantity: number) => void;
 }
 
 function ProductPageSkeleton() {
@@ -145,7 +145,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
             >
                 <ProductPurchasePanel
                     product={product}
-                    onAddToCart={() => onAddToCart(product)}
+                    onAddToCart={onAddToCart}
                 />
             </motion.div>
         </div>
