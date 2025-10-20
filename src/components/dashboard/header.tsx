@@ -23,6 +23,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Sheet,
@@ -44,6 +49,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const { user, logout } = useAuth();
   const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
@@ -183,15 +189,22 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
           {/* Desktop Search */}
           <div className="hidden lg:block flex-1 max-w-xl mx-8">
-            <HeaderSearchBar />
+            <HeaderSearchBar onSearchPerformed={() => {}} />
           </div>
 
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
              <div className="lg:hidden">
-              <Button variant="ghost" size="icon">
-                <Search className="w-5 h-5" />
-              </Button>
+              <Dialog open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Search className="w-5 h-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="top-0 translate-y-0 pt-12">
+                   <HeaderSearchBar onSearchPerformed={() => setMobileSearchOpen(false)} />
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="hidden md:flex items-center gap-2">

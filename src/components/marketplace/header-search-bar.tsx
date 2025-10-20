@@ -10,8 +10,13 @@ import Image from 'next/image';
 import type { Product } from '@/app/marketplace/page';
 import { useRouter } from 'next/navigation';
 import allProducts from '@/data/mock-products.json';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 
-export function HeaderSearchBar() {
+interface HeaderSearchBarProps {
+  onSearchPerformed: () => void;
+}
+
+export function HeaderSearchBar({ onSearchPerformed }: HeaderSearchBarProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +71,7 @@ export function HeaderSearchBar() {
       router.push(`/marketplace?q=${encodeURIComponent(query)}`);
       setIsFocused(false);
       setQuery('');
+      onSearchPerformed();
     }
   };
   
@@ -73,6 +79,7 @@ export function HeaderSearchBar() {
     router.push(`/product/${product.id}`);
     setIsFocused(false);
     setQuery('');
+    onSearchPerformed();
   };
 
   return (
@@ -124,7 +131,13 @@ export function HeaderSearchBar() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-muted rounded-md overflow-hidden flex-shrink-0">
-                        <Image src={product.images[0]} alt={product.name} width={48} height={48} className="object-cover" />
+                        <ImageWithFallback 
+                          src={product.images[0]} 
+                          fallbackSrc="/placeholder.svg"
+                          alt={product.name} 
+                          width={48} 
+                          height={48} 
+                          className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{product.name}</p>
