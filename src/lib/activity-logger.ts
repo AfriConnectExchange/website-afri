@@ -2,6 +2,7 @@
 'use server';
 
 import { createServerClient } from '@/lib/supabase/server';
+import { createServerAdminClient } from '@/lib/supabase/serverAdminClient';
 
 interface ActivityLogPayload {
   user_id: string;
@@ -18,9 +19,10 @@ interface ActivityLogPayload {
  * @param payload - The data to be logged.
  */
 export async function logActivity(payload: ActivityLogPayload) {
-  const supabase = createServerClient();
+  // Use admin client for writes to avoid RLS/permission issues on server-side logs
+  const supabaseAdmin = await createServerAdminClient();
 
-  const { error } = await supabase.from('activity_logs').insert({
+  const { error } = await (supabaseAdmin as any).from('activity_logs').insert({
     user_id: payload.user_id,
     action: payload.action,
     entity_type: payload.entity_type,

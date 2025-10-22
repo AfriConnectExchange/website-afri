@@ -21,7 +21,8 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendEmail(options: MailOptions) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
+    const supabaseAdmin = await import('@/lib/supabase/serverAdminClient').then(m => m.createServerAdminClient());
   const { data: { user } } = await supabase.auth.getUser();
 
   try {
@@ -57,4 +58,11 @@ export async function sendEmail(options: MailOptions) {
     // Re-throw the error to be handled by the caller
     throw new Error('Failed to send email.');
   }
+      await (supabaseAdmin as any).from('email_logs').insert({
+        to: options.to,
+        from: process.env.EMAIL_FROM,
+        subject: options.subject,
+        html: options.html,
+        sent_at: new Date().toISOString(),
+      });
 }

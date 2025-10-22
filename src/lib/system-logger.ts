@@ -1,7 +1,7 @@
 
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerAdminClient } from '@/lib/supabase/serverAdminClient';
 import type { User } from '@supabase/supabase-js';
 
 type LogLevel = 'info' | 'warn' | 'error';
@@ -22,9 +22,9 @@ interface LogPayload {
  * @param payload - The data to be logged.
  */
 export async function logSystemEvent(user: User, payload: LogPayload) {
-  const supabase = createClient();
+  const supabaseAdmin = await createServerAdminClient();
 
-  const { error } = await supabase.from('transactions').insert({
+  const { error } = await (supabaseAdmin as any).from('transactions').insert({
     profile_id: user.id,
     type: payload.type,
     status: payload.status || 'completed',

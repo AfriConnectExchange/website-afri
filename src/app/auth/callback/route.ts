@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/activity-logger';

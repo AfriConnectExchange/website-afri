@@ -21,7 +21,8 @@ interface AuthContextType {
   user: SupabaseUser | null;
   profile: UserProfile | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  // Some callers pass an object; allow flexible signature
+  login: (emailOrOptions: string | { email: string; password?: string }, password?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<SupabaseUser>) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -60,16 +61,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null);
+        // When the user signs in, ensure we fetch their profile and
+        // check onboarding progress so we can redirect new users to
+        // the onboarding flow.
         if (event === 'SIGNED_IN' && session?.user) {
+          const uid = session.user.id;
           const { data: userProfile } = await supabase
             .from('users')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('id', uid)
             .single();
           setProfile(userProfile as UserProfile | null);
+
+          // Register device/session with server API
+          try {
+            const fingerprint = typeof window !== 'undefined' ? (localStorage.getItem('device_fingerprint') || (() => { const v = crypto.getRandomValues(new Uint32Array(4)).join('-'); localStorage.setItem('device_fingerprint', v); return v; })()) : null;
+            await fetch('/api/auth/register-device', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                device_id: fingerprint,
+                device_type: navigator?.platform || 'web',
+                device_name: navigator?.platform || 'web',
+                browser: navigator?.userAgent || '',
+                os: navigator?.platform || '',
+                ip_address: null,
+                user_agent: navigator?.userAgent || '',
+                location_data: null,
+                remember: false,
+                session_token: session.access_token,
+                refresh_token: session.refresh_token,
+                fingerprint
+              })
+            });
+          } catch (err) {
+            console.error('Failed to register device', err);
+          }
+
+          try {
+            // Supabase client generics in this project are complex; cast to any
+            // for this small onboarding existence check to keep the code simple.
+            const { data: onboardingProgress, error: onboardingError } = await (supabase as any)
+              .from('user_onboarding_progress')
+              .select('walkthrough_completed')
+              .eq('user_id', uid)
+              .single();
+
+            if (onboardingError && onboardingError.code !== 'PGRST116') {
+              console.error('Error fetching onboarding progress:', onboardingError);
+            }
+
+            if (!onboardingProgress || !onboardingProgress.walkthrough_completed) {
+              router.push('/onboarding');
+            } else {
+              // Existing user with onboarding complete
+              router.push('/');
+            }
+          } catch (err) {
+            console.error('Onboarding redirect check failed', err);
+            router.push('/');
+          }
+
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
         }
+
         setIsLoading(false);
       }
     );
@@ -80,8 +136,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
 
-  const login = useCallback(async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const login = useCallback(async (emailOrOptions: string | { email: string; password?: string }, password?: string) => {
+    let email: string;
+    let pwd: string | undefined;
+    if (typeof emailOrOptions === 'string') {
+      email = emailOrOptions;
+      pwd = password;
+    } else {
+      email = emailOrOptions.email;
+      pwd = emailOrOptions.password;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pwd ?? '' });
     if (error) {
       throw new Error(error.message);
     }
@@ -89,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   }, [supabase, router]);
 
-  const signUp = useCallback(async (email, password) => {
+  const signUp = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ 
         email, 
         password,
@@ -123,7 +188,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleOtpSuccess = (user: SupabaseUser) => {
     setUser(user);
-    router.push('/');
+    (async () => {
+      try {
+        const { data: onboardingProgress, error: onboardingError } = await (supabase as any)
+          .from('user_onboarding_progress')
+          .select('walkthrough_completed')
+          .eq('user_id', user.id)
+          .single();
+
+        if (onboardingError && onboardingError.code !== 'PGRST116') {
+          console.error('Error fetching onboarding progress:', onboardingError);
+        }
+
+        if (!onboardingProgress || !onboardingProgress.walkthrough_completed) {
+          router.push('/onboarding');
+        } else {
+          router.push('/');
+        }
+      } catch (err) {
+        console.error('Onboarding redirect check failed', err);
+        router.push('/');
+      }
+    })();
   };
 
   const value = useMemo(() => ({

@@ -77,8 +77,12 @@ export function OnboardingFlow() {
           // but we'll just log it for now.
       });
       
-      // Simulate saving onboarding progress
-      localStorage.setItem('onboarding_completed', 'true');
+      // Persist onboarding progress to the server
+      const resp = await fetch('/api/onboarding/complete', { method: 'POST' });
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}));
+        throw new Error(body?.error || 'Failed to persist onboarding progress');
+      }
 
       setCurrentStep((prev) => prev + 1);
     } catch(error: any) {
