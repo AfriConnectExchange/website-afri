@@ -22,23 +22,24 @@ export async function POST(request: Request) {
 
   try {
     if (type === 'verify-email') {
-      const { data, error } = await supabase.auth.resend({
+      const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email,
       });
 
       if (error) {
+        // Even if Supabase handles sending, if it fails, we should throw an error.
         throw new Error(error.message);
       }
-      // Note: Supabase handles sending the verification email in this case.
-      // Our custom mailer would be used for other email types.
-      // For demonstration, we could still send a custom one.
+      
+      // We can still use our custom mailer to log this action or send a supplementary notification.
+      // For now, let's just log that a verification was initiated via Supabase.
       await sendEmail({
           to: email,
-          subject: 'Your AfriConnect Verification Link',
-          text: `Thank you for signing up. Please verify your email by opening the link sent by Supabase. If you did not receive it, you can request another one.`,
-          html: `<p>Thank you for signing up. Please verify your email by opening the link sent by Supabase. If you did not receive it, you can request another one.</p>`,
-      })
+          subject: 'AfriConnect Verification Link',
+          text: `A verification link has been sent to your email by our system. Please check your inbox to complete your registration.`,
+          html: `<p>A verification link has been sent to your email by our system. Please check your inbox to complete your registration.</p>`,
+      });
 
     } else {
         return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
