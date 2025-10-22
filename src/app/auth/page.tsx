@@ -15,7 +15,9 @@ import { PageLoader } from '@/components/ui/loader';
 import OTPVerification from '@/components/auth/OTPVerification';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
-import { useAuth, MockUser } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
 
 type AuthStep = 'signin' | 'signup' | 'check-email' | 'verify-otp';
 
@@ -25,42 +27,25 @@ export default function AuthPage() {
   const [phoneForVerification, setPhoneForVerification] = useState('');
   const [resendOtp, setResendOtp] = useState<() => Promise<void>>(() => async () => {});
 
-  const isVerifyingRef = useRef(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { handleNeedsOtp, handleOtpSuccess } = useAuth();
   
-  const handleAuthSuccess = (user: MockUser) => {
-    login(user);
-    router.push('/');
-  }
-  
-  const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
-    setPhoneForVerification(phone);
-    setResendOtp(() => resend);
-    setAuthStep('verify-otp');
-  };
-
-  const handleOtpSuccess = (user: MockUser) => {
-    // In a real app, this would come from the server after OTP is verified
-    handleAuthSuccess(user);
-  };
-
   const renderAuthStep = () => {
     switch(authStep) {
       case 'signin':
-        return <SignInCard onNeedsOtp={handleNeedsOtp} onAuthSuccess={handleAuthSuccess} />;
+        return <SignInCard />;
       case 'signup':
-        return <SignUpCard onNeedsOtp={handleNeedsOtp} onAuthSuccess={handleAuthSuccess} />;
+        return <SignUpCard />;
       case 'verify-otp':
         return <OTPVerification 
                   phone={phoneForVerification} 
-                  onAuthSuccess={handleOtpSuccess}
+                  onAuthSuccess={(user: SupabaseUser) => handleOtpSuccess(user)}
                   onBack={() => setAuthStep('signin')}
                   onResend={resendOtp}
                 />;
       default:
-        return <SignInCard onNeedsOtp={handleNeedsOtp} onAuthSuccess={handleAuthSuccess} />;
+        return <SignInCard />;
     }
   }
 

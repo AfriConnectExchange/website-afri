@@ -15,18 +15,14 @@ import PhoneInput from 'react-phone-number-input';
 import { Checkbox } from '../ui/checkbox';
 import { PasswordStrength } from './PasswordStrength';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { useAuth, MockUser } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context';
+import { createSPAClient } from '@/lib/supabase/client';
 
-type Props = {
-  onAuthSuccess?: (user: MockUser) => void;
-  onNeedsOtp?: (phone: string, resend: () => Promise<void>) => void;
-};
+type Props = {};
 
-export default function SignUpCard({ onAuthSuccess, onNeedsOtp }: Props) {
-  const { login } = useAuth();
+export default function SignUpCard({}: Props) {
+  const { signUp } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
 
   const [signupMethod, setSignupMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,17 +42,19 @@ export default function SignUpCard({ onAuthSuccess, onNeedsOtp }: Props) {
     toast({ variant, title, description });
   };
 
-  const handleSocialLogin = (provider: 'google' | 'facebook') => {
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    setTimeout(() => {
-      showAlert('default', `Signed up with ${provider}!`, 'Welcome to the community!');
-      login({
-        email: `new.${provider}@africonnect.com`,
-        fullName: `New ${provider} User`,
-        roles: ['buyer'],
-      });
-      setIsLoading(false);
-    }, 1000);
+    const supabase = createSPAClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+            redirectTo: `${window.location.origin}/auth/callback`
+        }
+    });
+    if (error) {
+        showAlert('destructive', `Sign-up with ${provider} failed`, error.message);
+    }
+    setIsLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -72,27 +70,17 @@ export default function SignUpCard({ onAuthSuccess, onNeedsOtp }: Props) {
 
     setIsLoading(true);
     
-    if (signupMethod === 'phone') {
-        const resend = async () => {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            console.log('Resending OTP to', formData.phone);
-        };
-        setTimeout(() => {
-            if (onNeedsOtp) {
-                onNeedsOtp(formData.phone, resend);
-            }
-            setIsLoading(false);
-        }, 1000);
-    } else {
-        setTimeout(() => {
-          showAlert('default', 'Account Created!', 'Welcome! You are now being signed in.');
-          login({
-            email: formData.email,
-            fullName: formData.name,
-            roles: ['buyer'],
-          });
-          setIsLoading(false);
-        }, 1000);
+    try {
+        if (signupMethod === 'email') {
+            await signUp(formData.email, formData.password);
+        } else {
+            // Real Supabase phone signup logic would go here
+            showAlert('destructive', 'Not Implemented', 'Phone sign-up is not yet implemented.');
+        }
+    } catch (error: any) {
+        showAlert('destructive', 'Sign-up Failed', error.message);
+    } finally {
+        setIsLoading(false);
     }
   };
   

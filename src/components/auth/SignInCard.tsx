@@ -14,20 +14,14 @@ import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useAuth, MockUser } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context';
+import { createSPAClient } from '@/lib/supabase/client';
 
-type Props = {
-    onSwitch?: () => void;
-    onAuthSuccess?: (user: MockUser) => void;
-    onNeedsOtp?: (phone: string, resend: () => Promise<void>) => void;
-};
+type Props = {};
 
-
-
-export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
+export default function SignInCard({}: Props) {
   const { login } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
   const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,20 +32,14 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   
   const handleEmailLogin = async () => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      if (formData.email === 'test@example.com' && formData.password === 'password') {
-        toast({ title: 'Sign-in Successful', description: 'Welcome back!' });
-        login({
-          email: 'test.user@africonnect.com',
-          fullName: 'Test User',
-          roles: ['buyer', 'seller'],
-        });
-      } else {
-        showAlert('destructive', 'Login Failed', 'Invalid email or password. Please try again.');
-      }
+    try {
+      await login(formData.email, formData.password);
+      toast({ title: 'Sign-in Successful', description: 'Welcome back!' });
+    } catch (error: any) {
+      showAlert('destructive', 'Login Failed', error.message);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handlePhoneLogin = async () => {
@@ -60,34 +48,26 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       return;
     }
     setIsLoading(true);
-
-    const resend = async () => {
-        // This is a mock resend function
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('Resending OTP to', formData.phone);
-    };
-
+    // Real Supabase phone login logic would go here
     setTimeout(() => {
-        if (onNeedsOtp) {
-            onNeedsOtp(formData.phone, resend);
-        } else {
-            showAlert('destructive', 'Error', 'OTP flow not configured correctly.');
-        }
+        showAlert('destructive', 'Not Implemented', 'Phone login is not yet implemented.');
         setIsLoading(false);
     }, 1000);
   };
   
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    setTimeout(() => {
-        toast({ title: 'Sign-in Successful', description: `Welcome back via ${provider}!` });
-        login({
-          email: `test.${provider}@africonnect.com`,
-          fullName: `Test ${provider} User`,
-          roles: ['buyer'],
-        });
-        setIsLoading(false);
-    }, 1000);
+    const supabase = createSPAClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+            redirectTo: `${window.location.origin}/auth/callback`
+        }
+    });
+    if (error) {
+        showAlert('destructive', `Sign-in with ${provider} failed`, error.message);
+    }
+    setIsLoading(false);
   }
 
   return (

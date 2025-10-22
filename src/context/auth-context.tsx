@@ -3,85 +3,141 @@
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { createSPAClient } from '@/lib/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useToast } from '@/hooks/use-toast';
 
 // Define a more specific type for your mock user
-export interface MockUser {
+export interface UserProfile {
   id: string;
   email: string;
-  fullName: string | null;
+  full_name: string | null;
   roles: string[];
-  avatarUrl?: string;
+  avatar_url?: string;
 }
 
 interface AuthContextType {
   isLoading: boolean;
-  user: MockUser | null;
+  user: SupabaseUser | null;
+  profile: UserProfile | null;
   isAuthenticated: boolean;
-  login: (user: Omit<MockUser, 'id'>) => void;
-  logout: () => void;
-  updateUser: (data: Partial<MockUser>) => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (data: Partial<SupabaseUser>) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  handleNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
+  handleOtpSuccess: (user: SupabaseUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// A mock user for demonstration purposes
-const MOCK_USER: MockUser = {
-  id: 'user_mock_12345',
-  email: 'test.user@africonnect.com',
-  fullName: 'Test User',
-  roles: ['buyer', 'seller'],
-  avatarUrl: 'https://picsum.photos/seed/user-avatar/100/100',
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => createSPAClient(), []);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<MockUser | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate checking for a session
-    try {
-      const storedUser = localStorage.getItem('mockUser');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(userProfile as UserProfile | null);
       }
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem('mockUser');
+      setIsLoading(false);
+    };
+
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        if (event === 'SIGNED_IN' && session?.user) {
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          setProfile(userProfile as UserProfile | null);
+        } else if (event === 'SIGNED_OUT') {
+          setProfile(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+
+  const login = useCallback(async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      throw new Error(error.message);
     }
-    setIsLoading(false);
-  }, []);
-
-  const login = useCallback((userData: Omit<MockUser, 'id'>) => {
-    const newUser = { ...MOCK_USER, ...userData };
-    localStorage.setItem('mockUser', JSON.stringify(newUser));
-    setUser(newUser);
+    // Auth state change will handle setting user and profile
     router.push('/');
-  }, [router]);
+  }, [supabase, router]);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('mockUser');
-    setUser(null);
-    router.push('/auth/signin');
-  }, [router]);
-
-  const updateUser = useCallback((data: Partial<MockUser>) => {
-    setUser(prevUser => {
-        if (!prevUser) return null;
-        const updatedUser = { ...prevUser, ...data };
-        localStorage.setItem('mockUser', JSON.stringify(updatedUser));
-        return updatedUser;
+  const signUp = useCallback(async (email, password) => {
+    const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
     });
-  }, []);
+    if (error) {
+      throw new Error(error.message);
+    }
+    // After sign up, Supabase sends a verification email.
+    // The user needs to be notified to check their email.
+    router.push('/auth/verify-email');
+  }, [supabase, router]);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+    router.push('/auth/signin');
+  }, [supabase, router]);
+
+  const updateUser = useCallback(async (data: Partial<SupabaseUser>) => {
+    if (!user) throw new Error("Not authenticated");
+    const { error } = await supabase.auth.updateUser(data);
+    if(error) throw new Error(error.message);
+  }, [user, supabase]);
+
+  const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
+    // Implement OTP logic if needed
+    console.log("OTP needed for:", phone);
+  };
+
+  const handleOtpSuccess = (user: SupabaseUser) => {
+    setUser(user);
+    router.push('/');
+  };
 
   const value = useMemo(() => ({
     isLoading,
     user,
+    profile,
     isAuthenticated: !!user,
     login,
     logout,
-    updateUser
-  }), [isLoading, user, login, logout, updateUser]);
+    updateUser,
+    signUp,
+    handleNeedsOtp,
+    handleOtpSuccess
+  }), [isLoading, user, profile, login, logout, updateUser, signUp]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -97,24 +153,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// A higher-order component to protect routes
-export function withAuth<P extends object>(Component: React.ComponentType<P>) {
-  return function AuthenticatedComponent(props: P) {
-    const { isAuthenticated, isLoading } = useAuth();
-    const router = useRouter();
-
-    useEffect(() => {
-      if (!isLoading && !isAuthenticated) {
-        router.replace('/auth/signin');
-      }
-    }, [isAuthenticated, isLoading, router]);
-
-    if (isLoading || !isAuthenticated) {
-      // You can return a loader here
-      return <div className="flex justify-center items-center h-screen">Loading...</div>;
-    }
-
-    return <Component {...props} />;
-  };
-}
