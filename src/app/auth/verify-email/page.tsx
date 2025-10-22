@@ -3,7 +3,6 @@
 import { CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import {useState} from "react";
-import {createSPASassClient} from "@/lib/supabase/client";
 
 export default function VerifyEmailPage() {
     const [email, setEmail] = useState('');
@@ -20,12 +19,19 @@ export default function VerifyEmailPage() {
         try {
             setLoading(true);
             setError('');
-            const supabase = await createSPASassClient();
-            const {error} = await supabase.resendVerificationEmail(email);
-            if(error) {
-                setError(error.message);
-                return;
+            
+            const response = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, type: 'verify-email' }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to resend email.');
             }
+            
             setSuccess(true);
         } catch (err: Error | unknown) {
             if (err instanceof Error) {
@@ -50,13 +56,13 @@ export default function VerifyEmailPage() {
                 </h2>
 
                 <p className="text-gray-600 mb-8">
-                    We&#39;ve sent you an email with a verification link.
+                    We've sent you an email with a verification link.
                     Please check your inbox and click the link to verify your account.
                 </p>
 
                 <div className="space-y-4">
                     <p className="text-sm text-gray-500">
-                        Didn&#39;t receive the email? Check your spam folder or enter your email to resend:
+                        Didn't receive the email? Check your spam folder or enter your email to resend:
                     </p>
 
                     {error && (
