@@ -106,9 +106,10 @@ export default function MarketplacePage() {
     freeListingsOnly: false,
   });
 
-  const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
+  // Fetch/filter/sort products (reads latest products if productList not provided)
+  function fetchProducts(currentFilters: FilterState, currentSortBy: string, productList?: Product[]) {
     setLoading(true);
-    let filteredProducts: Product[] = [...products];
+    let filteredProducts: Product[] = Array.isArray(productList) ? [...productList] : [...products];
 
     // Smart search query
     if (currentFilters.searchQuery.length >= 3) {
@@ -173,7 +174,7 @@ export default function MarketplacePage() {
     setTotalProducts(filteredProducts.length);
     setLoading(false);
 
-  }, []);
+  }
   
   useEffect(() => {
     // Load categories and initial products from API
@@ -224,8 +225,10 @@ export default function MarketplacePage() {
           sellerDetails: p.sellerDetails ?? null,
         }))
 
-        setProducts(mapped)
-        setTotalProducts(mapped.length)
+  setProducts(mapped)
+  setTotalProducts(mapped.length)
+  // Apply filters/sorting against the freshly mapped products
+  fetchProducts(filters, sortBy, mapped)
       } catch (err) {
         console.error('Marketplace load error', err)
       } finally {
