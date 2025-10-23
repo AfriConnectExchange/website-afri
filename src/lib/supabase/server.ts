@@ -1,38 +1,12 @@
-
-import { createServerClient as createClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+// REMOVED: Server Supabase client cleared as part of backend removal.
+// Export a clear error so any remaining callers know Supabase is not available.
 
 export async function createServerClient() {
-  // cookies() can be async in newer Next versions; await it before use.
-  const cookieStore: any = await cookies();
-
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // The `set` method may be called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-        remove(name: string, options) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
-            // The `delete` method may be called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-      },
-    }
-  )
+  // Return a small, safe stub so server-side call sites that expect
+  // auth.getUser() continue to receive a valid shape.
+  return {
+    auth: {
+      getUser: async () => ({ data: { user: null }, error: null }),
+    },
+  } as any;
 }

@@ -73,6 +73,15 @@ export default function SignUpCard({}: Props) {
     try {
         if (signupMethod === 'email') {
             await signUp(formData.email, formData.password);
+            // Show success feedback and persist email for the verify page to read
+            showAlert('default', 'Check your email', `We sent a verification link to ${formData.email}`);
+            try {
+              localStorage.setItem('afri:pending_verification_email', formData.email);
+            } catch (e) {
+              // ignore storage failures (private mode etc.)
+            }
+            // Navigate to the verify page after showing toast/state
+            window.location.href = '/auth/verify-email';
         } else {
             // Real Supabase phone signup logic would go here
             showAlert('destructive', 'Not Implemented', 'Phone sign-up is not yet implemented.');

@@ -1,29 +1,45 @@
-import {createBrowserClient} from '@supabase/ssr'
-import {ClientType, SassClient} from "@/lib/supabase/unified";
-import {Database} from "@/lib/types";
+// Supabase removed — provide lightweight client stubs so frontend code that
+// imports these functions does not crash. These stubs intentionally do no real
+// auth or storage work.
 
 export function createSPAClient() {
-    // createBrowserClient expects two generics (Database and schema); avoid passing Database["public"]
-    return createBrowserClient<Database, "public">(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const noOp = async () => ({ data: null, error: null });
+
+    const queryBuilder: any = {
+        select: () => queryBuilder,
+        eq: () => queryBuilder,
+        single: async () => ({ data: null, error: null }),
+        maybeSingle: async () => ({ data: null, error: null }),
+        limit: () => queryBuilder,
+        order: () => queryBuilder,
+        range: () => queryBuilder,
+        insert: noOp,
+        update: noOp,
+        delete: noOp,
+    };
+
+    return {
+        auth: {
+            getSession: async () => ({ data: { session: null }, error: null }),
+            signInWithPassword: async () => ({ data: null, error: null }),
+            signUp: async () => ({ data: null, error: null }),
+            signOut: async () => ({ error: null }),
+            onAuthStateChange: (_cb: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        },
+        from: () => queryBuilder,
+        storage: {
+            from: () => ({ upload: async () => ({ data: null, error: null }), list: async () => ({ data: [], error: null }), remove: async () => ({ data: null, error: null }), createSignedUrl: async () => ({ data: null, error: null }) }),
+        },
+    } as any;
 }
 
 export async function createSPASassClient() {
     const client = createSPAClient();
-    // This must be some bug that SupabaseClient is not properly recognized, so must be ignored
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new SassClient(client as any, ClientType.SPA);
+    return client as any;
 }
 
 export async function createSPASassClientAuthenticated() {
     const client = createSPAClient();
-    const user = await client.auth.getSession();
-    if (!user.data || !user.data.session) {
-        window.location.href = '/auth/login';
-    }
-    // This must be some bug that SupabaseClient is not properly recognized, so must be ignored
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new SassClient(client as any, ClientType.SPA);
+    // Auth is stubbed — redirecting would be unexpected here; return the stub.
+    return client as any;
 }

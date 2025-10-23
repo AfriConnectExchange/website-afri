@@ -1,5 +1,5 @@
 -- ============================================================================
--- AfriConnect Exchange - Complete Supabase Database Schema
+-- REMOVED: Supabase migrations cleared. Original migration file removed as part of Supabase backend cleanup.
 -- Version: 1.0
 -- Generated: 2025-10-19
 -- ============================================================================
@@ -77,8 +77,13 @@ CREATE TABLE user_sessions (
     ip_address INET,
     user_agent TEXT,
     location_data JSONB,
-    session_token TEXT UNIQUE NOT NULL,
+    session_token TEXT UNIQUE,
     refresh_token TEXT,
+    -- Store only hashes of tokens; raw tokens should not be persisted
+    session_token_hash TEXT,
+    refresh_token_hash TEXT,
+    -- When sessions are revoked, mark this timestamp
+    revoked_at TIMESTAMP WITH TIME ZONE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -527,6 +532,16 @@ CREATE TABLE security_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Password reset tokens for custom password reset flows (store only hashes)
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ============================================================================
 -- FR11: Admin & Moderation
 -- ============================================================================
@@ -745,6 +760,10 @@ CREATE TABLE device_info (
     is_trusted BOOLEAN DEFAULT FALSE,
     last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     first_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- store only a hash of any fingerprint / client identifier
+    fingerprint_hash TEXT,
+    -- the last time the device authenticated (useful for sorting)
+    last_authenticated_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -884,44 +903,56 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to log activity
+-- Sanitized activity logging function: strips secrets before persisting
 CREATE OR REPLACE FUNCTION log_activity()
 RETURNS TRIGGER AS $$
 DECLARE
     v_action VARCHAR(100);
     v_changes JSONB;
+    v_old JSONB;
+    v_new JSONB;
 BEGIN
     IF TG_OP = 'INSERT' THEN
         v_action := TG_TABLE_NAME || '_created';
-        v_changes := to_jsonb(NEW);
+        v_old := NULL;
+        v_new := to_jsonb(NEW);
     ELSIF TG_OP = 'UPDATE' THEN
         v_action := TG_TABLE_NAME || '_updated';
-        v_changes := jsonb_build_object(
-            'old', to_jsonb(OLD),
-            'new', to_jsonb(NEW)
-        );
+        v_old := to_jsonb(OLD);
+        v_new := to_jsonb(NEW);
     ELSIF TG_OP = 'DELETE' THEN
         v_action := TG_TABLE_NAME || '_deleted';
-        v_changes := to_jsonb(OLD);
+        v_old := to_jsonb(OLD);
+        v_new := NULL;
     END IF;
 
-    INSERT INTO activity_logs (
-        user_id,
-        action,
-        entity_type,
-        entity_id,
-        changes
-    ) VALUES (
-        COALESCE(NEW.user_id, NEW.id, OLD.user_id, OLD.id),
+    -- redact common sensitive keys
+    IF v_old IS NOT NULL THEN
+        v_old := v_old - 'password_hash' - 'session_token' - 'refresh_token' - 'access_token' - 'provider_response' - 'provider_token' - 'token' - 'secret';
+    END IF;
+    IF v_new IS NOT NULL THEN
+        v_new := v_new - 'password_hash' - 'session_token' - 'refresh_token' - 'access_token' - 'provider_response' - 'provider_token' - 'token' - 'secret';
+    END IF;
+
+    v_changes := jsonb_build_object('old', v_old, 'new', v_new);
+
+    INSERT INTO activity_logs (user_id, action, entity_type, entity_id, changes, ip_address, user_agent)
+    VALUES (
+        COALESCE(
+            (CASE WHEN NEW IS NOT NULL AND (NEW ? 'user_id') THEN (NEW->>'user_id')::uuid WHEN OLD IS NOT NULL AND (OLD ? 'user_id') THEN (OLD->>'user_id')::uuid ELSE NULL END),
+            (CASE WHEN NEW IS NOT NULL AND (NEW ? 'id') THEN (NEW->>'id')::uuid WHEN OLD IS NOT NULL AND (OLD ? 'id') THEN (OLD->>'id')::uuid ELSE NULL END)
+        ),
         v_action,
         TG_TABLE_NAME,
-        COALESCE(NEW.id, OLD.id),
-        v_changes
+        COALESCE((CASE WHEN NEW IS NOT NULL AND (NEW ? 'id') THEN (NEW->>'id')::uuid WHEN OLD IS NOT NULL AND (OLD ? 'id') THEN (OLD->>'id')::uuid ELSE NULL END), NULL),
+        v_changes,
+        NULL,
+        NULL
     );
 
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to update product rating
 CREATE OR REPLACE FUNCTION update_product_rating()
@@ -1227,6 +1258,9 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on session and device tables (added for security)
+ALTER TABLE IF EXISTS user_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS device_info ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own data
 CREATE POLICY users_select_own ON users
@@ -1235,6 +1269,52 @@ CREATE POLICY users_select_own ON users
 -- Users can update their own data
 CREATE POLICY users_update_own ON users
     FOR UPDATE USING (auth.uid() = id);
+
+-- Policies for user_sessions: allow users to manage their own sessions and admins to view/manage
+DROP POLICY IF EXISTS user_sessions_select_own ON user_sessions;
+DROP POLICY IF EXISTS user_sessions_update_own ON user_sessions;
+DROP POLICY IF EXISTS user_sessions_insert_self ON user_sessions;
+
+CREATE POLICY user_sessions_select_own ON user_sessions
+    FOR SELECT
+    USING (
+        auth.uid() = user_id
+        OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND 'admin' = ANY(u.roles))
+    );
+
+CREATE POLICY user_sessions_update_own ON user_sessions
+    FOR UPDATE
+    USING (
+        auth.uid() = user_id
+        OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND 'admin' = ANY(u.roles))
+    );
+
+CREATE POLICY user_sessions_insert_self ON user_sessions
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Policies for device_info: owners and admins
+DROP POLICY IF EXISTS device_info_select_own ON device_info;
+DROP POLICY IF EXISTS device_info_update_own ON device_info;
+DROP POLICY IF EXISTS device_info_insert_self ON device_info;
+
+CREATE POLICY device_info_select_own ON device_info
+    FOR SELECT
+    USING (
+        auth.uid() = user_id
+        OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND 'admin' = ANY(u.roles))
+    );
+
+CREATE POLICY device_info_update_own ON device_info
+    FOR UPDATE
+    USING (
+        auth.uid() = user_id
+        OR EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND 'admin' = ANY(u.roles))
+    );
+
+CREATE POLICY device_info_insert_self ON device_info
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
 
 -- Anyone can view active products
 CREATE POLICY products_select_active ON products

@@ -2,7 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { createSPAClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+// Supabase backend removed — use a generic user type to avoid depending on
+// @supabase/supabase-js types.
+type SupabaseUser = any;
 
 // Define a more specific type for your public.users table row
 export interface UserProfile {
@@ -48,7 +51,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: string, session: any) => {
         setUser(session?.user ?? null);
         if (event === 'SIGNED_IN' && session?.user) {
           const { data: userProfile } = await supabase

@@ -166,8 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(error.message);
     }
     // After sign up, Supabase sends a verification email.
-    // The user needs to be notified to check their email.
-    router.push('/auth/verify-email');
+    // Do NOT perform the redirect here; let the UI component display success feedback
+    // and decide when/how to navigate. This keeps the context focused on auth only.
+
   }, [supabase, router]);
 
   const logout = useCallback(async () => {

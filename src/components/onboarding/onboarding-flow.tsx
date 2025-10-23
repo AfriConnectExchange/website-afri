@@ -69,21 +69,23 @@ export function OnboardingFlow() {
       return;
     }
 
+    // Show a submitting state while we persist
     try {
+      // Local UI update
       updateUser({ 
           fullName: data.full_name,
           roles: [userData.primary_role],
-          // In a real app, you might have a separate field for phone,
-          // but we'll just log it for now.
       });
-      
-      // Persist onboarding progress to the server
+
+      // Persist onboarding progress to the server with a short-loading UI
+      toast({ title: 'Finishing setup', description: 'We are saving your profile and finishing setup.' });
       const resp = await fetch('/api/onboarding/complete', { method: 'POST' });
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}));
         throw new Error(body?.error || 'Failed to persist onboarding progress');
       }
 
+      // move to the final step which shows a spinner and redirects
       setCurrentStep((prev) => prev + 1);
     } catch(error: any) {
       toast({ variant: 'destructive', title: 'Failed to Save Profile', description: error.message });

@@ -234,6 +234,47 @@ export default function MarketplacePage() {
   setTotalProducts(mapped.length)
   // Apply filters/sorting against the freshly mapped products
   fetchProducts(filters, sortBy, mapped)
+
+  // Enrich any products missing a human seller name by calling the users profile API
+  const sellersToFetch = mapped.filter((m: any) => {
+    // If seller looks like an id (uuid-like) or sellerDetails missing name, fetch profile
+    const looksLikeId = typeof m.seller === 'string' && /^[0-9a-fA-F-]{6,}$/.test(m.seller);
+    const missingName = !m.seller || looksLikeId;
+    return missingName && m.seller_id;
+  });
+
+  if (sellersToFetch.length > 0) {
+    try {
+      const promises = sellersToFetch.map(async (item: any) => {
+        try {
+          const res = await fetch(`/api/users/profile?userId=${item.seller_id}`);
+          if (!res.ok) return null;
+          const profile = await res.json();
+          if (!profile) return null;
+          const full = [profile.full_name || [profile.firstName, profile.lastName].filter(Boolean).join(' '), profile.display_name, profile.username, profile.email]
+            .filter(Boolean)[0];
+          return { id: item.id, name: full };
+        } catch (e) {
+          return null;
+        }
+      });
+
+      const results = await Promise.all(promises);
+      const updates = results.filter(Boolean) as Array<{ id: string; name: string }>;
+      if (updates.length > 0) {
+        const newProducts = mapped.map((p: any) => {
+          const u = updates.find((x) => x.id === p.id);
+          if (u) {
+            return { ...p, seller: u.name, sellerDetails: { ...(p.sellerDetails || {}), name: u.name } };
+          }
+          return p;
+        });
+        setProducts(newProducts);
+      }
+    } catch (err) {
+      console.error('Seller enrichment error', err);
+    }
+  }
       
         // dev debug: log first mapped product
         try { console.debug('[marketplace] first mapped product', mapped && mapped[0]); } catch (e) {}

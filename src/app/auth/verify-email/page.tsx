@@ -2,13 +2,16 @@
 
 import { CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import {useState} from "react";
+import {useState, useEffect} from "react";
+import CheckEmailCard from '@/components/auth/CheckEmailCard';
+import { createSPAClient } from '@/lib/supabase/client';
 
 export default function VerifyEmailPage() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     const resendVerificationEmail = async () => {
         if (!email) {
@@ -44,6 +47,43 @@ export default function VerifyEmailPage() {
         }
     }
 
+    useEffect(() => {
+        try {
+            const pending = localStorage.getItem('afri:pending_verification_email');
+            if (pending) setEmail(pending);
+        } catch (e) {}
+    }, []);
+
+    useEffect(() => {
+        if (!email) return;
+        let mounted = true;
+        const supabase = createSPAClient();
+
+        const checkVerified = async () => {
+            setIsVerifying(true);
+            try {
+                const { data: { user }, error: userErr } = await supabase.auth.getUser();
+                if (!mounted) return;
+
+                if (user && (user.email === email) && (user.email_confirmed_at)) {
+                    setSuccess(true);
+                    setIsVerifying(false);
+                    try { localStorage.removeItem('afri:pending_verification_email'); } catch (e) {}
+                    // short delay so user sees the success state
+                    setTimeout(() => { window.location.href = '/'; }, 1100);
+                    return;
+                }
+            } catch (e) {
+                // ignore transient errors
+            }
+            setIsVerifying(true);
+        };
+
+        const id = setInterval(checkVerified, 3000);
+        checkVerified();
+        return () => { mounted = false; clearInterval(id); };
+    }, [email]);
+
     return (
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <div className="text-center">
@@ -55,12 +95,18 @@ export default function VerifyEmailPage() {
                     Check your email
                 </h2>
 
-                <p className="text-gray-600 mb-8">
-                    We've sent you an email with a verification link.
-                    Please check your inbox and click the link to verify your account.
-                </p>
-
+                {/* Show a waiting card while polling. The user can still manually enter email and resend below. */}
                 <div className="space-y-4">
+                    {isVerifying || !success ? (
+                        <div className="mt-6">
+                            <CheckEmailCard email={email || ''} onBack={() => window.location.href = '/auth/signin'} isVerifying={isVerifying} />
+                        </div>
+                    ) : (
+                        <div className="text-sm text-green-600 bg-green-50 rounded-md p-3">
+                            Email verified — redirecting...
+                        </div>
+                    )}
+
                     <p className="text-sm text-gray-500">
                         Didn't receive the email? Check your spam folder or enter your email to resend:
                     </p>
