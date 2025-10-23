@@ -63,7 +63,9 @@ export function ProductGrid({
     );
   }
 
-  if (products.length === 0) {
+  const items = Array.isArray(products) ? products : [];
+
+  if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center bg-accent/50 rounded-lg">
         <div className="w-16 h-16 mb-4 rounded-full bg-background flex items-center justify-center">
@@ -96,7 +98,7 @@ export function ProductGrid({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product, index) => (
+        {items.map((product, index) => (
           <ProductCard
             key={product.id}
             product={product}

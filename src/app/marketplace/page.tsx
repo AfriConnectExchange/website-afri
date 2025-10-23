@@ -24,8 +24,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
-import allProducts from '@/data/mock-products.json';
-import allCategories from '@/data/mock-categories.json';
+// Fetch data from API endpoints instead of using mock JSON
 
 export interface Product {
   id: string;
@@ -109,8 +108,7 @@ export default function MarketplacePage() {
 
   const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
-    
-    let filteredProducts: Product[] = [...allProducts] as unknown as Product[];
+    let filteredProducts: Product[] = [...products];
 
     // Smart search query
     if (currentFilters.searchQuery.length >= 3) {
@@ -130,7 +128,7 @@ export default function MarketplacePage() {
 
     // Category
     if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-      const selectedCategoryName = allCategories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
+      const selectedCategoryName = categories.find((c: Category) => c.id === currentFilters.selectedCategories[0])?.name;
       if (selectedCategoryName) {
         filteredProducts = filteredProducts.filter(p => p.category === selectedCategoryName);
       }
@@ -173,12 +171,67 @@ export default function MarketplacePage() {
     
     setProducts(filteredProducts);
     setTotalProducts(filteredProducts.length);
-    setCategories(allCategories as Category[]);
     setLoading(false);
 
   }, []);
   
   useEffect(() => {
+    // Load categories and initial products from API
+    (async () => {
+      setLoading(true)
+      try {
+        const catsRes = await fetch('/api/categories')
+        const catsJson = await catsRes.json()
+        setCategories(catsJson || [])
+
+        // If no category selected, load recent products
+        const productsRes = await fetch('/api/categories/all/products')
+        const productsJson = await productsRes.json()
+
+        // Map API product shape to the UI Product interface expected by ProductCard
+        const mapped = (productsJson || []).map((p: any) => ({
+          id: p.id,
+          seller_id: p.seller_id || p.seller || null,
+          title: p.title || p.name || '',
+          description: p.description || '',
+          price: typeof p.price === 'number' ? p.price : Number(p.price) || 0,
+          currency: p.currency || '£',
+          category_id: p.category_id || p.category_id || null,
+          listing_type: p.listing_type || 'sale',
+          status: p.status || 'active',
+          images: Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []),
+          location_text: p.location_text || p.location || '',
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          quantity_available: p.quantity_available ?? p.stockCount ?? 0,
+          average_rating: p.average_rating ?? p.rating ?? 0,
+          review_count: p.review_count ?? p.reviews ?? 0,
+          tags: p.tags || [],
+
+          // UI-facing aliases expected by ProductCard
+          name: p.title || p.name || 'Untitled Product',
+          originalPrice: p.originalPrice || null,
+          rating: p.average_rating ?? p.rating ?? 0,
+          reviews: p.review_count ?? p.reviews ?? 0,
+          seller: p.seller_name || p.seller || (p.seller_id ? String(p.seller_id).slice(0,8) : 'Unknown'),
+          sellerVerified: !!p.sellerVerified,
+          image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : (typeof p.image === 'string' ? p.image : ''),
+          category: p.category_name || p.category || '',
+          featured: !!p.featured,
+          discount: p.discount || 0,
+          isFree: (p.price === 0) || p.isFree || false,
+          stockCount: p.quantity_available ?? p.stockCount ?? 0,
+          sellerDetails: p.sellerDetails ?? null,
+        }))
+
+        setProducts(mapped)
+        setTotalProducts(mapped.length)
+      } catch (err) {
+        console.error('Marketplace load error', err)
+      } finally {
+        setLoading(false)
+      }
+    })()
     fetchProducts(filters, sortBy);
   }, [fetchProducts, filters, sortBy]);
 

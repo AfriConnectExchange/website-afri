@@ -912,7 +912,7 @@ BEGIN
         entity_id,
         changes
     ) VALUES (
-        COALESCE(NEW.user_id, OLD.user_id),
+        COALESCE(NEW.user_id, NEW.id, OLD.user_id, OLD.id),
         v_action,
         TG_TABLE_NAME,
         COALESCE(NEW.id, OLD.id),

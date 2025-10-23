@@ -13,15 +13,19 @@ export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({ src, fallb
     setError(true);
   };
 
-  const imageSrc = error && fallbackSrc ? fallbackSrc : src;
+  const imageSrc = (error && fallbackSrc) ? fallbackSrc : src;
+
+  // Ensure alt prop exists for accessibility and to satisfy Next.js checks
+  const altText = props.alt ?? 'image';
 
   return (
     <Image
       {...props}
-      src={imageSrc}
+      alt={altText}
+      src={imageSrc as string}
       onError={handleError}
-      width={props.width || 300}
-      height={props.height || 200}
+      width={(props.width as number) || 300}
+      height={(props.height as number) || 200}
     />
   );
 };

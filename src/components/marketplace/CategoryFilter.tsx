@@ -86,7 +86,7 @@ export function CategoryFilter({
                 )}
               </div>
               <span className="text-xs text-muted-foreground">
-                ({category.count.toLocaleString()})
+                ({(typeof category.count === 'number' ? category.count : 0).toLocaleString()})
               </span>
             </div>
           );

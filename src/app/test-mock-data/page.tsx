@@ -1,17 +1,33 @@
 "use client";
-import React, { useState } from 'react';
-import products from '@/data/mock-products.json';
-import categories from '@/data/mock-categories.json';
+import React, { useState, useEffect } from 'react';
 
 export default function MockDataTestPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const [products, setProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
 
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === 'all' || product.category.toLowerCase() === selectedCategory.toLowerCase();
+  useEffect(() => {
+    (async () => {
+      try {
+        const catsRes = await fetch('/api/categories')
+        const catsJson = await catsRes.json()
+        setCategories(catsJson || [])
+
+        const productsRes = await fetch('/api/categories/all/products')
+        const productsJson = await productsRes.json()
+        setProducts(productsJson || [])
+      } catch (err) {
+        console.error('Mock data test load error', err)
+      }
+    })()
+  }, [])
+
+  const filteredProducts = products.filter((product: any) => {
+    const matchesCategory = selectedCategory === 'all' || (product.category || '').toLowerCase() === selectedCategory.toLowerCase();
     const matchesSearch =
-      product.title.toLowerCase().includes(search.toLowerCase()) ||
-      product.description.toLowerCase().includes(search.toLowerCase());
+      (product.title || '').toLowerCase().includes(search.toLowerCase()) ||
+      (product.description || '').toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -24,7 +40,7 @@ export default function MockDataTestPage() {
           onChange={e => setSelectedCategory(e.target.value)}
           className="border px-2 py-1 rounded"
         >
-          {categories.map(cat => (
+          {categories.map((cat: any) => (
             <option key={cat.id} value={cat.name.toLowerCase()}>{cat.name}</option>
           ))}
         </select>
@@ -37,7 +53,7 @@ export default function MockDataTestPage() {
         />
       </div>
       <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.map(product => (
+        {filteredProducts.map((product: any) => (
           <li key={product.id} className="border rounded p-4 shadow">
             <img src={product.images?.[0]} alt={product.title} className="w-full h-40 object-cover mb-2 rounded" />
             <h2 className="font-semibold text-lg">{product.title}</h2>

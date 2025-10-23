@@ -19,7 +19,7 @@ interface ProductPageProps {
   onNavigate: (page: string, productId?: string) => void;
   onAddToCart: (product: any, quantity: number) => void;
 }
-
+// import mockProducts from '@/data/mock-products.json';
 function ProductPageSkeleton() {
     return (
         <div className="container mx-auto px-4 py-4 md:py-6">
@@ -64,23 +64,17 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
     if (!productId) return;
     setLoading(true);
     try {
-      // Find product in mock data
-      const productData = mockProducts.find((p) => p.id === productId);
-      if (!productData) {
+      const res = await fetch(`/api/products/${productId}`)
+      const json = await res.json()
+      if (!res.ok) {
         toast({
           variant: 'destructive',
           title: 'Error fetching product',
-          description: 'This product could not be found.',
+          description: json?.error || 'This product could not be found.',
         });
         setProduct(null);
       } else {
-        setProduct(productData as Product);
-        // Optionally, fetch reviews from API if needed
-        // const res = await fetch(`/api/reviews/product?productId=${productId}`);
-        // if(res.ok) {
-        //     const reviewData = await res.json();
-        //     setReviews(reviewData);
-        // }
+        setProduct(json as Product);
       }
     } catch (error: any) {
       toast({

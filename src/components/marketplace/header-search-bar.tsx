@@ -9,7 +9,7 @@ import { Card, CardContent } from '../ui/card';
 import Image from 'next/image';
 import type { Product } from '@/app/marketplace/page';
 import { useRouter } from 'next/navigation';
-import allProducts from '@/data/mock-products.json';
+// import allProducts from '@/data/mock-products.json';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface HeaderSearchBarProps {
@@ -42,24 +42,36 @@ export function HeaderSearchBar({ onSearchPerformed }: HeaderSearchBarProps) {
       return;
     }
 
-    const fetchSuggestions = () => {
+    const fetchSuggestions = async () => {
       setIsLoading(true);
-      
-      const searchTerms = query.toLowerCase().split(' ').filter(term => term);
-      const filteredProducts = allProducts.filter(p => {
-        const productText = [
-          p.title,
-          p.description,
-          p.seller,
-          p.category,
-          ...(p.tags || [])
-        ].join(' ').toLowerCase();
-        
-        return searchTerms.some(term => productText.includes(term));
-      }).slice(0, 5); // Limit to 5 suggestions
-
-      setSuggestions(filteredProducts as Product[]);
-      setIsLoading(false);
+      try {
+        const res = await fetch('/api/categories/all/products')
+        const json = await res.json()
+        // Normalize the response to an array. Some endpoints may return
+        // { data: [...] } or an error object; handle both safely.
+        const productsList = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+          ? json.data
+          : [];
+        const searchTerms = query.toLowerCase().split(' ').filter(term => term);
+        const filteredProducts = (productsList || []).filter((p: any) => {
+          const productText = [
+            p.title,
+            p.description,
+            p.seller || p.sellerDetails?.name,
+            p.category || p.category_id,
+            ...(p.tags || [])
+          ].join(' ').toLowerCase();
+          return searchTerms.some((term: string) => productText.includes(term));
+        }).slice(0,5);
+        setSuggestions(filteredProducts as Product[]);
+      } catch (err) {
+        console.error('Search suggestions error', err)
+        setSuggestions([])
+      } finally {
+        setIsLoading(false)
+      }
     };
 
     const debounceTimeout = setTimeout(fetchSuggestions, 300);

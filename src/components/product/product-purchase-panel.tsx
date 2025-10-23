@@ -29,6 +29,11 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
     router.push(`/barter/propose?productId=${product.id}`);
   };
 
+  // Defensive defaults in case seeded data is missing some fields
+  const displayRating = typeof product.rating === 'number' ? product.rating : 0;
+  const displayReviewCount = typeof product.review_count === 'number' ? product.review_count : 0;
+  const displayStock = typeof product.stockCount === 'number' ? product.stockCount : 0;
+
   return (
     <div className="space-y-4">
       <div>
@@ -41,8 +46,8 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium text-sm">{product.rating.toFixed(1)}</span>
-            <span className="text-muted-foreground text-sm">({product.review_count} reviews)</span>
+            <span className="font-medium text-sm">{displayRating.toFixed(1)}</span>
+            <span className="text-muted-foreground text-sm">({displayReviewCount} reviews)</span>
           </div>
         </div>
 
@@ -75,19 +80,19 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
             >
               <Minus className="w-4 h-4" />
             </Button>
-            <span id="quantity" className="px-3 text-center font-medium text-sm">{quantity}</span>
+              <span id="quantity" className="px-3 text-center font-medium text-sm">{quantity}</span>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setQuantity(Math.min(product.stockCount, quantity + 1))}
-              disabled={quantity >= product.stockCount}
+              onClick={() => setQuantity(Math.min(displayStock, quantity + 1))}
+              disabled={quantity >= displayStock}
               className="h-9 w-9"
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
           <div className="text-xs text-muted-foreground">
-            {product.stockCount} pieces available
+            {displayStock} pieces available
           </div>
         </div>
 

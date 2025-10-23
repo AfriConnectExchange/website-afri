@@ -25,8 +25,7 @@ import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
 import { useAuth } from '@/context/auth-context';
-import allProducts from '@/data/mock-products.json';
-import allCategories from '@/data/mock-categories.json';
+// Removed mock data imports; load from API instead
 
 export interface Product {
   id: string;
@@ -111,8 +110,7 @@ export default function MarketplacePage() {
 
   const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
-    
-    let filteredProducts: Product[] = [...allProducts] as unknown as Product[];
+    let filteredProducts: Product[] = [...products];
 
     // Smart search query
     if (currentFilters.searchQuery.length >= 3) {
@@ -132,7 +130,7 @@ export default function MarketplacePage() {
 
     // Category
     if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-      const selectedCategoryName = allCategories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
+      const selectedCategoryName = categories.find((c: Category) => c.id === currentFilters.selectedCategories[0])?.name;
       if (selectedCategoryName) {
         filteredProducts = filteredProducts.filter(p => p.category === selectedCategoryName);
       }
@@ -175,12 +173,28 @@ export default function MarketplacePage() {
     
     setProducts(filteredProducts);
     setTotalProducts(filteredProducts.length);
-    setCategories(allCategories as Category[]);
     setLoading(false);
 
   }, []);
   
   useEffect(() => {
+    (async () => {
+      setLoading(true)
+      try {
+        const catsRes = await fetch('/api/categories')
+        const catsJson = await catsRes.json()
+        setCategories(catsJson || [])
+
+        const productsRes = await fetch('/api/categories/all/products')
+        const productsJson = await productsRes.json()
+        setProducts(productsJson || [])
+        setTotalProducts((productsJson || []).length)
+      } catch (err) {
+        console.error('Home load error', err)
+      } finally {
+        setLoading(false)
+      }
+    })()
     fetchProducts(filters, sortBy);
   }, [fetchProducts, filters, sortBy]);
 

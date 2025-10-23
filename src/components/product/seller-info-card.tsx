@@ -20,6 +20,15 @@ interface SellerInfoCardProps {
 }
 
 export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
+  // Defensive defaults if sellerDetails is missing or partial
+  const name = sellerDetails?.name ?? 'Unknown Seller';
+  const avatarSrc = sellerDetails?.avatar ?? undefined;
+  const location = sellerDetails?.location ?? 'Unknown location';
+  const verified = !!sellerDetails?.verified;
+  const rating = typeof sellerDetails?.rating === 'number' ? sellerDetails.rating : 0;
+  const totalSales = typeof sellerDetails?.totalSales === 'number' ? sellerDetails.totalSales : 0;
+  const memberSince = sellerDetails?.memberSince ?? 'N/A';
+
   return (
     <Card>
       <CardHeader>
@@ -28,17 +37,21 @@ export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
           <Avatar className="w-12 h-12">
-            <AvatarImage src={sellerDetails.avatar} />
-            <AvatarFallback>{sellerDetails.name.charAt(0)}</AvatarFallback>
+            {avatarSrc ? (
+              <AvatarImage src={avatarSrc} />
+            ) : (
+              <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+            )}
+            {!avatarSrc && <AvatarFallback>{name.charAt(0)}</AvatarFallback>}
           </Avatar>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm">{sellerDetails.name}</span>
-              {sellerDetails.verified && (
+              <span className="font-semibold text-sm">{name}</span>
+              {verified && (
                 <Badge variant="secondary" className="text-[10px]">Verified</Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">{sellerDetails.location}</p>
+            <p className="text-xs text-muted-foreground">{location}</p>
           </div>
         </div>
         
@@ -47,16 +60,16 @@ export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
             <span className="text-muted-foreground">Rating</span>
             <div className="flex items-center gap-1">
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span>{sellerDetails.rating}</span>
+              <span>{rating}</span>
             </div>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Sales</span>
-            <span>{sellerDetails.totalSales}</span>
+            <span>{totalSales}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Joined</span>
-            <span>{sellerDetails.memberSince}</span>
+            <span>{memberSince}</span>
           </div>
         </div>
         

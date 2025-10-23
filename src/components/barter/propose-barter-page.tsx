@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import mockProducts from '@/data/mock-products.json';
+// import mockProducts from '@/data/mock-products.json';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
@@ -30,12 +30,12 @@ export function ProposeBarterPage() {
             }
             setIsLoading(true);
             try {
-                // Use mock data directly
-                const product = mockProducts.find((p: Product) => p.id === productId);
-                if (!product) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Product not found.' });
+                const res = await fetch(`/api/products/${productId}`)
+                const json = await res.json()
+                if (!res.ok) {
+                    toast({ variant: 'destructive', title: 'Error', description: json?.error || 'Product not found.' });
                 } else {
-                    setTargetProduct(product);
+                    setTargetProduct(json as any as Product);
                 }
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load product.' });
