@@ -35,7 +35,7 @@ export function ProductCard({
       onNavigate('product', product.id);
       return;
     }
-    onAddToCart(product);
+  onAddToCart(product, 1);
   };
   
   const imageSrc = product.images && product.images.length > 0 ? product.images[0] : '';

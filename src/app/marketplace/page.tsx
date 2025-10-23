@@ -229,14 +229,18 @@ export default function MarketplacePage() {
   setTotalProducts(mapped.length)
   // Apply filters/sorting against the freshly mapped products
   fetchProducts(filters, sortBy, mapped)
+      
+        // dev debug: log first mapped product
+        try { console.debug('[marketplace] first mapped product', mapped && mapped[0]); } catch (e) {}
       } catch (err) {
         console.error('Marketplace load error', err)
       } finally {
         setLoading(false)
       }
     })()
-    fetchProducts(filters, sortBy);
-  }, [fetchProducts, filters, sortBy]);
+    // Intentionally only depend on filters & sortBy; we passed mapped products into fetchProducts above
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, sortBy]);
 
 
   const onNavigate = (page: string, productId?: string) => {

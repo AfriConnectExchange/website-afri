@@ -49,14 +49,30 @@ export function HeaderSearchBar({ onSearchPerformed }: HeaderSearchBarProps) {
         const json = await res.json()
         // Normalize the response to an array. Some endpoints may return
         // { data: [...] } or an error object; handle both safely.
-        const productsList = Array.isArray(json)
+        const productsListRaw = Array.isArray(json)
           ? json
           : Array.isArray(json?.data)
           ? json.data
           : [];
+
+        // Normalize/mapping to the UI-friendly product shape so downstream UI
+        // can rely on properties like name, category, images, price.
+        const productsList = (productsListRaw || []).map((p: any) => ({
+          id: p.id,
+          seller_id: p.seller_id || p.seller || null,
+          title: p.title || p.name || '',
+          name: p.title || p.name || 'Untitled Product',
+          description: p.description || '',
+          price: typeof p.price === 'number' ? p.price : Number(p.price) || 0,
+          currency: p.currency || '£',
+          images: Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []),
+          category: p.category_name || p.category || '',
+          tags: p.tags || [],
+        }));
         const searchTerms = query.toLowerCase().split(' ').filter(term => term);
         const filteredProducts = (productsList || []).filter((p: any) => {
           const productText = [
+            p.name,
             p.title,
             p.description,
             p.seller || p.sellerDetails?.name,

@@ -45,20 +45,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [cart]);
 
   const addToCart = useCallback((item: Product, quantity: number = 1) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
-      if (existingItem) {
-        // If item exists, update its quantity
-        return prevCart.map((cartItem) =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + quantity }
-            : cartItem
-        );
-      } else {
-        // If item doesn't exist, add it to the cart
-        return [...prevCart, { ...item, quantity }];
-      }
-    });
+    try {
+      setCart((prevCart) => {
+        const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
+        if (existingItem) {
+          // If item exists, update its quantity
+          return prevCart.map((cartItem) =>
+            cartItem.id === item.id
+              ? { ...cartItem, quantity: cartItem.quantity + quantity }
+              : cartItem
+          );
+        } else {
+          // If item doesn't exist, add it to the cart
+          return [...prevCart, { ...item, quantity }];
+        }
+      });
+
+      // Inform the user
+      toast({
+        title: 'Added to cart',
+        description: `${item.title || item.name || 'Item'} added to cart.`,
+      });
+    } catch (err: any) {
+      console.error('addToCart error', err);
+      toast({
+        variant: 'destructive',
+        title: 'Could not add to cart',
+        description: err?.message || 'An unexpected error occurred while adding to cart.',
+      });
+    }
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {

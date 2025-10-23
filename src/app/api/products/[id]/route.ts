@@ -20,7 +20,47 @@ export async function GET(_req: NextRequest, context: any) {
     }
 
     if (byId && byId.length > 0) {
-      return NextResponse.json(byId[0])
+      const p = byId[0];
+      // Enrich with seller and category
+      const { data: sellerData } = await supabase
+        .from('users')
+        .select('id, full_name, display_name, username, email, profile_picture_url')
+        .eq('id', p.seller_id)
+        .limit(1)
+
+      const { data: categoryData } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('id', p.category_id)
+        .limit(1)
+
+      const seller = sellerData && sellerData.length > 0 ? sellerData[0] : null;
+      const category = categoryData && categoryData.length > 0 ? categoryData[0] : null;
+
+      const normalized = {
+        id: p.id,
+        title: p.title,
+        name: p.title || p.name || 'Untitled Product',
+        description: p.description,
+        price: p.price !== null && p.price !== undefined ? Number(p.price) : 0,
+        currency: p.currency || 'GBP',
+        isFree: !!p.is_free,
+        quantity_available: p.quantity_available ?? 0,
+        stockCount: p.quantity_available ?? p.stockCount ?? 0,
+        images: Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []),
+        tags: p.tags || [],
+        average_rating: p.average_rating !== null && p.average_rating !== undefined ? Number(p.average_rating) : 0,
+        review_count: p.review_count ?? 0,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        seller_id: p.seller_id,
+  seller_name: seller ? (seller.full_name || seller.display_name || seller.username || seller.email) : null,
+  seller_avatar: seller ? seller.profile_picture_url : null,
+        category_id: p.category_id,
+        category_name: category ? category.name : null,
+      };
+
+      return NextResponse.json(normalized)
     }
 
     // Try by slug

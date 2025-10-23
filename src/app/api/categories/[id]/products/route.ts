@@ -39,8 +39,52 @@ export async function GET(_req: NextRequest, context: any) {
       return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
     }
 
-    // Return empty array instead of null
-    return NextResponse.json(data ?? [])
+    // If no products, return empty array
+    const products = data ?? [];
+
+    // Collect seller and category ids to enrich the product objects
+    const sellerIds = Array.from(new Set(products.map((p: any) => p.seller_id).filter(Boolean)));
+    const categoryIds = Array.from(new Set(products.map((p: any) => p.category_id).filter(Boolean)));
+
+    // Fetch sellers and categories in batch
+    const { data: sellers } = await supabase
+      .from('users')
+      .select('id, full_name, display_name, username, email, profile_picture_url')
+      .in('id', sellerIds || [])
+
+    const { data: categoriesData } = await supabase
+      .from('categories')
+      .select('id, name')
+      .in('id', categoryIds || [])
+
+    const sellerMap = (sellers || []).reduce((acc: any, s: any) => { acc[s.id] = s; return acc; }, {});
+    const categoryMap = (categoriesData || []).reduce((acc: any, c: any) => { acc[c.id] = c; return acc; }, {});
+
+    // Normalize/mapping for client
+    const normalized = (products || []).map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      name: p.title || p.name || 'Untitled Product',
+      description: p.description,
+      price: p.price !== null && p.price !== undefined ? Number(p.price) : 0,
+      currency: p.currency || 'GBP',
+      isFree: !!p.is_free,
+      quantity_available: p.quantity_available ?? 0,
+      stockCount: p.quantity_available ?? p.stockCount ?? 0,
+      images: Array.isArray(p.images) ? p.images : (p.images ? [p.images] : []),
+      tags: p.tags || [],
+      average_rating: p.average_rating !== null && p.average_rating !== undefined ? Number(p.average_rating) : 0,
+      review_count: p.review_count ?? 0,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+      seller_id: p.seller_id,
+  seller_name: sellerMap[p.seller_id] ? (sellerMap[p.seller_id].full_name || sellerMap[p.seller_id].display_name || sellerMap[p.seller_id].username || sellerMap[p.seller_id].email) : null,
+  seller_avatar: sellerMap[p.seller_id] ? (sellerMap[p.seller_id].profile_picture_url || null) : null,
+      category_id: p.category_id,
+      category_name: categoryMap[p.category_id] ? categoryMap[p.category_id].name : null,
+    }));
+
+    return NextResponse.json(normalized)
   } catch (err) {
     console.error('Category products GET error', err)
     return NextResponse.json({ error: 'Unexpected error' }, { status: 500 })

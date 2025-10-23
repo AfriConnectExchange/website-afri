@@ -21,5 +21,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Send welcome email asynchronously (don't block the response)
+  try {
+    const { sendWelcomeEmail } = await import('@/lib/welcome-email');
+    // fire-and-forget; errors are logged inside helper
+    sendWelcomeEmail(user.id).catch((e) => console.error('Welcome email failed:', e));
+  } catch (e) {
+    console.error('Failed to load welcome-email helper:', e);
+  }
+
   return NextResponse.json({ success: true });
 }
