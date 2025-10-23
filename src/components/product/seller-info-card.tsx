@@ -1,6 +1,7 @@
 
-'use client';
+ 'use client';
 
+import VerifiedIcon from '@mui/icons-material/Verified';
 import { Star, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,17 +39,21 @@ export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
         <div className="flex items-center gap-4">
           <Avatar className="w-12 h-12">
             {avatarSrc ? (
-              <AvatarImage src={avatarSrc} />
+              <AvatarImage src={avatarSrc} alt={`${name}'s avatar`} />
             ) : (
               <AvatarFallback>{name.charAt(0)}</AvatarFallback>
             )}
-            {!avatarSrc && <AvatarFallback>{name.charAt(0)}</AvatarFallback>}
           </Avatar>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm">{name}</span>
               {verified && (
-                <Badge variant="secondary" className="text-[10px]">Verified</Badge>
+                <VerifiedIcon
+                  role="img"
+                  aria-label="Verified seller"
+                  style={{ color: '#ff2d55', fontSize: 18 }}
+                  className="ml-1"
+                />
               )}
             </div>
             <p className="text-xs text-muted-foreground">{location}</p>

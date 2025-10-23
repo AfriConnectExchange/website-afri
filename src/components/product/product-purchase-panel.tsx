@@ -35,18 +35,20 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
   const displayStock = typeof product.stockCount === 'number' ? product.stockCount : 0;
 
   return (
-    <div className="space-y-4">
+  <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
       <div>
         <div className="flex items-center gap-2 mb-2">
-          {product.featured && <Badge className="bg-primary text-[10px] sm:text-xs">Featured</Badge>}
-          {product.discount && <Badge variant="destructive" className="text-[10px] sm:text-xs">-{product.discount}%</Badge>}
+          {Boolean(product.featured) && <Badge className="bg-primary text-[10px] sm:text-xs">Featured</Badge>}
+          {typeof product.discount === 'number' && product.discount > 0 && (
+            <Badge variant="destructive" className="text-[10px] sm:text-xs">-{product.discount}%</Badge>
+          )}
         </div>
         <h1 className="mb-2 text-2xl md:text-3xl font-bold leading-tight">{product.name}</h1>
         
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium text-sm">{displayRating.toFixed(1)}</span>
+            <span className="font-medium text-sm">{displayRating > 0 ? displayRating.toFixed(1) : '0.0'}</span>
             <span className="text-muted-foreground text-sm">({displayReviewCount} reviews)</span>
           </div>
         </div>
