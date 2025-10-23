@@ -1,4 +1,3 @@
-
 import nodemailer from 'nodemailer';
 import { logActivity } from './activity-logger';
 import { createServerClient } from './supabase/server';
@@ -15,8 +14,8 @@ const transporter = nodemailer.createTransport({
   port: Number(process.env.SMTP_PORT),
   secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.SMTP_USER ?? process.env.SMTP_USERNAME,
+    pass: process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD,
   },
 });
 

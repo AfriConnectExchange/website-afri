@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: Request) {
   const body = await request.json();
   const supabase = await createServerClient();
+  const supabaseAdmin = await import('@/lib/supabase/serverAdminClient').then(m => m.createServerAdminClient());
 
   const { data: { user }, error: userErr } = await supabase.auth.getUser();
   if (userErr || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   const refresh_token_hash = refresh_token ? await bcrypt.hash(refresh_token, 10) : null;
 
   // Upsert device_info
-  const { error: devErr } = await supabase.from('device_info').upsert({
+  const { error: devErr } = await (supabaseAdmin as any).from('device_info').upsert({
     device_id,
     user_id: user.id,
     device_type,
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
 
   // Create session row
   const expires_at = new Date(Date.now() + (remember ? 30 * 24 * 3600 * 1000 : 24 * 3600 * 1000));
-  const { data: sessionData, error: sessErr } = await supabase.from('user_sessions').insert({
+  const { data: sessionData, error: sessErr } = await (supabaseAdmin as any).from('user_sessions').insert({
     user_id: user.id,
     device_id,
     device_type,
