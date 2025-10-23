@@ -186,11 +186,14 @@ export default function MarketplacePage() {
         setCategories(catsJson || [])
 
         // If no category selected, load recent products
-        const productsRes = await fetch('/api/categories/all/products')
-        const productsJson = await productsRes.json()
+          const productsRes = await fetch('/api/products/list?page=1&per_page=24')
+          const productsJson = await productsRes.json()
 
-        // Map API product shape to the UI Product interface expected by ProductCard
-        const mapped = (productsJson || []).map((p: any) => ({
+          // productsJson is expected to be { items: [...], meta: { total, page, per_page } }
+          const items = Array.isArray(productsJson?.items) ? productsJson.items : []
+
+          // Map API product shape to the UI Product interface expected by ProductCard
+          const mapped = (items || []).map((p: any) => ({
           id: p.id,
           seller_id: p.seller_id || p.seller || null,
           title: p.title || p.name || '',
@@ -214,8 +217,10 @@ export default function MarketplacePage() {
           originalPrice: p.originalPrice || null,
           rating: p.average_rating ?? p.rating ?? 0,
           reviews: p.review_count ?? p.reviews ?? 0,
+          // Prefer seller_name (provided by active_products_view); fall back to any seller field or truncated id
           seller: p.seller_name || p.seller || (p.seller_id ? String(p.seller_id).slice(0,8) : 'Unknown'),
-          sellerVerified: !!p.sellerVerified,
+          // If view provides seller_rating use it to determine verified status heuristically or a provided boolean
+          sellerVerified: typeof p.seller_verified !== 'undefined' ? !!p.seller_verified : (p.seller_rating ? p.seller_rating >= 3.5 : false),
           image: Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : (typeof p.image === 'string' ? p.image : ''),
           category: p.category_name || p.category || '',
           featured: !!p.featured,

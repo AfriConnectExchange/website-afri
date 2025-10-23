@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 interface ProductCardProps {
   product: Product;
   onNavigate: (page: string, productId?: string) => void;
-  onAddToCart: (product: any) => void;
+  onAddToCart: (product: any, quantity?: number) => void;
   animationDelay?: number;
   currency?: string;
 }
@@ -67,12 +67,12 @@ export function ProductCard({
 
             <div className="absolute top-2 left-2 flex flex-col gap-1">
               {product.isFree && <FreeListingBadge variant="compact" />}
-              {product.featured && !product.isFree && (
+              {Boolean(product.featured) && !product.isFree && (
                 <Badge className="bg-primary text-white text-[10px] h-5">
                   Featured
                 </Badge>
               )}
-              {product.discount && !product.isFree && (
+              {typeof product.discount === 'number' && product.discount > 0 && !product.isFree && (
                 <Badge variant="destructive" className="text-[10px] h-5">
                   -{product.discount}%
                 </Badge>
