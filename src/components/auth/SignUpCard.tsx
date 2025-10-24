@@ -17,12 +17,14 @@ import { PasswordStrength } from './PasswordStrength';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { createSPAClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 type Props = {};
 
 export default function SignUpCard({}: Props) {
   const { signUp } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [signupMethod, setSignupMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
@@ -81,7 +83,7 @@ export default function SignUpCard({}: Props) {
               // ignore storage failures (private mode etc.)
             }
             // Navigate to the verify page after showing toast/state
-            window.location.href = '/auth/verify-email';
+            router.push('/auth/verify-email');
         } else {
             // Real Supabase phone signup logic would go here
             showAlert('destructive', 'Not Implemented', 'Phone sign-up is not yet implemented.');

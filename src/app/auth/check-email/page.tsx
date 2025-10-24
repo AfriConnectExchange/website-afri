@@ -1,10 +1,11 @@
 
 "use client";
 
-import SignInCard from '@/components/auth/SignInCard';
+import CheckEmailCard from '@/components/auth/CheckEmailCard';
 import { Card, CardContent } from '@/components/ui/card';
 
-export default function SignInPage() {
+
+export default function CheckEmailPage() {
   return (
     <div className="w-full min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm">
@@ -15,14 +16,14 @@ export default function SignInPage() {
                     </div>
                     <span className="text-lg sm:text-2xl font-bold">AfriConnect Exchange</span>
                 </div>
-                <h1 className="text-xl font-semibold mb-2">Welcome Back</h1>
+                <h1 className="text-xl font-semibold mb-2">Check Your Email</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Sign in to your account to continue.
+                  We've sent a password reset link to your email.
                 </p>
             </div>
             <Card>
                 <CardContent className="p-6">
-                    <SignInCard />
+                    <CheckEmailCard />
                 </CardContent>
             </Card>
         </div>

@@ -1,121 +1,71 @@
 
 'use client';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Mail, MailCheck } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Mail } from 'lucide-react';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { AnimatedButton } from '../ui/animated-button';
-import { createSPAClient } from '@/lib/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 
-const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email.' }),
-});
+type Props = {};
 
-export function ForgotPasswordForm() {
+export default function ForgotPasswordForm({}: Props) {
+  const { sendPasswordResetEmail } = useAuth();
   const { toast } = useToast();
-  const supabase = createSPAClient();
+  const router = useRouter();
+
   const [isLoading, setIsLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [email, setEmail] = useState('');
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { email: '' },
-  });
+  const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
+    toast({ variant, title, description });
+  };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
+    
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      if (error) throw error;
-       toast({
-        title: 'Password Reset Link Sent',
-        description:
-          'If an account exists for this email, you will receive a password reset link.',
-      });
-      setEmailSent(true);
+        await sendPasswordResetEmail(email);
+        showAlert('default', 'Check your email', `A password reset link has been sent to ${email}.`);
+        localStorage.setItem('afri:pending_verification_email', email);
+        router.push('/auth/check-email');
     } catch (error: any) {
-        toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message,
-      });
+        showAlert('destructive', 'Error', error.message);
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
-  }
-
-  if(emailSent) {
-    return (
-       <Card>
-        <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-                 <MailCheck className="w-16 h-16 text-green-500" />
-            </div>
-            <CardTitle>Check Your Email</CardTitle>
-            <CardDescription>
-                A password reset link has been sent to <strong>{form.getValues('email')}</strong>. Please check your inbox.
-            </CardDescription>
-        </CardHeader>
-       </Card>
-    )
-  }
-
+  };
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Forgot Password</CardTitle>
-        <CardDescription>
-          Enter your email and we'll send you a link to reset your password.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="you@example.com"
-                        {...field}
-                        className="pl-10"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <AnimatedButton type="submit" className="w-full" isLoading={isLoading}>
-              Send Reset Link
-            </AnimatedButton>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+      <form onSubmit={handlePasswordReset} className="space-y-4">
+          <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  className="pl-10"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+              />
+              </div>
+          </div>
+        
+        <AnimatedButton
+          type="submit"
+          size="lg"
+          className="w-full mt-6"
+          isLoading={isLoading}
+          animationType="glow"
+        >
+          Send Reset Link
+        </AnimatedButton>
+      </form>
   );
 }

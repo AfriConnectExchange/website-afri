@@ -26,6 +26,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (data: Partial<SupabaseUser>) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
+  resetPassword: (password: string) => Promise<void>;
   handleNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
   handleOtpSuccess: (user: SupabaseUser) => void;
 }
@@ -171,6 +173,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   }, [supabase, router]);
 
+  const sendPasswordResetEmail = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+  }, [supabase]);
+
+  const resetPassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      throw new Error(error.message);
+    }
+  }, [supabase]);
+
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     router.push('/auth/signin');
@@ -222,9 +240,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     updateUser,
     signUp,
+    sendPasswordResetEmail,
+    resetPassword,
     handleNeedsOtp,
     handleOtpSuccess
-  }), [isLoading, user, profile, login, logout, updateUser, signUp]);
+  }), [isLoading, user, profile, login, logout, updateUser, signUp, sendPasswordResetEmail, resetPassword]);
 
   return (
     <AuthContext.Provider value={value}>

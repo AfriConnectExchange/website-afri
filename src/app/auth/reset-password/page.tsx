@@ -1,27 +1,32 @@
 
-import { ResetPasswordForm } from '@/components/auth/reset-password-form';
-import { Logo } from '@/components/logo';
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+"use client";
+
+import ResetPasswordForm from '@/components/auth/reset-password-form';
+import { Card, CardContent } from '@/components/ui/card';
+
 
 export default function ResetPasswordPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="flex justify-center">
-          <Logo />
+    <div className="w-full min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm">
+            <div className="text-center mb-6">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center">
+                        <span className="text-primary-foreground font-bold text-base sm:text-lg">AE</span>
+                    </div>
+                    <span className="text-lg sm:text-2xl font-bold">AfriConnect Exchange</span>
+                </div>
+                <h1 className="text-xl font-semibold mb-2">Reset Your Password</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Choose a new password for your account.
+                </p>
+            </div>
+            <Card>
+                <CardContent className="p-6">
+                    <ResetPasswordForm />
+                </CardContent>
+            </Card>
         </div>
-        <ResetPasswordForm />
-         <div className="text-center text-sm">
-          <Link
-            href="/auth"
-            className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-primary"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to Login
-          </Link>
-        </div>
-      </div>
-    </main>
+    </div>
   );
 }
