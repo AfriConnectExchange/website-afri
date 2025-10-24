@@ -3,10 +3,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
-import { CartProvider } from '@/context/cart-context';
 import ConditionalFooter from '@/components/layout/ConditionalFooter';
-
-import { AuthProvider } from '@/context/auth-context';
+import { CartProvider } from '@/context/cart-context';
 
 
 export const metadata: Metadata = {
@@ -19,13 +17,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Only show footer on main content pages
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const hideFooterRoutes = [
-    '/auth', '/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email',
-    '/onboarding', '/kyc', '/support', '/help', '/error', '/not-found'
-  ];
-  const shouldHideFooter = hideFooterRoutes.some(route => pathname.startsWith(route));
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -41,7 +32,6 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased flex flex-col'
         )}
       >
-        <AuthProvider>
           <CartProvider>
             <div className="flex-1">
               {children}
@@ -49,7 +39,6 @@ export default function RootLayout({
             <ConditionalFooter />
             <Toaster />
           </CartProvider>
-        </AuthProvider>
       </body>
     </html>
   );
