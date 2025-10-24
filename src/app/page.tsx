@@ -25,8 +25,7 @@ import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
 import { useAuth } from '@/context/auth-context';
-// Removed mock data imports; load from API instead
-
+import qs from 'qs';
 export interface Product {
   id: string;
   seller_id: string;
@@ -108,95 +107,79 @@ export default function MarketplacePage() {
     freeListingsOnly: false,
   });
 
-  const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
+  const fetchProducts = useCallback(async (currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
-    let filteredProducts: Product[] = [...products];
-
-    // Smart search query
-    if (currentFilters.searchQuery.length >= 3) {
-      const searchTerms = currentFilters.searchQuery.toLowerCase().split(' ').filter(term => term);
-      filteredProducts = filteredProducts.filter(p => {
-        const productText = [
-          p.title,
-          p.description,
-          p.seller,
-          p.category,
-          ...(p.tags || [])
-        ].join(' ').toLowerCase();
-
-        return searchTerms.some(term => productText.includes(term));
-      });
+    setSearchError('');
+    
+    // Validate search query
+    if (currentFilters.searchQuery && currentFilters.searchQuery.length > 0 && currentFilters.searchQuery.length < 3) {
+      setSearchError('Please enter at least 3 letters or numbers.');
+      setProducts([]);
+      setTotalProducts(0);
+      setLoading(false);
+      return;
     }
 
-    // Category
-    if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-      const selectedCategoryName = categories.find((c: Category) => c.id === currentFilters.selectedCategories[0])?.name;
-      if (selectedCategoryName) {
-        filteredProducts = filteredProducts.filter(p => p.category === selectedCategoryName);
+    try {
+      const queryParams = {
+        searchQuery: currentFilters.searchQuery || undefined,
+        selectedCategories: currentFilters.selectedCategories.join(','),
+        minPrice: currentFilters.priceRange.min,
+        maxPrice: currentFilters.priceRange.max,
+        verifiedSellersOnly: currentFilters.verifiedSellersOnly,
+        freeListingsOnly: currentFilters.freeListingsOnly,
+        sortBy: currentSortBy,
+      };
+
+      const res = await fetch(`/api/products?${qs.stringify(queryParams, { skipNulls: true })}`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch products: ${res.statusText}`);
       }
-    }
 
-    // Price range
-    if (currentFilters.priceRange.min !== null) {
-      filteredProducts = filteredProducts.filter(p => p.price >= currentFilters.priceRange.min!);
-    }
-    if (currentFilters.priceRange.max !== null) {
-      filteredProducts = filteredProducts.filter(p => p.price <= currentFilters.priceRange.max!);
-    }
+      const { products: fetchedProducts, totalProducts: fetchedTotal } = await res.json();
+      setProducts(fetchedProducts || []);
+      setTotalProducts(fetchedTotal || 0);
 
-    // Free listings
-    if (currentFilters.freeListingsOnly) {
-      filteredProducts = filteredProducts.filter(p => p.price === 0);
+    } catch (err: any) {
+      console.error('Fetch products error:', err);
+      setSearchError(err.message || 'An error occurred while fetching products.');
+      setProducts([]);
+      setTotalProducts(0);
+    } finally {
+      setLoading(false);
     }
-    
-    // Verified sellers
-    if (currentFilters.verifiedSellersOnly) {
-        filteredProducts = filteredProducts.filter(p => p.sellerVerified === true);
-    }
-
-    // Sorting
-    switch (currentSortBy) {
-      case 'price_asc':
-        filteredProducts.sort((a, b) => a.price - b.price);
-        break;
-      case 'price_desc':
-        filteredProducts.sort((a, b) => b.price - a.price);
-        break;
-      case 'average_rating_desc':
-        filteredProducts.sort((a, b) => b.average_rating - a.average_rating);
-        break;
-      case 'created_at_desc':
-      default:
-        filteredProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
-    }
-    
-    setProducts(filteredProducts);
-    setTotalProducts(filteredProducts.length);
-    setLoading(false);
-
   }, []);
   
   useEffect(() => {
-    (async () => {
-      setLoading(true)
-      try {
-        const catsRes = await fetch('/api/categories')
-        const catsJson = await catsRes.json()
-        setCategories(catsJson || [])
+    const fetchInitialData = async () => {
+        setLoading(true);
+        try {
+            const categoriesRes = await fetch('/api/categories');
+            if (!categoriesRes.ok) throw new Error('Failed to load categories');
+            const categoriesJson = await categoriesRes.json();
+            setCategories(categoriesJson || []);
+        } catch (err) {
+            console.error('Home load error', err);
+            toast({
+                title: 'Error Loading Categories',
+                description: 'Could not load filter options. Please try refreshing.',
+                variant: 'destructive',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        const productsRes = await fetch('/api/categories/all/products')
-        const productsJson = await productsRes.json()
-        setProducts(productsJson || [])
-        setTotalProducts((productsJson || []).length)
-      } catch (err) {
-        console.error('Home load error', err)
-      } finally {
-        setLoading(false)
-      }
-    })()
-    fetchProducts(filters, sortBy);
-  }, [fetchProducts, filters, sortBy]);
+    fetchInitialData();
+  }, [toast]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchProducts(filters, sortBy);
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [filters, sortBy, fetchProducts]);
 
 
   const onNavigate = (page: string, productId?: string) => {
@@ -219,30 +202,14 @@ export default function MarketplacePage() {
     addToCart(product);
   };
 
-  // Handle search with validation (US014)
   const handleSearch = (query: string) => {
-    setSearchError('');
-    if (query.length > 0 && query.length < 3) {
-      setSearchError('Please enter at least 3 letters or numbers.');
-      // Do not search if query is invalid, but update the filter state so input shows the value
-      setFilters(prev => ({ ...prev, searchQuery: query }));
-      return;
-    }
-    const alphanumericCount = query.replace(/[^a-zA-Z0-9]/g, '').length;
-    if (query.length > 0 && alphanumericCount < 3) {
-      setSearchError('Please enter at least 3 letters or numbers.');
-      setFilters(prev => ({ ...prev, searchQuery: query }));
-      return;
-    }
     setFilters(prev => ({ ...prev, searchQuery: query }));
   };
 
-  // Handle filter changes
   const handleFiltersChange = (newFilters: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
-  // Clear all filters
   const handleClearAllFilters = () => {
     setFilters({
       searchQuery: '',
@@ -258,17 +225,22 @@ export default function MarketplacePage() {
   };
 
   const getNoResultsMessage = () => {
-    if (filters.searchQuery.length >= 3) {
-      return 'No products found. Try a different keyword.'; // US014-AC02
-    }
-    if (filters.selectedCategories.length > 0) {
-      return 'No products found in this category.'; // US015-AC02
-    }
-    if (filters.priceRange.min !== null || filters.priceRange.max !== null) {
-      return 'No products found in this price range.'; // US016-AC03
-    }
-    if (filters.freeListingsOnly) {
-      return 'No free products found.'; // US017-AC02
+    if (loading) return 'Loading products...';
+    if (searchError) return searchError;
+    if (totalProducts === 0) {
+      if (filters.searchQuery.length >= 3) {
+        return 'No products found. Try a different keyword.';
+      }
+      if (filters.selectedCategories.length > 0) {
+        return 'No products found in this category.';
+      }
+      if (filters.priceRange.min !== null || filters.priceRange.max !== null) {
+        return 'No products found in this price range.';
+      }
+      if (filters.freeListingsOnly) {
+        return 'No free products found.';
+      }
+      return 'No products match your current filters. Try clearing some.';
     }
     return 'No products match your current filters.';
   };
@@ -401,4 +373,3 @@ export default function MarketplacePage() {
   );
 }
 
-    

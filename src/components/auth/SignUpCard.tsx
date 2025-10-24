@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
+import { Mail, Eye, EyeOff, User } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
 import { Input } from '../ui/input';
@@ -9,24 +9,18 @@ import { Label } from '../ui/label';
 import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import 'react-phone-number-input/style.css';
-import PhoneInput from 'react-phone-number-input';
 import { Checkbox } from '../ui/checkbox';
 import { PasswordStrength } from './PasswordStrength';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
-import { createSPAClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 type Props = {};
 
 export default function SignUpCard({}: Props) {
-  const { signUp } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const [signupMethod, setSignupMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +28,6 @@ export default function SignUpCard({}: Props) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
     acceptTerms: false,
@@ -46,17 +39,18 @@ export default function SignUpCard({}: Props) {
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    const supabase = createSPAClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-            redirectTo: `${window.location.origin}/auth/callback`
-        }
-    });
-    if (error) {
-        showAlert('destructive', `Sign-up with ${provider} failed`, error.message);
+    try {
+      const result = await signIn(provider, { redirect: false, callbackUrl: '/' });
+      if (result?.error) {
+        showAlert('destructive', `Sign-up with ${provider} failed`, result.error);
+      } else {
+        router.push('/');
+      }
+    } catch (err: any) {
+      showAlert('destructive', `Sign-up with ${provider} failed`, err?.message ?? String(err));
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -73,21 +67,35 @@ export default function SignUpCard({}: Props) {
     setIsLoading(true);
     
     try {
-        if (signupMethod === 'email') {
-            await signUp(formData.email, formData.password);
-            // Show success feedback and persist email for the verify page to read
-            showAlert('default', 'Check your email', `We sent a verification link to ${formData.email}`);
-            try {
-              localStorage.setItem('afri:pending_verification_email', formData.email);
-            } catch (e) {
-              // ignore storage failures (private mode etc.)
-            }
-            // Navigate to the verify page after showing toast/state
-            router.push('/auth/verify-email');
-        } else {
-            // Real Supabase phone signup logic would go here
-            showAlert('destructive', 'Not Implemented', 'Phone sign-up is not yet implemented.');
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Something went wrong');
         }
+
+        const result = await signIn('email', {
+          redirect: false,
+          email: formData.email,
+        });
+
+        if (result?.error) {
+          showAlert('destructive', 'Sign-up Failed', result.error);
+        } else {
+          localStorage.setItem('afri:pending_verification_email', formData.email);
+          router.push('/auth/verify-email');
+        }
+
     } catch (error: any) {
         showAlert('destructive', 'Sign-up Failed', error.message);
     } finally {
@@ -120,50 +128,28 @@ export default function SignUpCard({}: Props) {
 
         <div className="flex items-center my-6">
             <Separator className="flex-1" />
-            <span className="mx-4 text-xs text-muted-foreground">OR SIGN UP WITH</span>
+            <span className="mx-4 text-xs text-muted-foreground">OR SIGN UP WITH EMAIL</span>
             <Separator className="flex-1" />
         </div>
 
           <form onSubmit={handleSignUp} className="space-y-4">
-            <Tabs defaultValue="email" onValueChange={setSignupMethod} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="email">Email</TabsTrigger>
-                  <TabsTrigger value="phone">Phone</TabsTrigger>
-              </TabsList>
-              <TabsContent value="email" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                          id="email"
-                          type="email"
-                          placeholder="Enter your email"
-                          className="pl-10"
-                          value={formData.email}
-                          onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, email: e.target.value }))
-                          }
-                          required={signupMethod === 'email'}
-                      />
-                      </div>
-                  </div>
-              </TabsContent>
-              <TabsContent value="phone" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <PhoneInput
-                          id="phone"
-                          placeholder="Enter your phone number"
-                          international
-                          defaultCountry="GB"
-                          value={formData.phone}
-                          onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
-                          required={signupMethod === 'phone'}
-                      />
-                  </div>
-              </TabsContent>
-           </Tabs>
+            <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    className="pl-10"
+                    value={formData.email}
+                    onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                    required
+                />
+                </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
@@ -263,7 +249,7 @@ export default function SignUpCard({}: Props) {
               isLoading={isLoading}
               animationType="glow"
             >
-              {signupMethod === 'phone' ? 'Send OTP' : 'Create Account'}
+              Create Account
             </AnimatedButton>
           </form>
           <div className="mt-6 text-center space-y-2">

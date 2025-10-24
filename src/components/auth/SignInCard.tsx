@@ -1,6 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
+import { signIn } from 'next-auth/react';
 import { Mail, Eye, EyeOff } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
@@ -10,13 +11,13 @@ import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
-
+import { useRouter } from 'next/navigation';
 
 type Props = {};
 
 export default function SignInCard({}: Props) {
-  const { login } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,21 +34,11 @@ export default function SignInCard({}: Props) {
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
     try {
-      // dynamic import so we don't pull the Supabase client at module init
-      const mod = await import('@/lib/supabase/client');
-      const createClient = mod.createSPAClient ?? mod.default?.createSPAClient;
-      if (!createClient) throw new Error('Supabase client factory not found');
-
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        showAlert('destructive', `Sign-in with ${provider} failed`, error.message);
+      const result = await signIn(provider, { redirect: false, callbackUrl: '/' });
+      if (result?.error) {
+        showAlert('destructive', `Sign-in with ${provider} failed`, result.error);
+      } else {
+        router.push('/');
       }
     } catch (err: any) {
       showAlert('destructive', `Sign-in with ${provider} failed`, err?.message ?? String(err));
@@ -61,8 +52,23 @@ export default function SignInCard({}: Props) {
     setIsLoading(true);
     
     try {
-        await login(formData.email, formData.password);
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (result?.error) {
+        if (result.error === 'Please verify your email before signing in.') {
+            localStorage.setItem('afri:pending_verification_email', formData.email);
+            router.push('/auth/verify-email');
+        } else {
+            showAlert('destructive', 'Sign-in Failed', result.error);
+        }
+      } else {
         showAlert('default', 'Sign-in Successful', 'Welcome back!');
+        router.push('/');
+      }
     } catch (error: any) {
         showAlert('destructive', 'Sign-in Failed', error.message);
     } finally {
