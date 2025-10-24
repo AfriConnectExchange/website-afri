@@ -1,8 +1,15 @@
-// Supabase removed — provide lightweight client stubs so frontend code that
-// imports these functions does not crash. These stubs intentionally do no real
-// auth or storage work.
+// Lightweight supabase client factory.
+// If NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are provided,
+// return a real Supabase client that performs network requests. Otherwise
+// return a stub client that avoids making network calls (useful for local
+// dev without secrets).
 
-export function createSPAClient() {
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function createStubClient(): any {
     const noOp = async () => ({ data: null, error: null });
 
     const queryBuilder: any = {
@@ -33,13 +40,39 @@ export function createSPAClient() {
     } as any;
 }
 
+let cachedClient: SupabaseClient | any | null = null;
+
+export function createSPAClient(): SupabaseClient | any {
+    // Return cached instance when available to avoid creating multiple
+    // GoTrueClient instances in the same browser context which causes
+    // the "Multiple GoTrueClient instances detected" warnings and can
+    // lead to undefined behavior.
+    if (cachedClient) return cachedClient;
+
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        // Create a real Supabase client for browser/SPA usage
+        cachedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                detectSessionInUrl: true,
+            },
+        });
+        return cachedClient;
+    }
+
+    // Fallback stub with a warning so developers know why no network calls occur.
+    if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.warn('Supabase env vars not set (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY). Using stub client — no network requests will be made.');
+    }
+    cachedClient = createStubClient();
+    return cachedClient;
+}
+
 export async function createSPASassClient() {
-    const client = createSPAClient();
-    return client as any;
+    return createSPAClient() as any;
 }
 
 export async function createSPASassClientAuthenticated() {
-    const client = createSPAClient();
-    // Auth is stubbed — redirecting would be unexpected here; return the stub.
-    return client as any;
+    return createSPAClient() as any;
 }

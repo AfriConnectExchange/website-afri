@@ -45,17 +45,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(userProfile as UserProfile | null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          const { data: userProfile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          if (profileError) {
+            console.error('Error fetching initial user profile', profileError);
+          }
+          setProfile(userProfile as UserProfile | null);
+        }
+      } catch (err) {
+        console.error('getInitialSession failed', err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     getInitialSession();
@@ -148,7 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email = emailOrOptions.email;
       pwd = emailOrOptions.password;
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pwd ?? '' });
+    const result = await supabase.auth.signInWithPassword({ email, password: pwd ?? '' });
+    // Log the full response for debugging (inspect `data` and `error`)
+    // eslint-disable-next-line no-console
+    console.debug('signInWithPassword result:', result);
+    const { error } = result;
     if (error) {
       throw new Error(error.message);
     }
