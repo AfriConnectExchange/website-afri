@@ -246,12 +246,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("[v0] signInWithPassword error:", error)
           throw new Error(error.message)
         }
+        router.push("/")
       } catch (err) {
         console.error("[v0] signInWithPassword threw:", err)
         throw err
       }
     },
-    [supabase],
+    [supabase, router],
   )
 
   const signUp = useCallback(
