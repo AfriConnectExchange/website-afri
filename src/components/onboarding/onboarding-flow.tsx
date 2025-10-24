@@ -1,112 +1,128 @@
-
-'use client';
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { WelcomeStep } from './welcome-step';
-import { RoleSelectionStep } from './role-selection-step';
-import { PersonalDetailsStep } from './personal-details-step';
-import { FinalStep } from './final-step';
-import { Progress } from '../ui/progress';
-import { Logo } from '../logo';
-import { useToast } from '../../hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
-
+"use client"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { WelcomeStep } from "./welcome-step"
+import { RoleSelectionStep } from "./role-selection-step"
+import { PersonalDetailsStep } from "./personal-details-step"
+import { FinalStep } from "./final-step"
+import { Progress } from "../ui/progress"
+import { Logo } from "../logo"
+import { useToast } from "../../hooks/use-toast"
+import { useAuth } from "@/context/auth-context"
+import { createSPAClient } from "@/lib/supabase/client"
 
 export function OnboardingFlow() {
-  const { user, updateUser } = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(0);
+  const { user, updateUser } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [currentStep, setCurrentStep] = useState(0)
 
   const [userData, setUserData] = useState({
-    primary_role: 'buyer',
-    full_name: '',
-    phone_number: '',
-    location: '',
-  });
+    primary_role: "buyer",
+    full_name: "",
+    phone_number: "",
+    location: "",
+  })
 
   useEffect(() => {
-    if(user) {
-        setUserData((prev) => ({
-          ...prev,
-          full_name: user.fullName || user.email || '',
-          phone_number: '',
-          primary_role: user.roles?.[0] || 'buyer',
-        }));
-      }
-  }, [user]);
+    if (user) {
+      setUserData((prev) => ({
+        ...prev,
+        full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "",
+        phone_number: "",
+        primary_role: user.user_metadata?.roles?.[0] || "buyer",
+      }))
+    }
+  }, [user])
 
   const handleRoleSelection = async (data: { role: string }) => {
-    const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
-    handleUpdateUserData({ primary_role: role });
+    const role = data.role as "buyer" | "seller" | "sme" | "trainer"
+    handleUpdateUserData({ primary_role: role })
 
-    if (role === 'buyer') {
-      setCurrentStep((prev) => prev + 1);
+    if (role === "buyer") {
+      setCurrentStep((prev) => prev + 1)
     } else {
-       if (user) {
-          try {
-            updateUser({ roles: [role] });
-          } catch(error: any) {
-              toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
-              return;
-          }
+      if (user) {
+        try {
+          updateUser({ data: { roles: [role] } })
+        } catch (error: any) {
+          toast({ variant: "destructive", title: "Failed to Save Role", description: error.message })
+          return
+        }
       }
       toast({
-        title: 'Seller Verification Required',
+        title: "Seller Verification Required",
         description: "You'll be redirected to complete your seller profile.",
-      });
-      router.push('/kyc');
+      })
+      router.push("/kyc")
     }
-  };
+  }
 
   const handleOnboardingComplete = async (data: {
-    full_name: string;
-    phone_number: string;
-    location: string;
+    full_name: string
+    phone_number: string
+    location: string
   }) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-      return;
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in." })
+      return
     }
 
-    // Show a submitting state while we persist
     try {
-      // Local UI update
-      updateUser({ 
-          fullName: data.full_name,
-          roles: [userData.primary_role],
-      });
+      const supabase = createSPAClient()
 
-      // Persist onboarding progress to the server with a short-loading UI
-      toast({ title: 'Finishing setup', description: 'We are saving your profile and finishing setup.' });
-      const resp = await fetch('/api/onboarding/complete', { method: 'POST' });
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}));
-        throw new Error(body?.error || 'Failed to persist onboarding progress');
+      // Update user profile in database with personal details
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          full_name: data.full_name,
+          phone: data.phone_number,
+          address: data.location,
+          roles: [userData.primary_role],
+          status: "active",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+
+      if (updateError) {
+        throw new Error(updateError.message)
       }
 
-      // move to the final step which shows a spinner and redirects
-      setCurrentStep((prev) => prev + 1);
-    } catch(error: any) {
-      toast({ variant: 'destructive', title: 'Failed to Save Profile', description: error.message });
-    }
-  };
+      // Persist onboarding progress to the server
+      toast({ title: "Finishing setup", description: "We are saving your profile and finishing setup." })
+      const resp = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        credentials: "include",
+      })
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error(body?.error || "Failed to persist onboarding progress")
+      }
 
-  const handleBack = () => setCurrentStep((prev) => prev - 1);
+      // Move to the final step which shows a spinner and redirects
+      setCurrentStep((prev) => prev + 1)
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Failed to Save Profile", description: error.message })
+    }
+  }
+
+  const handleBack = () => setCurrentStep((prev) => prev - 1)
 
   const handleUpdateUserData = (data: Partial<typeof userData>) => {
-    setUserData((prev) => ({ ...prev, ...data }));
-  };
-  
+    setUserData((prev) => ({ ...prev, ...data }))
+  }
+
   const steps = [
-    <WelcomeStep onNext={() => setCurrentStep(1)} />,
+    <WelcomeStep key="welcome-step" onNext={() => setCurrentStep(1)} />,
     <RoleSelectionStep
+      key="role-selection-step"
       onNext={handleRoleSelection}
       onBack={handleBack}
-      onUpdate={(data) => handleUpdateUserData({ primary_role: data.role as 'buyer' | 'seller' | 'sme' | 'trainer' })}
+      onUpdate={(data) => handleUpdateUserData({ primary_role: data.role as "buyer" | "seller" | "sme" | "trainer" })}
       currentValue={String(userData.primary_role)}
     />,
     <PersonalDetailsStep
+      key="personal-details-step"
       onNext={handleOnboardingComplete}
       onBack={handleBack}
       defaultValues={{
@@ -115,10 +131,10 @@ export function OnboardingFlow() {
         location: userData.location,
       }}
     />,
-    <FinalStep />,
-  ];
+    <FinalStep key="final-step" />,
+  ]
 
-  const progressValue = (currentStep / (steps.length - 1)) * 100;
+  const progressValue = (currentStep / (steps.length - 1)) * 100
 
   return (
     <div className="bg-card rounded-2xl shadow-xl border p-4 sm:p-8 w-full">
@@ -127,9 +143,7 @@ export function OnboardingFlow() {
         <h1 className="text-2xl font-bold">AfriConnect Exchange</h1>
       </div>
       <Progress value={progressValue} className="mb-8" />
-      <div className="min-h-[400px] flex flex-col justify-center">
-        {steps[currentStep]}
-      </div>
+      <div className="min-h-[400px] flex flex-col justify-center">{steps[currentStep]}</div>
     </div>
-  );
+  )
 }
