@@ -3,14 +3,13 @@
 import { Header } from '@/components/dashboard/header';
 import { MyOrdersPage } from '@/components/orders/my-orders-page';
 import { PageLoader } from '@/components/ui/loader';
-import { createSPAClient } from '@/lib/supabase/client';
+
 import { useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 
 export default function OrdersPage() {
   const supabase = createSPAClient();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const router = useRouter();
 

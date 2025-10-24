@@ -10,8 +10,7 @@ import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
-import { createSPAClient } from '@/lib/supabase/client';
+
 
 type Props = {};
 
@@ -33,17 +32,28 @@ export default function SignInCard({}: Props) {
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    const supabase = createSPAClient();
-    const { error } = await supabase.auth.signInWithOAuth({
+    try {
+      // dynamic import so we don't pull the Supabase client at module init
+      const mod = await import('@/lib/supabase/client');
+      const createClient = mod.createSPAClient ?? mod.default?.createSPAClient;
+      if (!createClient) throw new Error('Supabase client factory not found');
+
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-            redirectTo: `${window.location.origin}/auth/callback`
-        }
-    });
-    if (error) {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
         showAlert('destructive', `Sign-in with ${provider} failed`, error.message);
+      }
+    } catch (err: any) {
+      showAlert('destructive', `Sign-in with ${provider} failed`, err?.message ?? String(err));
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {

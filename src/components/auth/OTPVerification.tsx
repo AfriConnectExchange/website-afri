@@ -4,11 +4,10 @@ import React, { useState, useRef, ChangeEvent, KeyboardEvent, useEffect } from '
 import { AnimatedButton } from '../ui/animated-button';
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { type User } from '@supabase/supabase-js';
 
 interface Props {
   phone: string;
-  onAuthSuccess: (user: User) => void;
+  onAuthSuccess: (user: any) => void;
   onBack: () => void;
   onResend: () => Promise<void>;
 }

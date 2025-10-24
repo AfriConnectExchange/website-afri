@@ -27,8 +27,7 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User as SupabaseUser } from '@supabase/supabase-js';
+
 
 interface DashboardHeaderProps {
   title: string;
@@ -37,7 +36,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
   const supabase = createSPAClient();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
