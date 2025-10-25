@@ -1,6 +1,9 @@
 
 import type { Metadata } from 'next';
 import './globals.css';
+import { getServerSession } from 'next-auth/next';
+import type { Session } from 'next-auth';
+import { authOptions } from './api/auth/[...nextauth]/route';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -13,11 +16,15 @@ export const metadata: Metadata = {
   description: 'Connecting the diaspora, one exchange at a time.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch the server session and pass it into the client-side SessionProvider
+  // so the client has the initial session without relying solely on client fetch.
+  const session = (await getServerSession(authOptions as any)) as Session | null;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -33,7 +40,7 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased flex flex-col'
         )}
       >
-          <Providers>
+          <Providers session={session}>
             <div className="flex-1">
               {children}
             </div>
