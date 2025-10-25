@@ -11,13 +11,7 @@ export async function POST(req: Request) {
     const ua = req.headers.get('user-agent') || null
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || null
 
-    // Try to resolve a signed-in user via NextAuth session (optional)
-    let resolved = null as any;
-    try {
-      resolved = await getServerAuthSession(req as any);
-    } catch (e) {
-      resolved = null;
-    }
+    const resolved = await getServerAuthSession(req);
 
     await prisma.activityLog.create({
       data: {

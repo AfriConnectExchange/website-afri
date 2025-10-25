@@ -12,14 +12,30 @@ import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Logo } from '../logo';
 
 type Props = {};
 
-export default function SignInCard({}: Props) {
+// Helper function to call the security log API
+const logSecurityEvent = async (eventType: string, description: string, isSuspicious: boolean = false) => {
+  try {
+    await fetch('/api/security/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventType, description, isSuspicious }),
+    });
+  } catch (error) {
+    console.error("Failed to log security event:", error);
+  }
+};
+
+function SignInCard({}: Props) {
   const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState<false | 'google' | 'facebook'>(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -31,19 +47,30 @@ export default function SignInCard({}: Props) {
     else toast.success(title, { description });
   };
 
+  const handleSessionLogging = async () => {
+    try {
+      await fetch('/api/auth/session', { method: 'POST' });
+    } catch (error) {
+      console.error("Session logging failed:", error);
+    }
+  };
+
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-    setIsLoading(true);
+    setIsSocialLoading(provider);
     try {
       const result = await signIn(provider, { redirect: false, callbackUrl: '/' });
       if (result?.error) {
+        await logSecurityEvent('social-signin-failed', `Social sign-in failed with ${provider}: ${result.error}`, true);
         showAlert('destructive', `Sign-in with ${provider} failed`, result.error);
-      } else {
+      } else if (result?.ok) {
+        await handleSessionLogging();
         router.push('/');
       }
     } catch (err: any) {
+      await logSecurityEvent('social-signin-exception', `Social sign-in exception with ${provider}: ${err?.message}`, true);
       showAlert('destructive', `Sign-in with ${provider} failed`, err?.message ?? String(err));
     } finally {
-      setIsLoading(false);
+      setIsSocialLoading(false);
     }
   };
 
@@ -59,17 +86,20 @@ export default function SignInCard({}: Props) {
       });
 
       if (result?.error) {
+        await logSecurityEvent('credentials-signin-failed', `Sign-in failed for email ${formData.email}: ${result.error}`, true);
         if (result.error === 'Please verify your email before signing in.') {
             localStorage.setItem('afri:pending_verification_email', formData.email);
             router.push('/auth/verify-email');
         } else {
             showAlert('destructive', 'Sign-in Failed', result.error);
         }
-      } else {
+      } else if (result?.ok) {
+        await handleSessionLogging();
         showAlert('default', 'Sign-in Successful', 'Welcome back!');
         router.push('/');
       }
     } catch (error: any) {
+        await logSecurityEvent('credentials-signin-exception', `Sign-in exception for email ${formData.email}: ${error.message}`, true);
         showAlert('destructive', 'Sign-in Failed', error.message);
     } finally {
         setIsLoading(false);
@@ -83,7 +113,7 @@ export default function SignInCard({}: Props) {
                 variant="outline"
                 className="w-full"
                 onClick={() => handleSocialLogin('google')}
-                isLoading={isLoading}
+                isLoading={isSocialLoading === 'google'}
             >
                 <FcGoogle className="mr-2" size={24} />
                 Google
@@ -92,7 +122,7 @@ export default function SignInCard({}: Props) {
                 variant="outline"
                 className="w-full"
                 onClick={() => handleSocialLogin('facebook')}
-                isLoading={isLoading}
+                isLoading={isSocialLoading === 'facebook'}
             >
                 <FaFacebook className="mr-2 text-[#1877F2]" size={24} />
                 Facebook
@@ -179,5 +209,22 @@ export default function SignInCard({}: Props) {
             </div>
           </div>
     </>
+  );
+}
+
+export default function SignInCardComponent() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <Logo />
+        </div>
+        <CardTitle className="text-2xl">Welcome Back!</CardTitle>
+        <CardDescription>Sign in to continue to your account</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SignInCard />
+      </CardContent>
+    </Card>
   );
 }

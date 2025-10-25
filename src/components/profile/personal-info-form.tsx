@@ -23,7 +23,6 @@ import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
-  // Note: Phone number is not part of the mock user, so we make it optional here.
   phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
   address: z.string().optional(),
 });
@@ -33,6 +32,18 @@ type PersonalInfoFormValues = z.infer<typeof formSchema>;
 interface PersonalInfoFormProps {
   onFeedback: (type: 'success' | 'error', message: string) => void;
 }
+
+const logActivity = async (action: string, details: any) => {
+  try {
+    await fetch('/api/logs/activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: action, payload: details }),
+    });
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+};
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
   const { user, updateUser, isLoading } = useAuth();
@@ -51,8 +62,8 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     if (user) {
         form.reset({
             fullName: user.fullName || '',
-            phoneNumber: '', // Not in mock data
-            address: '', // Not in mock data
+            phoneNumber: user.phone || '',
+            address: user.address || '',
         });
     }
   }, [user, form]);
@@ -66,12 +77,8 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     }
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        updateUser({
-            fullName: values.fullName,
-            // phone and address are not in our mock user, but in a real app you'd update them
-        });
+        await updateUser(values);
+        await logActivity('user-profile-updated', { changed: Object.keys(values) });
         onFeedback('success', 'Profile updated successfully!');
     } catch(error: any) {
         onFeedback('error', 'Failed to update profile: ' + error.message);

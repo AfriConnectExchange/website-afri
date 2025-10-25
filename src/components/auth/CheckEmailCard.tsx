@@ -6,7 +6,6 @@ import { Mail, Send } from 'lucide-react';
 import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { createSPAClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/auth-context';
 
 const CheckEmailCard = () => {

@@ -54,11 +54,20 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
   const handleOtpVerification = async (otpValue: string) => {
     setIsLoading(true);
     try {
-      // Supabase verification logic would go here
-      // For now, we simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({ title: 'Verification Successful!', description: 'Redirecting...' });
-      // onAuthSuccess(result.user);
+      const response = await fetch('/api/auth/phone/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code: otpValue }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to verify OTP.');
+      }
+
+      toast({ title: 'Verification Successful!', description: 'You are now signed in.' });
+      onAuthSuccess(result.user);
     } catch (error: any) {
        toast({ variant: 'destructive', title: 'Verification Failed', description: error.message });
        setIsLoading(false);
@@ -73,7 +82,7 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
         setResendCooldown(30); // Reset cooldown
         toast({ title: 'OTP Resent', description: `A new code has been sent to ${phone}.`});
     } catch (error) {
-        // Error is already handled in the onResend implementation (SignIn/Up cards)
+        // Error is already handled in the onResend implementation
     } finally {
         setIsLoading(false);
     }

@@ -6,7 +6,6 @@ import { Mail, Send } from 'lucide-react';
 import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { createSPAClient } from '@/lib/supabase/client';
 
 const VerifyEmail = () => {
   const [email, setEmail] = useState('');
@@ -27,15 +26,20 @@ const VerifyEmail = () => {
     }
 
     setIsLoading(true);
-    const supabase = createSPAClient();
-    const { error } = await supabase.auth.resend({ type: 'signup', email });
-
-    if (error) {
-      toast({ variant: 'destructive', title: 'Error resending email', description: error.message });
-    } else {
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to resend');
       toast({ title: 'Email sent', description: `A new verification link has been sent to ${email}.` });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error resending email', description: error.message });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

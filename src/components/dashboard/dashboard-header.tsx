@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Menu,
   Bell,
@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-
+import { useAuth } from '@/context/auth-context';
 
 interface DashboardHeaderProps {
   title: string;
@@ -35,46 +35,13 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<any | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
-  
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-        if (data) {
-            setProfile(data);
-        }
-      }
-    };
-    
-    if (user) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-    }
-  }, [user, supabase]);
-  
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     router.push('/');
   }
 
@@ -202,15 +169,15 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || user.email} />
-                                <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
+                                <AvatarImage src={user.image || ''} alt={user.name || user.email} />
+                                <AvatarFallback>{user?.name?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{profile?.full_name || user.email}</p>
+                            <p className="text-sm font-medium leading-none">{user.name || user.email}</p>
                             <p className="text-xs leading-none text-muted-foreground">
                             {user.email}
                             </p>

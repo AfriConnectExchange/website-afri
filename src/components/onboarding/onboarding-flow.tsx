@@ -1,138 +1,61 @@
-"use client"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { WelcomeStep } from "./welcome-step"
-import { RoleSelectionStep } from "./role-selection-step"
-import { PersonalDetailsStep } from "./personal-details-step"
-import { FinalStep } from "./final-step"
-import { Progress } from "../ui/progress"
-import { Logo } from "../logo"
-import { useToast } from "../../hooks/use-toast"
-import { useAuth } from "@/context/auth-context"
 
-// We now persist onboarding through a server-side Prisma API at /api/onboarding/complete
+'use client';
+import React, { useState } from 'react';
+import { WelcomeStep } from './welcome-step';
+import { RoleSelectionStep } from './role-selection-step';
+import { PersonalDetailsStep } from './personal-details-step';
+import { FinalStep } from './final-step';
+
+// Helper function to call the API
+const saveOnboardingProgress = async (step: string, isCompleted: boolean = false) => {
+  try {
+    await fetch('/api/onboarding/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step, isCompleted }),
+    });
+  } catch (error) {
+    console.error("Failed to save onboarding progress:", error);
+  }
+};
 
 export function OnboardingFlow() {
-  const { user, updateUser } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
-  const [currentStep, setCurrentStep] = useState(0)
+  const [currentStep, setCurrentStep] = useState(0);
 
-  const [userData, setUserData] = useState({
-    primary_role: "buyer",
-    full_name: "",
-    phone_number: "",
-    location: "",
-  })
-
-  useEffect(() => {
-    if (user) {
-      setUserData((prev) => ({
-        ...prev,
-        full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "",
-        phone_number: "",
-        primary_role: user.user_metadata?.roles?.[0] || "buyer",
-      }))
+  const handleNext = async () => {
+    // Save the completion of the current step before moving to the next
+    const steps = ['welcome', 'role-selection', 'personal-details'];
+    if (currentStep < steps.length) {
+      await saveOnboardingProgress(steps[currentStep]);
     }
-  }, [user])
+    setCurrentStep(currentStep + 1);
+  };
 
-  const handleRoleSelection = async (data: { role: string }) => {
-    const role = data.role as "buyer" | "seller" | "sme" | "trainer"
-    handleUpdateUserData({ primary_role: role })
+  const handleComplete = async () => {
+    // Mark the final step as complete and the entire flow as completed
+    await saveOnboardingProgress('final', true);
+    // Here you would typically redirect the user, e.g., to their dashboard
+    window.location.href = '/';
+  };
 
-    if (role === "buyer") {
-      setCurrentStep((prev) => prev + 1)
-    } else {
-      if (user) {
-        try {
-          updateUser({ data: { roles: [role] } })
-        } catch (error: any) {
-          toast({ variant: "destructive", title: "Failed to Save Role", description: error.message })
-          return
-        }
-      }
-      toast({
-        title: "Seller Verification Required",
-        description: "You'll be redirected to complete your seller profile.",
-      })
-      router.push("/kyc")
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return <WelcomeStep onNext={handleNext} />;
+      case 1:
+        return <RoleSelectionStep onNext={handleNext} />;
+      case 2:
+        return <PersonalDetailsStep onNext={handleNext} />;
+      case 3:
+        return <FinalStep onComplete={handleComplete} />;
+      default:
+        return <WelcomeStep onNext={handleNext} />;
     }
-  }
-
-  const handleOnboardingComplete = async (data: {
-    full_name: string
-    phone_number: string
-    location: string
-  }) => {
-    if (!user) {
-      toast({ variant: "destructive", title: "Error", description: "You must be logged in." })
-      return
-    }
-
-    try {
-      toast({ title: "Finishing setup", description: "We are saving your profile and finishing setup." })
-
-      const resp = await fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: data.full_name,
-          phoneNumber: data.phone_number,
-          location: data.location,
-          roles: [userData.primary_role],
-        }),
-      })
-
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}))
-        throw new Error(body?.error || 'Failed to persist onboarding progress')
-      }
-
-      // Move to the final step which shows a spinner and redirects
-      setCurrentStep((prev) => prev + 1)
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Failed to Save Profile", description: error.message })
-    }
-  }
-
-  const handleBack = () => setCurrentStep((prev) => prev - 1)
-
-  const handleUpdateUserData = (data: Partial<typeof userData>) => {
-    setUserData((prev) => ({ ...prev, ...data }))
-  }
-
-  const steps = [
-    <WelcomeStep key="welcome-step" onNext={() => setCurrentStep(1)} />,
-    <RoleSelectionStep
-      key="role-selection-step"
-      onNext={handleRoleSelection}
-      onBack={handleBack}
-      onUpdate={(data) => handleUpdateUserData({ primary_role: data.role as "buyer" | "seller" | "sme" | "trainer" })}
-      currentValue={String(userData.primary_role)}
-    />,
-    <PersonalDetailsStep
-      key="personal-details-step"
-      onNext={handleOnboardingComplete}
-      onBack={handleBack}
-      defaultValues={{
-        fullName: userData.full_name,
-        phoneNumber: userData.phone_number,
-        location: userData.location,
-      }}
-    />,
-    <FinalStep key="final-step" />,
-  ]
-
-  const progressValue = (currentStep / (steps.length - 1)) * 100
+  };
 
   return (
-    <div className="bg-card rounded-2xl shadow-xl border p-4 sm:p-8 w-full">
-      <div className="flex items-center justify-center gap-2 mb-4">
-        <Logo withText={false} />
-        <h1 className="text-2xl font-bold">AfriConnect Exchange</h1>
-      </div>
-      <Progress value={progressValue} className="mb-8" />
-      <div className="min-h-[400px] flex flex-col justify-center">{steps[currentStep]}</div>
+    <div>
+      {renderStep()}
     </div>
-  )
+  );
 }

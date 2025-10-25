@@ -1,8 +1,10 @@
+
 import nodemailer from 'nodemailer';
 import { render } from '@react-email/render';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import prisma from './prisma';
+import WelcomeEmail from '@/emails/WelcomeEmail';
 
 type EmailJob = {
   to: string;
@@ -32,7 +34,6 @@ function createTransport() {
 }
 
 async function sendNow(job: EmailJob) {
-  // Try nodemailer first
   const transport = createTransport();
   try {
     const info = await transport.sendMail({
@@ -42,7 +43,6 @@ async function sendNow(job: EmailJob) {
       html: job.html,
     });
 
-    // Log success
     await prisma.emailLog.create({
       data: {
         userId: job.userId,
@@ -60,10 +60,8 @@ async function sendNow(job: EmailJob) {
     return { provider: 'Nodemailer', id: (info as any).messageId };
   } catch (err: any) {
     console.error('Mailer sendNow nodemailer failed:', err?.message || err);
-    // Try fallback to Resend if available
     if (process.env.RESEND_API_KEY) {
       try {
-        // dynamic import to avoid adding dependency when not used
         const { Resend } = await import('resend');
         const resend = new Resend(process.env.RESEND_API_KEY);
         const resp = await resend.emails.send({
@@ -107,7 +105,6 @@ async function sendNow(job: EmailJob) {
       }
     }
 
-    // log failure
     await prisma.emailLog.create({
       data: {
         userId: job.userId,
@@ -132,7 +129,6 @@ export async function enqueueEmail(job: EmailJob) {
     return { queued: true };
   }
 
-  // No queue configured — send synchronously with simple retries
   const maxAttempts = 3;
   let attempt = 0;
   while (attempt < maxAttempts) {
@@ -149,7 +145,6 @@ export async function enqueueEmail(job: EmailJob) {
   throw new Error('Failed to send email after retries');
 }
 
-// Optional worker starter for BullMQ — run as a separate process
 export function startEmailWorker() {
   if (!REDIS_URL) return null;
   const connection = new IORedis(REDIS_URL);
@@ -174,4 +169,16 @@ export function startEmailWorker() {
   return worker;
 }
 
-export default { enqueueEmail, startEmailWorker };
+export const sendWelcomeEmail = async (to: string, name?: string) => {
+  const subject = "Welcome to AfriConnect Exchange";
+  const emailHtml = render(WelcomeEmail({ name }));
+  return enqueueEmail({
+    to,
+    subject,
+    html: emailHtml,
+    templateName: 'WelcomeEmail',
+    userId: null,
+  });
+};
+
+export default { enqueueEmail, startEmailWorker, sendWelcomeEmail };

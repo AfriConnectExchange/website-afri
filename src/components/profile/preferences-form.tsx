@@ -30,7 +30,7 @@ interface PreferencesFormProps {
 }
 
 export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
-  const { user, isLoading, updateUser } = useAuth();
+  const { user, isLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<PreferencesFormValues>({
@@ -47,9 +47,12 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
   });
 
   useEffect(() => {
-    // In a real app, you would fetch and set these from user preferences
-    if (user) {
-        // We don't have these in the mock user, so we'll just use defaults
+    if (user && user.language && user.timezone && user.notificationPreferences) {
+      form.reset({
+        language: user.language,
+        timezone: user.timezone,
+        ...user.notificationPreferences,
+      });
     }
   }, [user, form]);
 
@@ -62,11 +65,17 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
     }
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // In a real app, you would save these preferences to the user profile
-        // updateUser({ preferences: values });
-        onFeedback('success', 'Preferences updated successfully!');
+      const response = await fetch('/api/profile/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save preferences');
+      }
+
+      onFeedback('success', 'Preferences updated successfully!');
     } catch(error: any) {
         onFeedback('error', 'Failed to update preferences: ' + error.message);
     }

@@ -44,7 +44,6 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
 
   const confirmDelete = async () => {
     onFeedback('error', 'Account deletion is a server-side operation and not implemented in this demo.');
-    // In a real app, this would call a Supabase Function to delete user data
     setShowDeleteConfirm(false);
   };
 
