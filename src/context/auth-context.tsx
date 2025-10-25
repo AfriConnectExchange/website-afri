@@ -1,8 +1,8 @@
+// src/context/auth-context.tsx
 "use client";
 
 import React, { createContext, useContext } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { useEffect } from "react";
 
 export type MockUser = {
   id?: string;
@@ -14,6 +14,8 @@ export type MockUser = {
   address?: string | null;
   emailVerified?: boolean;
   onboardingComplete?: boolean;
+  fullName?: string;
+  avatarUrl?: string;
   [key: string]: any;
 };
 
@@ -24,23 +26,29 @@ type AuthContextValue = {
   isOnboardingComplete?: boolean;
   logout: () => Promise<void>;
   updateUser: (patch: Partial<MockUser>) => Promise<void>;
+  sendPasswordResetEmail?: (email: string) => Promise<void>;
+  resetPassword?: (password: string) => Promise<void>;
+  handleNeedsOtp?: (phone: string, resendFn: () => Promise<void>) => void;
+  handleOtpSuccess?: (user: any) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
 
   const isLoading = status === "loading";
+  
+  // ✅ Map NextAuth session to your user object
   const user = session?.user
     ? ({
-  id: (session.user as any).id,
-  name: session.user.name,
-  fullName: session.user.name,
-  email: session.user.email,
-  image: session.user.image,
-  avatarUrl: session.user.image,
-  roles: (session.user as any).roles,
+        id: (session.user as any).id,
+        name: session.user.name,
+        fullName: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+        avatarUrl: session.user.image,
+        roles: (session.user as any).roles || [],
         phone: (session.user as any).phone ?? null,
         address: (session.user as any).address ?? null,
         emailVerified: !!(session.user as any).emailVerified,
@@ -49,43 +57,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : null;
 
   const logout = async () => {
-    await signOut({ redirect: false });
+    await signOut({ redirect: false, callbackUrl: '/auth/signin' });
   };
 
-  // When a user signs in, attempt to register this device silently so server
-  // has device info and can create user_session rows. We persist a device id
-  // in localStorage to identify this browser across visits.
-  useEffect(() => {
-    const registerDevice = async () => {
-      try {
-        if (!(session as any)?.user?.id) return;
-        // get existing device id or generate one
-        const storageKey = 'afri:device_id';
-        let deviceId = localStorage.getItem(storageKey);
-        if (!deviceId) {
-          deviceId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : Math.random().toString(36).slice(2);
-          localStorage.setItem(storageKey, deviceId as string);
-        }
-
-        // Post to devices/register; server will parse UA and IP
-        await fetch('/api/devices/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ device_id: deviceId }),
-        });
-      } catch (err) {
-        // do not block the UI on device registration failures
-        // console.debug('Device register failed', err);
-      }
-    };
-
-    registerDevice();
-  }, [(session as any)?.user?.id]);
-
+  // ✅ Update user via API, then refresh session
   const updateUser = async (patch: Partial<MockUser>) => {
-    // We keep a shallow client-side merge; persistence should be done via API.
-    // NextAuth session updates require a sign-in or JWT/session update strategy.
-    return Promise.resolve();
+    try {
+      const response = await fetch('/api/profile/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      // ✅ Trigger NextAuth session update
+      await update();
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  };
+
+  const sendPasswordResetEmail = async (email: string) => {
+    const response = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || 'Failed to send reset email');
+    }
+  };
+
+  const resetPassword = async (password: string) => {
+    // Implementation for password reset
+    throw new Error('Not implemented');
   };
 
   const value: AuthContextValue = {
@@ -95,6 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isOnboardingComplete: !!user?.onboardingComplete,
     logout,
     updateUser,
+    sendPasswordResetEmail,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -153,6 +153,13 @@ enum ReviewStatus {
 model User {
   id                      String             @id @default(uuid()) @db.Uuid
   email                   String             @unique @db.VarChar(255)
+  // NextAuth-compatible fields
+  // `emailVerified` must be nullable DateTime for the adapter
+  emailVerified           DateTime?          @map("email_verified") @db.Timestamptz(6)
+  // `name` and `image` are expected by NextAuth adapter (kept nullable)
+  name                    String?            @db.VarChar(255)
+  image                   String?            @db.Text
+
   phone                   String?            @unique @db.VarChar(20)
   passwordHash            String?            @map("password_hash") @db.Text
   fullName                String?            @map("full_name") @db.VarChar(255)
@@ -165,8 +172,6 @@ model User {
   roles                   UserRole[]         @default([buyer])
   status                  UserStatus         @default(pending)
   verificationStatus      VerificationStatus @default(unverified) @map("verification_status")
-  // Track when the user's email was verified. Nullable timestamp; null means not verified.
-  emailVerified           DateTime?          @map("email_verified") @db.Timestamptz(6)
   phoneVerified           Boolean            @default(false) @map("phone_verified")
   freeAccessExpiresAt     DateTime?          @map("free_access_expires_at") @db.Timestamptz(6)
   language                String?            @default("en") @db.VarChar(10)
@@ -182,7 +187,7 @@ model User {
   deletedAt               DateTime?          @map("deleted_at") @db.Timestamptz(6)
 
   // Relations
-  sessions                UserSession[]
+  userSessions            UserSession[]
   preferences             UserPreference?
   socialAuths             SocialAuth[]
   products                Product[]
@@ -224,7 +229,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   // Relations for NextAuth adapter
   accounts                Account[]
-  nextAuthSessions        Session[]
+  sessions                Session[]
 
   @@map("users")
 }
@@ -574,16 +579,16 @@ model Advert {
 
 model Account {
   id                 String  @id @default(uuid()) @db.Uuid
-  userId             String  @db.Uuid
+  userId             String  @map("user_id") @db.Uuid
   type               String
   provider           String
-  providerAccountId  String
-  refresh_token      String?  @map("refresh_token")
-  access_token       String?  @map("access_token")
-  expires_at         Int?     @map("expires_at")
-  token_type         String?  @map("token_type")
+  providerAccountId  String  @map("provider_account_id")
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
   scope              String?
-  id_token           String?
+  id_token           String?  @db.Text
   session_state      String?
 
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -595,7 +600,7 @@ model Account {
 model Session {
   id           String   @id @default(uuid()) @db.Uuid
   sessionToken String   @unique @map("session_token")
-  userId       String   @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
   expires      DateTime
 
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1,4 +1,4 @@
-
+// src/app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import EmailProvider from "next-auth/providers/email";
@@ -6,73 +6,54 @@ import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
-import { prisma } from "../../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { createTransport } from "nodemailer";
 import VerificationEmail from "@/emails/VerificationEmail";
 import { render } from "@react-email/render";
 
-// Wrap the PrismaAdapter to adapt emailVerified values to the schema's type (DateTime?)
-const baseAdapter = PrismaAdapter(prisma as any);
-const wrappedAdapter = {
-  ...baseAdapter,
-
-  // Convert boolean/date/string values into Date|null so Prisma receives DateTime?
-  async updateUser(payload: any) {
-    const { id, ...data } = payload || {};
-    if (data && Object.prototype.hasOwnProperty.call(data, 'emailVerified')) {
-      const val = data.emailVerified;
-  if (val === true) data.emailVerified = (new Date() as any);
-      else if (val === false) data.emailVerified = null;
-  else if (typeof val === 'string' && !isNaN(Date.parse(val))) data.emailVerified = (new Date(val) as any);
-      // leave Date instances as-is
-    }
-    return (baseAdapter as any).updateUser({ id, ...data });
-  },
-
-  async createUser(payload: any) {
-    const { id, ...data } = payload || {};
-    if (data && Object.prototype.hasOwnProperty.call(data, 'emailVerified')) {
-      const val = data.emailVerified;
-  if (val === true) data.emailVerified = (new Date() as any);
-  else if (val === false) data.emailVerified = null;
-  else if (typeof val === 'string' && !isNaN(Date.parse(val))) data.emailVerified = (new Date(val) as any);
-    }
-    return (baseAdapter as any).createUser({ id, ...data });
-  },
-};
-
+// ✅ NO CUSTOM WRAPPER - Use adapter directly
 export const authOptions: any = {
-  adapter: wrappedAdapter,
+  adapter: PrismaAdapter(prisma),
+  
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text", placeholder: "jsmith@example.com" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials: any) {
         if (!credentials?.email || !credentials?.password) return null;
         
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+        const user = await prisma.user.findUnique({ 
+          where: { email: credentials.email } 
+        });
         
         if (!user) {
-            throw new Error("No user found with this email.");
+          throw new Error("No user found with this email.");
         }
 
+        // ✅ Check emailVerified as DateTime, not boolean
         if (!user.emailVerified) {
-            throw new Error("Please verify your email before signing in.");
+          throw new Error("Please verify your email before signing in.");
         }
         
         if (!user.passwordHash) {
-            throw new Error("Password not set up for this account. Try a different sign-in method.");
+          throw new Error("Password not set. Try OAuth sign-in.");
         }
         
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) {
-            throw new Error("Incorrect password.");
+          throw new Error("Incorrect password.");
         }
 
-        return { id: user.id, email: user.email, name: user.fullName, roles: user.roles, emailVerified: user.emailVerified } as any;
+        // ✅ Return proper user object
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.fullName,
+          emailVerified: user.emailVerified,
+        };
       },
     }),
 
@@ -88,9 +69,13 @@ export const authOptions: any = {
       from: process.env.EMAIL_FROM,
       async sendVerificationRequest({ identifier: email, url, provider }) {
         const transport = createTransport(provider.server);
-      // Attempt to include the recipient's name in the verification email when available
-    const user = await prisma.user.findUnique({ where: { email } });
-    const emailHtml = await render(VerificationEmail({ link: url, name: user?.fullName ?? undefined }));
+        const user = await prisma.user.findUnique({ where: { email } });
+        const emailHtml = await render(
+          VerificationEmail({ 
+            link: url, 
+            name: user?.fullName ?? undefined 
+          })
+        );
 
         try {
           const result = await transport.sendMail({
@@ -100,14 +85,12 @@ export const authOptions: any = {
             html: emailHtml,
           });
 
-          // Log successful email sending
-          const user = await prisma.user.findUnique({ where: { email } });
           await prisma.emailLog.create({
             data: {
               userId: user?.id,
               recipientEmail: email,
               senderEmail: provider.from,
-              subject: "Verify your email for AfriConnect Exchange",
+              subject: "Verify your email",
               templateName: "VerificationEmail",
               provider: "Nodemailer",
               providerMessageId: result.messageId,
@@ -116,14 +99,12 @@ export const authOptions: any = {
             },
           });
         } catch (error) {
-          // Log failed email sending
-          const user = await prisma.user.findUnique({ where: { email } });
           await prisma.emailLog.create({
             data: {
               userId: user?.id,
               recipientEmail: email,
               senderEmail: provider.from,
-              subject: "Verify your email for AfriConnect Exchange",
+              subject: "Verify your email",
               templateName: "VerificationEmail",
               provider: "Nodemailer",
               status: "failed",
@@ -131,7 +112,7 @@ export const authOptions: any = {
               failureReason: (error as Error).message,
             },
           });
-          throw error; // Re-throw error to notify NextAuth
+          throw error;
         }
       },
     }),
@@ -149,14 +130,17 @@ export const authOptions: any = {
     }),
   ],
 
-  session: { strategy: "database" },
+  // ✅ Use database strategy with Prisma adapter
+  session: { 
+    strategy: "database",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
 
   callbacks: {
     async session({ session, user }: any) {
       if (session?.user && user) {
         session.user.id = user.id;
         session.user.roles = user.roles || [];
-        // expose some commonly-used profile flags to the client session
         session.user.emailVerified = !!user.emailVerified;
         session.user.phone = user.phone ?? null;
         session.user.address = user.address ?? null;
@@ -164,119 +148,98 @@ export const authOptions: any = {
       }
       return session;
     },
-  async signIn({ user, account }: any) {
-    // For OAuth providers, mark email as verified and activate account
-    if (account.provider !== 'credentials') {
-      if (user.email) {
-        await prisma.user.update({
-          where: { email: user.email },
-          // store verification timestamp and mark verificationStatus
-          data: { emailVerified: (new Date() as any), status: 'active', verificationStatus: 'verified' }
-        });
+
+    async signIn({ user, account }: any) {
+      // For OAuth providers, mark email as verified
+      if (account?.provider !== 'credentials') {
+        if (user.email) {
+          await prisma.user.update({
+            where: { email: user.email },
+            data: { 
+              emailVerified: new Date(),
+              status: 'active',
+              verificationStatus: 'verified'
+            }
+          });
+        }
       }
-    }
 
-    const dbUser = await prisma.user.findUnique({ where: { id: user.id }});
-    const base = process.env.NEXTAUTH_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+      const dbUser = await prisma.user.findUnique({ 
+        where: { id: user.id }
+      });
+      
+      const base = process.env.NEXTAUTH_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 
-    if (!dbUser?.emailVerified) {
-      // If the user somehow isn't verified, redirect to the verify page
-      return `${base}/auth/verify-email`;
-    }
+      if (!dbUser?.emailVerified) {
+        return `${base}/auth/verify-email`;
+      }
 
-    // If user hasn't completed onboarding (phone/address), redirect them there
-    const needsOnboarding = !dbUser.phone || !dbUser.address;
-    if (needsOnboarding) {
-      return `${base}/onboarding?redirect=true`;
-    }
+      const needsOnboarding = !dbUser.phone || !dbUser.address;
+      if (needsOnboarding) {
+        return `${base}/onboarding?redirect=true`;
+      }
 
-    return true;
+      return true;
     }
   },
 
   events: {
-  async signIn({ user }: any) {
-        if (!user.id) return;
-        
-        try {
-            const session = await prisma.session.findFirst({
-                where: { userId: user.id },
-                orderBy: { expires: 'desc' },
-            });
-
-            await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    lastLoginAt: new Date(),
-                    loginCount: { increment: 1 },
-                },
-            });
-
-            if (session) {
-        const userSession = await prisma.userSession.upsert({
-          where: { sessionToken: session.sessionToken },
-          update: {
-            lastActivityAt: new Date(),
-            isActive: true,
-            revokedAt: null,
+    async signIn({ user }: any) {
+      if (!user.id) return;
+      
+      try {
+        // ✅ Update user login stats
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lastLoginAt: new Date(),
+            loginCount: { increment: 1 },
           },
-          create: {
-            userId: user.id,
-            sessionToken: session.sessionToken,
-            expiresAt: session.expires,
-          }
         });
 
-        // Record activity against the user_session row (userSession.id), not the NextAuth session id
+        // ✅ Log activity using the NextAuth session
+        const session = await prisma.session.findFirst({
+          where: { userId: user.id },
+          orderBy: { expires: 'desc' },
+        });
+
+        if (session) {
+          await prisma.activityLog.create({
+            data: {
+              userId: user.id,
+              sessionId: session.id,
+              action: "USER_SIGN_IN_SUCCESS",
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Error in signIn event:", error);
+      }
+    },
+
+    async signOut({ session }: any) {
+      if (!session.sessionToken) return;
+      
+      try {
         await prisma.activityLog.create({
           data: {
-            userId: user.id,
-            sessionId: userSession.id,
-            action: "USER_SIGN_IN_SUCCESS",
+            userId: session.userId,
+            action: "USER_SIGN_OUT_SUCCESS",
           },
         });
-            }
-        } catch (error) {
-            console.error("Error in signIn event:", error);
-        }
+      } catch (error) {
+        console.error("Error in signOut event:", error);
+      }
     },
-  async signOut({ session }: any) {
-        if (!session.sessionToken) return;
-        try {
-            const userSession = await prisma.userSession.findUnique({
-                where: { sessionToken: session.sessionToken },
-                include: { user: true }
-            });
 
-            if (userSession) {
-                await prisma.userSession.update({
-                    where: { sessionToken: session.sessionToken },
-                    data: {
-                        isActive: false,
-                        revokedAt: new Date(),
-                    },
-                });
-
-                await prisma.activityLog.create({
-                    data: {
-            userId: userSession.userId,
-            sessionId: userSession.id,
-                        action: "USER_SIGN_OUT_SUCCESS",
-                    },
-                });
-            }
-        } catch (error) {
-            console.error("Error in signOut event:", error);
-        }
-    },
-  async createUser(message: any) {
-    const user = message.user;
-        if (user.email && !user.fullName) {
-            await prisma.user.update({
-                where: { id: user.id },
-                data: { fullName: user.email.split('@')[0] }
-            });
-        }
+    async createUser(message: any) {
+      const user = message.user;
+      if (user.email && !user.fullName) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { fullName: user.email.split('@')[0] }
+        });
+      }
     }
   },
 
@@ -289,6 +252,5 @@ export const authOptions: any = {
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-const handler = NextAuth(authOptions as any);
-
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
