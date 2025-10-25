@@ -10,13 +10,12 @@ import { Label } from '../ui/label';
 import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 type Props = {};
 
 export default function SignInCard({}: Props) {
-  const { toast } = useToast();
   const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +27,8 @@ export default function SignInCard({}: Props) {
   });
 
   const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
-    toast({ variant, title, description });
+    if (variant === 'destructive') toast.error(title, { description });
+    else toast.success(title, { description });
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {

@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Mail } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
@@ -14,6 +15,18 @@ export default function VerifyEmailPage() {
         const storedEmail = localStorage.getItem('afri:pending_verification_email');
         if (storedEmail) {
             setEmail(storedEmail);
+        }
+        // show toast if redirected after verification
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const status = params.get('status');
+            if (status === 'success') {
+                toast.success('Email verified', { description: 'Your email has been verified successfully.' });
+            } else if (status === 'failed') {
+                toast.error('Verification failed', { description: 'There was a problem verifying your email.' });
+            }
+        } catch (err) {
+            // ignore
         }
     }, []);
 

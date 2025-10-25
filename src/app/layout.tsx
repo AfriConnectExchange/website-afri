@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 import { cn } from '@/lib/utils';
 import ConditionalFooter from '@/components/layout/ConditionalFooter';
 import { Providers } from './providers';
@@ -38,6 +39,7 @@ export default function RootLayout({
             </div>
             <ConditionalFooter />
             <Toaster />
+            <SonnerToaster richColors position="top-right" />
           </Providers>
       </body>
     </html>

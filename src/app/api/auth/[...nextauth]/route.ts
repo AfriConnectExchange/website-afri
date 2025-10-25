@@ -13,8 +13,38 @@ import { createTransport } from "nodemailer";
 import VerificationEmail from "@/emails/VerificationEmail";
 import { render } from "@react-email/render";
 
+// Wrap the PrismaAdapter to adapt emailVerified values to the schema's type (DateTime?)
+const baseAdapter = PrismaAdapter(prisma as any);
+const wrappedAdapter = {
+  ...baseAdapter,
+
+  // Convert boolean/date/string values into Date|null so Prisma receives DateTime?
+  async updateUser(payload: any) {
+    const { id, ...data } = payload || {};
+    if (data && Object.prototype.hasOwnProperty.call(data, 'emailVerified')) {
+      const val = data.emailVerified;
+  if (val === true) data.emailVerified = (new Date() as any);
+      else if (val === false) data.emailVerified = null;
+  else if (typeof val === 'string' && !isNaN(Date.parse(val))) data.emailVerified = (new Date(val) as any);
+      // leave Date instances as-is
+    }
+    return (baseAdapter as any).updateUser({ id, ...data });
+  },
+
+  async createUser(payload: any) {
+    const { id, ...data } = payload || {};
+    if (data && Object.prototype.hasOwnProperty.call(data, 'emailVerified')) {
+      const val = data.emailVerified;
+  if (val === true) data.emailVerified = (new Date() as any);
+  else if (val === false) data.emailVerified = null;
+  else if (typeof val === 'string' && !isNaN(Date.parse(val))) data.emailVerified = (new Date(val) as any);
+    }
+    return (baseAdapter as any).createUser({ id, ...data });
+  },
+};
+
 const authOptions: any = {
-  adapter: PrismaAdapter(prisma as any),
+  adapter: wrappedAdapter,
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -60,7 +90,7 @@ const authOptions: any = {
       from: process.env.EMAIL_FROM,
       async sendVerificationRequest({ identifier: email, url, provider }) {
         const transport = createTransport(provider.server);
-        const emailHtml = render(VerificationEmail({ link: url }));
+    const emailHtml = await render(VerificationEmail({ link: url }));
 
         try {
           const result = await transport.sendMail({
@@ -129,25 +159,30 @@ const authOptions: any = {
       }
       return session;
     },
-    async signIn({ user, account }: any) {
-        if (account.provider !== 'credentials') {
-            if (user.email) {
-                await prisma.user.update({
-                    where: { email: user.email },
-                    data: { emailVerified: new Date() }
-                });
-            }
-        }
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id }});
-        if (!dbUser?.emailVerified) {
-          return '/auth/verify-email'; 
-        }
-        return true;
+  async signIn({ user, account }: any) {
+    // For OAuth providers, mark email as verified and activate account
+    if (account.provider !== 'credentials') {
+      if (user.email) {
+        await prisma.user.update({
+          where: { email: user.email },
+          // store verification timestamp
+          data: { emailVerified: (new Date() as any), status: 'active' }
+        });
       }
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }});
+    if (!dbUser?.emailVerified) {
+      // If the user somehow isn't verified, redirect to the verify page
+      return '/auth/verify-email';
+    }
+
+    return true;
+    }
   },
 
   events: {
-    async signIn({ user }) {
+  async signIn({ user }: any) {
         if (!user.id) return;
         
         try {
@@ -165,33 +200,34 @@ const authOptions: any = {
             });
 
             if (session) {
-                await prisma.userSession.upsert({
-                    where: { sessionToken: session.sessionToken },
-                    update: {
-                        lastActivityAt: new Date(),
-                        isActive: true,
-                        revokedAt: null,
-                    },
-                    create: {
-                        userId: user.id,
-                        sessionToken: session.sessionToken,
-                        expiresAt: session.expires,
-                    }
-                });
+        const userSession = await prisma.userSession.upsert({
+          where: { sessionToken: session.sessionToken },
+          update: {
+            lastActivityAt: new Date(),
+            isActive: true,
+            revokedAt: null,
+          },
+          create: {
+            userId: user.id,
+            sessionToken: session.sessionToken,
+            expiresAt: session.expires,
+          }
+        });
 
-                await prisma.activityLog.create({
-                    data: {
-                        userId: user.id,
-                        sessionId: session.id,
-                        action: "USER_SIGN_IN_SUCCESS",
-                    },
-                });
+        // Record activity against the user_session row (userSession.id), not the NextAuth session id
+        await prisma.activityLog.create({
+          data: {
+            userId: user.id,
+            sessionId: userSession.id,
+            action: "USER_SIGN_IN_SUCCESS",
+          },
+        });
             }
         } catch (error) {
             console.error("Error in signIn event:", error);
         }
     },
-    async signOut({ session }) {
+  async signOut({ session }: any) {
         if (!session.sessionToken) return;
         try {
             const userSession = await prisma.userSession.findUnique({
@@ -210,8 +246,8 @@ const authOptions: any = {
 
                 await prisma.activityLog.create({
                     data: {
-                        userId: userSession.userId,
-                        sessionId: session.id,
+            userId: userSession.userId,
+            sessionId: userSession.id,
                         action: "USER_SIGN_OUT_SUCCESS",
                     },
                 });
@@ -220,8 +256,8 @@ const authOptions: any = {
             console.error("Error in signOut event:", error);
         }
     },
-    async createUser(message) {
-        const user = message.user;
+  async createUser(message: any) {
+    const user = message.user;
         if (user.email && !user.fullName) {
             await prisma.user.update({
                 where: { id: user.id },

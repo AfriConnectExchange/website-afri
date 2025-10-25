@@ -165,7 +165,8 @@ model User {
   roles                   UserRole[]         @default([buyer])
   status                  UserStatus         @default(pending)
   verificationStatus      VerificationStatus @default(unverified) @map("verification_status")
-  emailVerified           Boolean            @default(false) @map("email_verified")
+  // Track when the user's email was verified. Nullable timestamp; null means not verified.
+  emailVerified           DateTime?          @map("email_verified") @db.Timestamptz(6)
   phoneVerified           Boolean            @default(false) @map("phone_verified")
   freeAccessExpiresAt     DateTime?          @map("free_access_expires_at") @db.Timestamptz(6)
   language                String?            @default("en") @db.VarChar(10)
