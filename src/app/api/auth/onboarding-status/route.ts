@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     }
 
     // User needs onboarding if name/phone/address is missing
-    const needsOnboarding = !user.fullName && !user.name || !user.phone || !user.address;
+    const needsOnboarding = !user.fullName || !user.name || !user.phone || !user.address;
 
     return NextResponse.json({ 
       authenticated: true, 
