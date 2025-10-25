@@ -67,6 +67,13 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    // Record profile update activity
+    try {
+      await prisma.activityLog.create({ data: { userId: updated.id, action: 'PROFILE_UPDATED', entityType: 'user', entityId: updated.id, changes: { phone: updated.phone, address: updated.address } as any } });
+    } catch (e) {
+      console.error('Failed to create activity log for profile update:', e);
+    }
+
     return NextResponse.json({ message: 'Profile updated', user: { id: updated.id, phone: updated.phone, address: updated.address } }, { status: 200 });
   } catch (err: any) {
     console.error('profile update error:', err?.message || err);

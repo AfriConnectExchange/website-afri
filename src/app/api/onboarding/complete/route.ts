@@ -35,6 +35,13 @@ export async function POST(request: Request) {
       update: { walkthroughCompleted: true, completedAt: new Date() },
     });
 
+    // Log onboarding completion
+    try {
+      await prisma.activityLog.create({ data: { userId: session.user.id, action: 'ONBOARDING_COMPLETED', entityType: 'onboarding' } });
+    } catch (e) {
+      console.error('Failed to create activity log for onboarding completion:', e);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error('Error in onboarding/complete:', err);

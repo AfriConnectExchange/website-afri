@@ -211,6 +211,13 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 AfriConnect Exchange
               </span>
             </Link>
+            {user && !user.onboardingComplete && (
+              <div className="ml-4 hidden lg:flex items-center">
+                <Link href="/onboarding/complete-profile" className="text-sm bg-yellow-50 text-yellow-800 px-3 py-1 rounded-md border border-yellow-100">
+                  Complete your profile
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Desktop Search */}

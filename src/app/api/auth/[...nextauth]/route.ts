@@ -1,6 +1,4 @@
 
-"use server";
-
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import EmailProvider from "next-auth/providers/email";
@@ -158,6 +156,11 @@ export const authOptions: any = {
       if (session?.user && user) {
         session.user.id = user.id;
         session.user.roles = user.roles || [];
+        // expose some commonly-used profile flags to the client session
+        session.user.emailVerified = !!user.emailVerified;
+        session.user.phone = user.phone ?? null;
+        session.user.address = user.address ?? null;
+        session.user.onboardingComplete = !!(user.phone && user.address);
       }
       return session;
     },

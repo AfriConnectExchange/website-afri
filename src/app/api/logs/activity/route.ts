@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '../../auth/[...nextauth]/route'
 import { prisma } from '../../../../lib/prisma'
+import { getServerAuthSession } from '../../../../lib/get-server-session'
 
 export async function POST(req: Request) {
   try {
@@ -13,18 +12,17 @@ export async function POST(req: Request) {
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || null
 
     // Try to resolve a signed-in user via NextAuth session (optional)
-    let userId: string | null = null
+    let resolved = null as any;
     try {
-      const session = (await getServerSession(authOptions as any)) as any
-      if (session?.user?.id) userId = session.user.id
+      resolved = await getServerAuthSession(req as any);
     } catch (e) {
-      // ignore — session optional for activity logs
-      userId = null
+      resolved = null;
     }
 
     await prisma.activityLog.create({
       data: {
-        userId: userId,
+        userId: resolved?.userId ?? null,
+        sessionId: resolved?.sessionId ?? null,
         action: event_type,
         changes: payload as any,
         ipAddress: ip || null,
