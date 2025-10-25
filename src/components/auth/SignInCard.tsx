@@ -1,7 +1,6 @@
 // src/components/auth/SignInCard.tsx
 'use client';
 import React, { useState } from 'react';
-import { signIn, useSession } from 'next-auth/react';
 import { Mail, Eye, EyeOff } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
@@ -18,7 +17,6 @@ import { Card, CardContent } from '@/components/ui/card';
 
 function SignInCard() {
   const router = useRouter();
-  const { update } = useSession(); // ✅ Use NextAuth's update function
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,24 +33,11 @@ function SignInCard() {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    // Redirect to a provider-specific OAuth endpoint handled by your server
+    // (implement /api/auth/oauth/[provider] to start the OAuth flow).
     setIsSocialLoading(provider);
     try {
-      const result = await signIn(provider, { 
-        redirect: false, 
-        callbackUrl: '/' 
-      });
-      
-      if (result?.error) {
-        showAlert('destructive', `Sign-in with ${provider} failed`, result.error);
-      } else if (result?.ok) {
-        showAlert('default', 'Sign-in Successful', 'Welcome back!');
-        
-        // ✅ Let NextAuth handle the session, just update and redirect
-        await update();
-        router.push('/');
-      }
-    } catch (err: any) {
-      showAlert('destructive', `Sign-in with ${provider} failed`, err?.message ?? String(err));
+      window.location.href = `/api/auth/oauth/${provider}`;
     } finally {
       setIsSocialLoading(false);
     }
@@ -63,13 +48,15 @@ function SignInCard() {
     setIsLoading(true);
     
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        email: formData.email,
-        password: formData.password,
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
       });
 
-      if (result?.error) {
+      const result = await res.json();
+
+      if (!res.ok) {
         // Log failed sign-in attempt
         await fetch('/api/security/log', {
           method: 'POST',
@@ -80,24 +67,16 @@ function SignInCard() {
             isSuspicious: true,
           }),
         }).catch(console.error);
-
         if (result.error === 'Please verify your email before signing in.') {
           localStorage.setItem('afri:pending_verification_email', formData.email);
           router.push('/auth/verify-email');
         } else {
-          showAlert('destructive', 'Sign-in Failed', result.error);
+          showAlert('destructive', 'Sign-in Failed', result.error || 'Sign-in failed');
         }
-      } else if (result?.ok) {
-        // ✅ Success! NextAuth automatically creates the session
-        // No need to manually call log-session - NextAuth events handle it
-        
-        showAlert('default', 'Sign-in Successful', 'Welcome back!');
-        
-        // ✅ Update the session on the client
-        await update();
-        
-        // ✅ Redirect to home (middleware will handle onboarding if needed)
-        router.push('/');
+      } else {
+  // Success path — force a full reload so the AuthProvider will fetch the new session
+  showAlert('default', 'Sign-in Successful', 'Welcome back!');
+  window.location.href = '/';
       }
     } catch (error: any) {
       showAlert('destructive', 'Sign-in Failed', error.message);

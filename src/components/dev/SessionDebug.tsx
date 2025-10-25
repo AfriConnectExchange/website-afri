@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useSession, getSession } from 'next-auth/react';
 
 export default function SessionDebug() {
-  const { data: session, status } = useSession();
+  const [session, setSession] = useState<any>(null);
+  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [cookie, setCookie] = useState<string>('');
   const [apiSession, setApiSession] = useState<any>(null);
 
@@ -18,9 +18,13 @@ export default function SessionDebug() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('/api/auth/session');
+        const res = await fetch('/api/auth/me');
         const json = await res.json();
-        if (mounted) setApiSession(json);
+        if (mounted) {
+          setApiSession(json);
+          setSession(json.user ?? null);
+          setStatus(json.user ? 'authenticated' : 'unauthenticated');
+        }
       } catch (err) {
         if (mounted) setApiSession({ error: (err as any).message });
       }

@@ -1,15 +1,14 @@
 // src/app/api/profile/update/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getServerAuthSession } from '@/lib/get-server-session';
 import prisma from '@/lib/prisma';
 
 export async function PUT(req: NextRequest) {
   try {
     //
-    const session = await getServerSession(authOptions);
+    const session = await getServerAuthSession(req as any);
     
-    if (!session?.user?.id) {
+    if (!session?.userId) {
       return NextResponse.json(
         { message: 'Not authenticated' }, 
         { status: 401 }
@@ -46,7 +45,7 @@ export async function PUT(req: NextRequest) {
 
     // Check if user was previously needing onboarding
     const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: session.userId },
       select: { phone: true, address: true, email: true }
     });
 
@@ -54,7 +53,7 @@ export async function PUT(req: NextRequest) {
 
     // ✅ Update user in database
     const updated = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: session.userId },
       data: updateData,
     });
 

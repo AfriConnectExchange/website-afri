@@ -1,9 +1,6 @@
 
 import type { Metadata } from 'next';
 import './globals.css';
-import { getServerSession } from 'next-auth/next';
-import type { Session } from 'next-auth';
-import { authOptions } from './api/auth/[...nextauth]/route';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -21,9 +18,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Fetch the server session and pass it into the client-side SessionProvider
-  // so the client has the initial session without relying solely on client fetch.
-  const session = (await getServerSession(authOptions as any)) as Session | null;
+  // Using custom auth: we no longer fetch a NextAuth session here. Client
+  // components should retrieve the current user via the auth API endpoints.
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -40,7 +36,7 @@ export default async function RootLayout({
           'min-h-screen bg-background font-body antialiased flex flex-col'
         )}
       >
-          <Providers session={session}>
+          <Providers>
             <div className="flex-1">
               {children}
             </div>

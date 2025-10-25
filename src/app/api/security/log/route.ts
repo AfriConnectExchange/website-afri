@@ -1,14 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getServerAuthSession } from '@/lib/get-server-session';
 import { extractIpFromHeaders } from '@/lib/get-client-info';
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id || null;
+  const session = await getServerAuthSession(req as any);
+  const userId = session?.userId || null;
 
     const body = await req.json();
     const { eventType, description, isSuspicious } = body;

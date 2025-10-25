@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../[...nextauth]/route';
+import { getServerAuthSession } from '@/lib/get-server-session';
 import { prisma } from '../../../../lib/prisma';
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions as any);
-    if (!session?.user?.id) return NextResponse.json({ devices: [] });
+  const session = await getServerAuthSession(request as any);
+  if (!session?.userId) return NextResponse.json({ devices: [] });
 
     const devices = await prisma.deviceInfo.findMany({
-      where: { userId: session.user.id },
+  where: { userId: session.userId },
       orderBy: { lastSeenAt: 'desc' },
     });
 

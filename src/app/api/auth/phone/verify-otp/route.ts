@@ -30,13 +30,20 @@ export async function POST(req: NextRequest) {
     // Find or create user by phone
     let user = await prisma.user.findUnique({ where: { phone } as any }).catch(() => null);
     if (!user) {
+      // Prisma requires an email field on User. For phone-only accounts we create
+      // a synthetic placeholder email to satisfy the schema. This keeps the
+      // record unique and avoids changing the schema.
+      const sanitized = phone.replace(/\D/g, '') || String(Date.now());
+      const placeholderEmail = `phone+${sanitized}@no-email.afri`;
+
       user = await prisma.user.create({
         data: {
+          email: placeholderEmail,
           phone,
           phoneVerified: true,
           status: 'active',
           roles: ['buyer'],
-        },
+        } as any,
       });
     } else {
       user = await prisma.user.update({ where: { id: user.id }, data: { phoneVerified: true, status: 'active' } });

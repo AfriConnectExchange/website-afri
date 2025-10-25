@@ -1,6 +1,5 @@
-import { getServerSession as nextGetServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from './prisma';
+import crypto from 'crypto';
 
 /**
  * Helper to reliably resolve the current authenticated user & NextAuth session
@@ -9,22 +8,9 @@ import { prisma } from './prisma';
  * session row in Prisma. Returns null when no session found.
  */
 export async function getServerAuthSession(req?: Request) {
-  try {
-    // Try next-auth helper first (works when request context is available)
-    const sess = await nextGetServerSession(authOptions as any);
-    if (sess && (sess as any).user && (sess as any).user.id) {
-      // attempt to find NextAuth session row in DB by user and expiry
-      const dbSession = await prisma.session.findFirst({ where: { userId: (sess as any).user.id }, orderBy: { expires: 'desc' } });
-      return {
-        userId: (sess as any).user.id,
-        sessionId: dbSession?.id ?? null,
-        sessionToken: dbSession?.sessionToken ?? null,
-        expires: dbSession?.expires ?? null,
-      };
-    }
-  } catch (err) {
-    // ignore and try fallback
-  }
+  // NOTE: NextAuth removed — this helper will attempt to locate a session
+  // by reading cookies from the provided Request (if any) and looking up
+  // the session in the `sessions` table created by Prisma/your auth flow.
 
   // Fallback: if a Request is provided we can read cookies and find the
   // session via the Prisma `sessions` table using the session token cookie.
@@ -60,14 +46,48 @@ export async function getServerAuthSession(req?: Request) {
     }
 
     if (token) {
+      // Try legacy NextAuth `sessions` table first
       const dbSession = await prisma.session.findUnique({ where: { sessionToken: token } });
       if (dbSession) {
         return {
+          // backward-compatible top-level userId
           userId: dbSession.userId,
+          // also provide a `user` object like NextAuth's session
+          user: { id: dbSession.userId },
           sessionId: dbSession.id,
           sessionToken: dbSession.sessionToken,
           expires: dbSession.expires,
-        };
+        } as any;
+      }
+
+      // Also try the richer `user_sessions` table. The app stores tokens
+      // unhashed in `sessionToken` or a hashed variant in `sessionTokenHash`.
+      const userSession = await prisma.userSession.findUnique({ where: { sessionToken: token } }).catch(() => null);
+      if (userSession) {
+        return {
+          userId: userSession.userId,
+          user: { id: userSession.userId },
+          sessionId: userSession.id,
+          sessionToken: userSession.sessionToken ?? null,
+          expires: userSession.expiresAt,
+        } as any;
+      }
+
+      // If token wasn't found as-is, try hashing and looking up by hash.
+      try {
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const hashedSession = await prisma.userSession.findFirst({ where: { sessionTokenHash: tokenHash } }).catch(() => null);
+        if (hashedSession) {
+          return {
+            userId: hashedSession.userId,
+            user: { id: hashedSession.userId },
+            sessionId: hashedSession.id,
+            sessionToken: null,
+            expires: hashedSession.expiresAt,
+          } as any;
+        }
+      } catch (err) {
+        // ignore hashing errors
       }
     }
   }

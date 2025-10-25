@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { getServerAuthSession } from '@/lib/get-server-session';
 import { prisma } from "../../../../lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions as any);
-    if (!session?.user?.id) {
+    const session = await getServerAuthSession(request as any);
+    if (!session?.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,18 +25,18 @@ export async function POST(request: Request) {
     if (roles) updateData.roles = roles;
     updateData.status = 'active';
 
-    await prisma.user.update({ where: { id: session.user.id }, data: updateData });
+    await prisma.user.update({ where: { id: session.userId }, data: updateData });
 
     // Ensure onboarding progress is recorded
     await prisma.userOnboardingProgress.upsert({
-      where: { userId: session.user.id },
-      create: { userId: session.user.id, walkthroughCompleted: true, completedAt: new Date() },
+      where: { userId: session.userId },
+      create: { userId: session.userId, walkthroughCompleted: true, completedAt: new Date() },
       update: { walkthroughCompleted: true, completedAt: new Date() },
     });
 
     // Log onboarding completion
     try {
-      await prisma.activityLog.create({ data: { userId: session.user.id, action: 'ONBOARDING_COMPLETED', entityType: 'onboarding' } });
+      await prisma.activityLog.create({ data: { userId: session.userId, action: 'ONBOARDING_COMPLETED', entityType: 'onboarding' } });
     } catch (e) {
       console.error('Failed to create activity log for onboarding completion:', e);
     }

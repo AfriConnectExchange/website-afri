@@ -13,7 +13,6 @@ import { Checkbox } from '../ui/checkbox';
 import { PasswordStrength } from './PasswordStrength';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
 
 type Props = {};
 
@@ -38,16 +37,10 @@ export default function SignUpCard({}: Props) {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    // Redirect to provider OAuth start endpoint; implement on server
     setIsLoading(true);
     try {
-      const result = await signIn(provider, { redirect: false, callbackUrl: '/' });
-      if (result?.error) {
-        showAlert('destructive', `Sign-up with ${provider} failed`, result.error);
-      } else {
-        router.push('/');
-      }
-    } catch (err: any) {
-      showAlert('destructive', `Sign-up with ${provider} failed`, err?.message ?? String(err));
+      window.location.href = `/api/auth/oauth/${provider}`;
     } finally {
       setIsLoading(false);
     }

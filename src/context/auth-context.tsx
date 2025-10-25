@@ -1,8 +1,7 @@
 // src/context/auth-context.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type MockUser = {
   id?: string;
@@ -35,40 +34,41 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status, update } = useSession();
+  const [user, setUser] = useState<MockUser | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const isLoading = status === "loading";
-
-  // Development-only debugging: log session/status to help diagnose client hydration
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.debug('[AuthProvider] next-auth status:', status, 'session:', session);
+    let mounted = true;
+    async function fetchMe() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (!res.ok) {
+          setUser(null);
+        } else {
+          const data = await res.json();
+          if (mounted) setUser(data.user || null);
+        }
+      } catch (err) {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
     }
-  }, [status, session]);
-  
-  // ✅ Map NextAuth session to your user object
-  const user = session?.user
-    ? ({
-        id: (session.user as any).id,
-        name: session.user.name,
-        fullName: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
-        avatarUrl: session.user.image,
-        roles: (session.user as any).roles || [],
-        phone: (session.user as any).phone ?? null,
-        address: (session.user as any).address ?? null,
-        emailVerified: !!(session.user as any).emailVerified,
-        onboardingComplete: !!(session.user as any).onboardingComplete,
-      } as MockUser)
-    : null;
+    fetchMe();
+    return () => { mounted = false; };
+  }, []);
 
   const logout = async () => {
-    await signOut({ redirect: false, callbackUrl: '/auth/signin' });
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+    } catch (e) {
+      // ignore
+    }
+    setUser(null);
+    // client-side redirect to signin page
+    try { window.location.href = '/auth/signin'; } catch (e) { /* noop */ }
   };
 
-  // ✅ Update user via API, then refresh session
   const updateUser = async (patch: Partial<MockUser>) => {
     try {
       const response = await fetch('/api/profile/update', {
@@ -81,8 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Failed to update profile');
       }
 
-      // ✅ Trigger NextAuth session update
-      await update();
+      const data = await response.json();
+      setUser(data.user ?? null);
     } catch (error) {
       console.error('Update user error:', error);
       throw error;
