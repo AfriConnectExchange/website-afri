@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Logo } from '../logo';
 
 type Props = {};
@@ -214,15 +214,8 @@ function SignInCard({}: Props) {
 
 export default function SignInCardComponent() {
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          <Logo />
-        </div>
-        <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-        <CardDescription>Sign in to continue to your account</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Card className="w-full">
+      <CardContent className="p-6">
         <SignInCard />
       </CardContent>
     </Card>
