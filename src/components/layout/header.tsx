@@ -31,7 +31,7 @@ interface HeaderProps {
 
 export function Header({ cartCount = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
@@ -153,7 +153,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 </div>
 
                 <div className="border-t mt-4 pt-4">
-                    {user ? (
+            {isLoading ? null : isAuthenticated ? (
                         <>
                          <Link href="/notifications" passHref>
                             <Button
@@ -184,17 +184,17 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                                 Sign Out
                             </Button>
                         </>
-                    ) : (
-                         <Link href="/auth/signin" passHref>
-                            <Button
-                                className="w-full justify-start"
-                                onClick={handleMobileLinkClick}
-                            >
-                                <User className="w-4 h-4 mr-2" />
-                                Sign In / Register
-                            </Button>
-                         </Link>
-                    )}
+          ) : (
+             <Link href="/auth/signin" passHref>
+              <Button
+                className="w-full justify-start"
+                onClick={handleMobileLinkClick}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Sign In / Register
+              </Button>
+             </Link>
+          )}
                 </div>
 
               </div>
@@ -211,7 +211,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 AfriConnect Exchange
               </span>
             </Link>
-            {user && !user.onboardingComplete && (
+            {!isLoading && isAuthenticated && user && !user.onboardingComplete && (
               <div className="ml-4 hidden lg:flex items-center">
                 <Link href="/onboarding/complete-profile" className="text-sm bg-yellow-50 text-yellow-800 px-3 py-1 rounded-md border border-yellow-100">
                   Complete your profile
@@ -247,7 +247,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               ))}
             </div>
 
-            {user ? (
+            {isLoading ? null : isAuthenticated && user ? (
               <div className="hidden md:flex items-center gap-2">
                 <Link href="/cart" passHref>
                   <motion.div
@@ -285,13 +285,13 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 </Link>
                 <UserNav />
               </div>
-            ) : (
-                <div className="hidden md:flex">
-                     <Link href="/auth/signin" passHref>
-                        <Button>Sign In</Button>
-                     </Link>
-                </div>
-            )}
+      ) : (
+        <div className="hidden md:flex">
+           <Link href="/auth/signin" passHref>
+            <Button>Sign In</Button>
+           </Link>
+        </div>
+      )}
             
             <div className="flex md:hidden items-center gap-1">
                 <Link href="/cart" passHref>

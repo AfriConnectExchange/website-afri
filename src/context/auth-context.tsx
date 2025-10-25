@@ -1,7 +1,7 @@
 // src/context/auth-context.tsx
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 
 export type MockUser = {
@@ -38,6 +38,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status, update } = useSession();
 
   const isLoading = status === "loading";
+
+  // Development-only debugging: log session/status to help diagnose client hydration
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.debug('[AuthProvider] next-auth status:', status, 'session:', session);
+    }
+  }, [status, session]);
   
   // ✅ Map NextAuth session to your user object
   const user = session?.user

@@ -164,9 +164,33 @@ export const authOptions: any = {
         }
       }
 
-      const dbUser = await prisma.user.findUnique({ 
-        where: { id: user.id }
-      });
+      // Resolve DB user safely: some provider/user.id values might not be UUIDs
+      // (Prisma schema expects UUID for users.id). Attempt a guarded lookup by
+      // id only when it looks like a UUID; otherwise fall back to email lookup.
+      let dbUser = null as any;
+      try {
+        const isPossiblyUuid = typeof user?.id === 'string' && /^[0-9a-fA-F-]{32,36}$/.test((user.id || '').replace(/-/g, ''));
+        if (isPossiblyUuid) {
+          dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+        }
+      } catch (err) {
+        // If Prisma throws while coercing to UUID, swallow and try fallback
+        console.warn('signIn: id lookup failed, falling back to email lookup', err);
+        dbUser = null;
+      }
+
+      if (!dbUser && user?.email) {
+        dbUser = await prisma.user.findUnique({ where: { email: user.email } });
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          // eslint-disable-next-line no-console
+          console.debug('NextAuth signIn callback - provider:', account?.provider, 'user:', user, 'dbUser:', dbUser);
+        } catch (err) {
+          // ignore
+        }
+      }
       
       const base = process.env.NEXTAUTH_URL?.replace(/\/$/, '') || 'http://localhost:3000';
 
