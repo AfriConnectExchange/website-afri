@@ -9,7 +9,8 @@ import { Progress } from "../ui/progress"
 import { Logo } from "../logo"
 import { useToast } from "../../hooks/use-toast"
 import { useAuth } from "@/context/auth-context"
-import { createSPAClient } from "@/lib/supabase/client"
+
+// We now persist onboarding through a server-side Prisma API at /api/onboarding/complete
 
 export function OnboardingFlow() {
   const { user, updateUser } = useAuth()
@@ -69,34 +70,22 @@ export function OnboardingFlow() {
     }
 
     try {
-      const supabase = createSPAClient()
-
-      // Update user profile in database with personal details
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({
-          full_name: data.full_name,
-          phone: data.phone_number,
-          address: data.location,
-          roles: [userData.primary_role],
-          status: "active",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id)
-
-      if (updateError) {
-        throw new Error(updateError.message)
-      }
-
-      // Persist onboarding progress to the server
       toast({ title: "Finishing setup", description: "We are saving your profile and finishing setup." })
-      const resp = await fetch("/api/onboarding/complete", {
-        method: "POST",
-        credentials: "include",
+
+      const resp = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: data.full_name,
+          phoneNumber: data.phone_number,
+          location: data.location,
+          roles: [userData.primary_role],
+        }),
       })
+
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
-        throw new Error(body?.error || "Failed to persist onboarding progress")
+        throw new Error(body?.error || 'Failed to persist onboarding progress')
       }
 
       // Move to the final step which shows a spinner and redirects

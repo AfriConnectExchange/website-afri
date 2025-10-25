@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     await prisma.user.update({
       where: { email: record.identifier },
       // cast to any to avoid TypeScript mismatch until Prisma client is regenerated
-      data: { emailVerified: (new Date() as any), status: 'active' },
+      data: { emailVerified: (new Date() as any), status: 'active', verificationStatus: 'verified' },
     });
 
     // Remove token

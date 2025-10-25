@@ -1,31 +1,57 @@
-import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { parseCookies, getAdminSupabase } from '@/lib/supabase/utils'
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../auth/[...nextauth]/route';
+import { prisma } from '../../../../lib/prisma';
+import { parseUserAgent, extractIpFromHeaders } from '../../../../lib/get-client-info';
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json()
-    const deviceId = body?.device_id || body?.deviceId || null
-    const info = body?.info || {}
-    if (!deviceId) return NextResponse.json({ error: 'device_id required' }, { status: 400 })
+    const session = await getServerSession(authOptions as any);
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Build response to let cookie adapter set cookies if needed
-    const res = NextResponse.next()
-    const cookieHeader = req.headers.get('cookie')
-    const cookiesAdapter = (await import('@/lib/supabase/utils')).createCookiesAdapter(cookieHeader, res)
+    const body = await request.json().catch(() => ({}));
+    const deviceId = body?.device_id || body?.deviceId;
+    if (!deviceId) return NextResponse.json({ error: 'Missing device_id' }, { status: 400 });
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '', { cookies: cookiesAdapter }) as any
-    const { data } = await supabase.auth.getUser()
-    const user = data?.user
-    const userId = user?.id ?? null
+    const ip = extractIpFromHeaders(request.headers);
+    const ua = request.headers.get('user-agent') || '';
+    const parsed = parseUserAgent(ua);
 
-    // Use admin client for DB write (server-only)
-    const admin = getAdminSupabase()
-    const { error } = await admin.from('devices').insert([{ device_id: deviceId, user_id: userId, info }])
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const device = await prisma.deviceInfo.upsert({
+      where: { deviceId },
+      update: {
+        userId: session.user.id,
+        browserName: parsed.browserName,
+        browserVersion: parsed.browserVersion,
+        osName: parsed.osName,
+        osVersion: parsed.osVersion,
+        deviceName: parsed.deviceModel || parsed.deviceVendor,
+        deviceType: parsed.deviceType,
+        ipAddress: ip === 'unknown' ? null : ip,
+        userAgent: ua,
+        lastSeenAt: new Date(),
+        lastAuthenticatedAt: new Date(),
+      },
+      create: {
+        userId: session.user.id,
+        deviceId,
+        browserName: parsed.browserName,
+        browserVersion: parsed.browserVersion,
+        osName: parsed.osName,
+        osVersion: parsed.osVersion,
+        deviceName: parsed.deviceModel || parsed.deviceVendor,
+        deviceType: parsed.deviceType,
+        ipAddress: ip === 'unknown' ? null : ip,
+        userAgent: ua,
+        firstSeenAt: new Date(),
+        lastSeenAt: new Date(),
+        lastAuthenticatedAt: new Date(),
+      }
+    });
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ device });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'failed' }, { status: 500 })
+    console.error('Error in devices/register:', err);
+    return NextResponse.json({ error: err?.message || String(err) }, { status: 500 });
   }
 }

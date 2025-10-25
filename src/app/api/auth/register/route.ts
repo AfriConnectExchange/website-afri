@@ -99,8 +99,11 @@ export async function POST(req: NextRequest) {
         },
       });
 
-    const verifyLink = `${process.env.NEXTAUTH_URL?.replace(/\/$/, '') || ''}/api/auth/verify?token=${token}`;
-    const html = await render(VerificationEmail({ link: verifyLink }));
+  // Point the user to the client-side verify page which will show a verifying
+  // UI while the server-side `/api/auth/verify` endpoint performs the actual
+  // token validation. This allows a cleaner UX: "Verifying..." -> "Verified".
+  const verifyLink = `${process.env.NEXTAUTH_URL?.replace(/\/$/, '') || ''}/auth/verify-email?token=${token}`;
+  const html = await render(VerificationEmail({ link: verifyLink, name: user.fullName || name }));
 
       const { enqueueEmail } = await import('@/lib/mailer');
       await enqueueEmail({ to: email, subject: 'Verify your email for AfriConnect Exchange', html, templateName: 'VerificationEmail', userId: user.id });

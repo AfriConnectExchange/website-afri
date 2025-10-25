@@ -43,7 +43,7 @@ const wrappedAdapter = {
   },
 };
 
-const authOptions: any = {
+export const authOptions: any = {
   adapter: wrappedAdapter,
   providers: [
     CredentialsProvider({
@@ -90,7 +90,9 @@ const authOptions: any = {
       from: process.env.EMAIL_FROM,
       async sendVerificationRequest({ identifier: email, url, provider }) {
         const transport = createTransport(provider.server);
-    const emailHtml = await render(VerificationEmail({ link: url }));
+      // Attempt to include the recipient's name in the verification email when available
+    const user = await prisma.user.findUnique({ where: { email } });
+    const emailHtml = await render(VerificationEmail({ link: url, name: user?.fullName ?? undefined }));
 
         try {
           const result = await transport.sendMail({
@@ -165,16 +167,24 @@ const authOptions: any = {
       if (user.email) {
         await prisma.user.update({
           where: { email: user.email },
-          // store verification timestamp
-          data: { emailVerified: (new Date() as any), status: 'active' }
+          // store verification timestamp and mark verificationStatus
+          data: { emailVerified: (new Date() as any), status: 'active', verificationStatus: 'verified' }
         });
       }
     }
 
     const dbUser = await prisma.user.findUnique({ where: { id: user.id }});
+    const base = process.env.NEXTAUTH_URL?.replace(/\/$/, '') || 'http://localhost:3000';
+
     if (!dbUser?.emailVerified) {
       // If the user somehow isn't verified, redirect to the verify page
-      return '/auth/verify-email';
+      return `${base}/auth/verify-email`;
+    }
+
+    // If user hasn't completed onboarding (phone/address), redirect them there
+    const needsOnboarding = !dbUser.phone || !dbUser.address;
+    if (needsOnboarding) {
+      return `${base}/onboarding?redirect=true`;
     }
 
     return true;

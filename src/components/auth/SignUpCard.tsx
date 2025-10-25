@@ -84,17 +84,14 @@ export default function SignUpCard({}: Props) {
             throw new Error(errorData.message || 'Something went wrong');
         }
 
-        const result = await signIn('email', {
-          redirect: false,
-          email: formData.email,
-        });
-
-        if (result?.error) {
-          showAlert('destructive', 'Sign-up Failed', result.error);
-        } else {
-          localStorage.setItem('afri:pending_verification_email', formData.email);
-          router.push('/auth/verify-email');
-        }
+        // We already send a verification email from the server-side register
+        // endpoint (`/api/auth/register`). Calling `signIn('email')` here
+        // triggers NextAuth's EmailProvider to send a second verification
+        // email (duplicate). Avoid that by not calling `signIn` and instead
+        // redirect the user to the verify page which shows instructions.
+        localStorage.setItem('afri:pending_verification_email', formData.email);
+        showAlert('default', 'Verification email sent', 'Check your inbox for a verification link.');
+        router.push('/auth/verify-email');
 
     } catch (error: any) {
         showAlert('destructive', 'Sign-up Failed', error.message);

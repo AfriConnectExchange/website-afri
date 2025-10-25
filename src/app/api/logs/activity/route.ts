@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { getAdminSupabase } from '@/lib/supabase/utils'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '../../auth/[...nextauth]/route'
+import { prisma } from '../../../../lib/prisma'
 
 export async function POST(req: Request) {
   try {
@@ -11,18 +12,25 @@ export async function POST(req: Request) {
     const ua = req.headers.get('user-agent') || null
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || null
 
-    // Use cookie-aware client to optionally associate user
-    const res = NextResponse.next()
-    const cookieHeader = req.headers.get('cookie')
-    const cookiesAdapter = (await import('@/lib/supabase/utils')).createCookiesAdapter(cookieHeader, res)
+    // Try to resolve a signed-in user via NextAuth session (optional)
+    let userId: string | null = null
+    try {
+      const session = (await getServerSession(authOptions as any)) as any
+      if (session?.user?.id) userId = session.user.id
+    } catch (e) {
+      // ignore — session optional for activity logs
+      userId = null
+    }
 
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '', { cookies: cookiesAdapter }) as any
-    const { data } = await supabase.auth.getUser()
-    const user = data?.user
-
-    const admin = getAdminSupabase()
-    const { error } = await admin.from('activity_logs').insert([{ event_type, payload, user_agent: ua, ip, user_id: user?.id ?? null }])
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await prisma.activityLog.create({
+      data: {
+        userId: userId,
+        action: event_type,
+        changes: payload as any,
+        ipAddress: ip || null,
+        userAgent: ua || null,
+      },
+    })
 
     return NextResponse.json({ ok: true })
   } catch (err: any) {
