@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerAuthSession } from '@/lib/get-server-session';
@@ -12,14 +11,37 @@ const DEVICE_ID_NAMESPACE = 'a3a6b57d-1f6e-4b47-8f5a-2e4b6e8a4c18';
 
 export async function POST(req: NextRequest) {
   try {
-    // Use our robust helper which can read cookies from the provided request
-    const resolved = await getServerAuthSession(req as Request);
-
-      if (!resolved || !resolved.userId) {
-        return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    // First try NextAuth's getServerSession with the incoming request so it can
+    // resolve cookies that were sent with this fetch. If that fails, fall back
+    // to our robust helper which tries several strategies (including cookie
+    // parsing + DB lookup).
+    let resolved = null as any;
+    try {
+      const sess = await nextGetServerSession(req as any, undefined as any, authOptions as any);
+      if (sess && (sess as any).user && (sess as any).user.id) {
+        // attempt to find NextAuth session row in DB by user and expiry
+        const dbSession = await prisma.session.findFirst({ where: { userId: (sess as any).user.id }, orderBy: { expires: 'desc' } });
+        resolved = {
+          userId: (sess as any).user.id,
+          sessionId: dbSession?.id ?? null,
+          sessionToken: dbSession?.sessionToken ?? null,
+          expires: dbSession?.expires ?? null,
+        } as any;
       }
+    } catch (err) {
+      // ignore and allow fallback
+    }
 
-      const userId = resolved.userId;
+    if (!resolved) {
+      // Use our robust helper which can read cookies from the provided request
+      resolved = await getServerAuthSession(req as Request);
+    }
+
+    if (!resolved || !resolved.userId) {
+      return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
+    }
+
+    const userId = resolved.userId;
     const userAgent = req.headers.get('user-agent') || 'Unknown';
     const ip = extractIpFromHeaders(req.headers);
     const { browserName, osName, deviceVendor, deviceModel, deviceType } = parseUserAgent(userAgent);
@@ -100,18 +122,5 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Failed to start and log session:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
-// Provide a GET handler so NextAuth client can fetch the session at /api/auth/session
-// without hitting an empty body. This returns the standard NextAuth session object.
-export async function GET(req: NextRequest) {
-  try {
-    const sess = await nextGetServerSession(authOptions as any);
-    // nextGetServerSession may return undefined/null when no session exists
-    return NextResponse.json(sess ?? null, { status: 200 });
-  } catch (err) {
-    console.error('Error in /api/auth/session GET:', err);
-    return NextResponse.json(null, { status: 200 });
   }
 }

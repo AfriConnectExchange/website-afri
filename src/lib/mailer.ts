@@ -171,7 +171,7 @@ export function startEmailWorker() {
 
 export const sendWelcomeEmail = async (to: string, name?: string) => {
   const subject = "Welcome to AfriConnect Exchange";
-  const emailHtml = render(WelcomeEmail({ name }));
+  const emailHtml = await render(WelcomeEmail({ name }));
   return enqueueEmail({
     to,
     subject,

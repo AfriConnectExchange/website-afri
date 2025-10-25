@@ -41,6 +41,25 @@ export async function middleware(req: NextRequest) {
       const url = new URL('/onboarding/complete-profile', req.url);
       return NextResponse.redirect(url);
     }
+    // Best-effort: log a 'visit' activity for authenticated requests so IP/UA
+    // are captured server-side. Fire-and-forget to avoid blocking the response.
+    try {
+      if (data.authenticated) {
+        fetch(`${origin}/api/logs/activity`, {
+          method: 'POST',
+          headers: {
+            cookie,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ event_type: 'visit', payload: { path: pathname } }),
+          // do not rely on cached responses
+          cache: 'no-store',
+          // keepalive is only available in the browser; in middleware we just fire
+        }).catch(() => {});
+      }
+    } catch (err) {
+      // swallow logging errors; do not impact request flow
+    }
   } catch (err) {
     console.error('Middleware onboarding check failed:', err);
     // On failure, allow the request to proceed (fail-open)

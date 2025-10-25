@@ -37,7 +37,28 @@ export async function getServerAuthSession(req?: Request) {
       cookies[k.trim()] = decodeURIComponent((v || []).join('=').trim());
     });
 
-    const token = cookies['__Secure-next-auth.session-token'] || cookies['next-auth.session-token'] || cookies['next-auth.token'] || null;
+    // Try known NextAuth cookie names first, then a best-effort scan for any
+    // cookie name that looks like a NextAuth session token.
+    const knownNames = ['__Secure-next-auth.session-token', '__Host-next-auth.session-token', 'next-auth.session-token', 'next-auth.token'];
+    let token: string | null = null;
+    for (const name of knownNames) {
+      if (cookies[name]) {
+        token = cookies[name];
+        break;
+      }
+    }
+
+    if (!token) {
+      // Fallback: find any cookie key that contains 'next' and 'session' or 'session-token'
+      for (const k of Object.keys(cookies)) {
+        const kn = k.toLowerCase();
+        if (kn.includes('next') && (kn.includes('session') || kn.includes('session-token') || kn.includes('auth'))) {
+          token = cookies[k];
+          break;
+        }
+      }
+    }
+
     if (token) {
       const dbSession = await prisma.session.findUnique({ where: { sessionToken: token } });
       if (dbSession) {

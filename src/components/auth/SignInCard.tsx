@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { Mail, Eye, EyeOff } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
@@ -48,8 +48,22 @@ function SignInCard({}: Props) {
   };
 
   const handleSessionLogging = async () => {
+    const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
     try {
-      await fetch('/api/auth/session', { method: 'POST' });
+      // Ensure cookies are included so server can resolve the newly-created session
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  const res = await fetch('/api/auth/log-session', { method: 'POST', credentials: 'include' });
+        if (res.ok) return;
+        // If unauthorized, the session cookie may not yet be available — retry briefly
+        if (res.status === 401 && attempt < maxAttempts) {
+          await sleep(250 * attempt);
+          continue;
+        }
+        // other non-ok responses: log and stop
+        console.error('Session logging failed with status:', res.status);
+        return;
+      }
     } catch (error) {
       console.error("Session logging failed:", error);
     }
@@ -63,6 +77,16 @@ function SignInCard({}: Props) {
         await logSecurityEvent('social-signin-failed', `Social sign-in failed with ${provider}: ${result.error}`, true);
         showAlert('destructive', `Sign-in with ${provider} failed`, result.error);
       } else if (result?.ok) {
+        // Wait for NextAuth session to be available (avoid racing before cookie set)
+        const maxWait = 3000; // ms
+        const interval = 250;
+        let waited = 0;
+        while (waited < maxWait) {
+            const sess = await getSession();
+          if (sess && (sess as any).user?.id) break;
+          await new Promise((r) => setTimeout(r, interval));
+          waited += interval;
+        }
         await handleSessionLogging();
         router.push('/');
       }
@@ -94,7 +118,18 @@ function SignInCard({}: Props) {
             showAlert('destructive', 'Sign-in Failed', result.error);
         }
       } else if (result?.ok) {
-        await handleSessionLogging();
+        // Wait for the NextAuth session to be available before calling session-logging
+        const maxWait = 3000; // ms
+        const interval = 250;
+        let waited = 0;
+        while (waited < maxWait) {
+    const sess = await getSession();
+          if (sess && (sess as any).user?.id) break;
+          await new Promise((r) => setTimeout(r, interval));
+          waited += interval;
+        }
+
+  await handleSessionLogging();
         showAlert('default', 'Sign-in Successful', 'Welcome back!');
         router.push('/');
       }
