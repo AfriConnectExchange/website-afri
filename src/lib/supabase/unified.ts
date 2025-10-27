@@ -48,7 +48,7 @@ export class SassClient {
         });
         if (error) throw error;
         if(this.clientType === ClientType.SPA) {
-            window.location.href = '/auth/login';
+            window.location.href = '/auth/signin';
         }
     }
 
