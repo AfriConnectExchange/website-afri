@@ -10,24 +10,27 @@ import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// @ts-ignore - importing css side-effect for phone input styles
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { Checkbox } from '../ui/checkbox';
 import { PasswordStrength } from './PasswordStrength';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import { useGlobal } from '@/lib/context/GlobalContext';
 import { createSPAClient } from '@/lib/supabase/client';
 
 type Props = {};
 
 export default function SignUpCard({}: Props) {
   const { signUp } = useAuth();
-  const { toast } = useToast();
+  const { showSnackbar } = useGlobal();
 
   const [signupMethod, setSignupMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -38,12 +41,12 @@ export default function SignUpCard({}: Props) {
     acceptTerms: false,
   });
 
-  const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
-    toast({ variant, title, description });
+  const showAlert = (severity: 'success' | 'error' | 'info' | 'warning', message: string) => {
+    showSnackbar(message, severity);
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-    setIsLoading(true);
+  setIsLoading(true);
     const supabase = createSPAClient();
     const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -52,36 +55,49 @@ export default function SignUpCard({}: Props) {
         }
     });
     if (error) {
-        showAlert('destructive', `Sign-up with ${provider} failed`, error.message);
+  showAlert('error', `Sign-up with ${provider} failed: ${error.message}`);
     }
     setIsLoading(false);
   };
 
+  const router = useRouter();
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || isRedirecting) return;
     if (formData.password !== formData.confirmPassword) {
-      showAlert('destructive', 'Passwords do not match', 'Please re-enter your password.');
+      showAlert('error', 'Passwords do not match. Please re-enter your password.');
       return;
     }
     if (!formData.acceptTerms) {
-      showAlert('destructive', 'Terms not accepted', 'You must agree to the Terms of Service.');
+      showAlert('error', 'Terms not accepted. You must agree to the Terms of Service.');
       return;
     }
 
-    setIsLoading(true);
-    
-    try {
+  setIsLoading(true);
+  try {
         if (signupMethod === 'email') {
-            await signUp(formData.email, formData.password);
-        } else {
-            // Real Supabase phone signup logic would go here
-            showAlert('destructive', 'Not Implemented', 'Phone sign-up is not yet implemented.');
-        }
-    } catch (error: any) {
-        showAlert('destructive', 'Sign-up Failed', error.message);
-    } finally {
-        setIsLoading(false);
+      const result = await signUp(formData.email, formData.password);
+      if (result?.success) {
+        showAlert('success', result.message || 'Account created — check your email for a verification link.');
+        // keep form disabled while we wait to redirect
+        setIsRedirecting(true);
+            // persist email so verify page can show it
+            try { localStorage.setItem('signup_email', formData.email); } catch {};
+        setTimeout(() => router.push('/auth/verify-email'), 1200);
+      } else {
+        showAlert('error', result?.message || 'Unable to create account.');
+      }
+    } else {
+      // Real Supabase phone signup logic would go here
+  showAlert('error', 'Not Implemented: Phone sign-up is not yet implemented.');
     }
+  } catch (error: any) {
+    showAlert('error', `Sign-up Failed: ${error.message}`);
+  } finally {
+    // If we are redirecting keep button disabled; otherwise re-enable
+    if (!isRedirecting) setIsLoading(false);
+  }
   };
   
   return (
@@ -249,7 +265,7 @@ export default function SignUpCard({}: Props) {
               type="submit"
               size="lg"
               className="w-full mt-6"
-              isLoading={isLoading}
+              isLoading={isLoading || isRedirecting}
               animationType="glow"
             >
               {signupMethod === 'phone' ? 'Send OTP' : 'Create Account'}
@@ -269,3 +285,6 @@ export default function SignUpCard({}: Props) {
     </>
   );
 }
+
+  // place snackbar at the root of the component render
+  

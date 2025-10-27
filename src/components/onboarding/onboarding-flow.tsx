@@ -8,14 +8,12 @@ import { PersonalDetailsStep } from './personal-details-step';
 import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
-import { useToast } from '../../hooks/use-toast';
+import MuiSnackbar from '@/components/ui/Snackbar';
 import { useAuth } from '@/context/auth-context';
-
 
 export function OnboardingFlow() {
   const { user, updateUser } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
 
   const [userData, setUserData] = useState({
@@ -24,14 +22,16 @@ export function OnboardingFlow() {
     phone_number: '',
     location: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
 
   useEffect(() => {
     if(user) {
         setUserData((prev) => ({
           ...prev,
-          full_name: user.fullName || user.email || '',
+          full_name: user.email || '',
           phone_number: '',
-          primary_role: user.roles?.[0] || 'buyer',
+          primary_role: user.role || 'buyer',
         }));
       }
   }, [user]);
@@ -45,16 +45,13 @@ export function OnboardingFlow() {
     } else {
        if (user) {
           try {
-            updateUser({ roles: [role] });
+            updateUser({ role });
           } catch(error: any) {
-              toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
+              setSnackbar({ open: true, message: `Failed to Save Role: ${error.message}`, severity: 'error' });
               return;
           }
       }
-      toast({
-        title: 'Seller Verification Required',
-        description: "You'll be redirected to complete your seller profile.",
-      });
+      setSnackbar({ open: true, message: "Seller Verification Required. You'll be redirected to complete your seller profile.", severity: 'info' });
       router.push('/kyc');
     }
   };
@@ -65,24 +62,32 @@ export function OnboardingFlow() {
     location: string;
   }) => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+      setSnackbar({ open: true, message: 'You must be logged in.', severity: 'error' });
       return;
     }
-
+    setLoading(true);
     try {
-      updateUser({ 
-          fullName: data.full_name,
-          roles: [userData.primary_role],
-          // In a real app, you might have a separate field for phone,
-          // but we'll just log it for now.
+      // Update users table with correct columns
+      const res = await fetch('/api/onboarding/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: user.id,
+          full_name: data.full_name,
+          phone: data.phone_number,
+          address: data.location,
+          role: userData.primary_role,
+        }),
       });
-      
-      // Simulate saving onboarding progress
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to update profile');
       localStorage.setItem('onboarding_completed', 'true');
-
+      setSnackbar({ open: true, message: 'Profile updated successfully!', severity: 'success' });
       setCurrentStep((prev) => prev + 1);
-    } catch(error: any) {
-      toast({ variant: 'destructive', title: 'Failed to Save Profile', description: error.message });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.message, severity: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -121,9 +126,23 @@ export function OnboardingFlow() {
         <h1 className="text-2xl font-bold">AfriConnect Exchange</h1>
       </div>
       <Progress value={progressValue} className="mb-8" />
-      <div className="min-h-[400px] flex flex-col justify-center">
+      <div className="min-h-[400px] flex flex-col justify-center relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 z-10">
+            <svg className="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+          </div>
+        )}
         {steps[currentStep]}
       </div>
+      <MuiSnackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        severity={snackbar.severity}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   );
 }

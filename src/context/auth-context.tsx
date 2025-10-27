@@ -24,7 +24,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: Partial<SupabaseUser>) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   handleNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
   handleOtpSuccess: (user: SupabaseUser) => void;
 }
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       throw new Error(error.message);
@@ -89,8 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/');
   }, [supabase, router]);
 
-  const signUp = useCallback(async (email, password) => {
-    const { error } = await supabase.auth.signUp({ 
+  const signUp = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
@@ -98,12 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
     if (error) {
-      throw new Error(error.message);
+      return { success: false, message: error.message };
     }
-    // After sign up, Supabase sends a verification email.
-    // The user needs to be notified to check their email.
-    router.push('/auth/verify-email');
-  }, [supabase, router]);
+    // On success, Supabase will send a verification email.
+    return { success: true, message: 'Verification email sent. Check your inbox.' };
+  }, [supabase]);
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();

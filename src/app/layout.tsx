@@ -8,6 +8,7 @@ import ConditionalFooter from '@/components/layout/ConditionalFooter';
 
 import { AuthProvider } from '@/context/auth-context';
 
+import { GlobalProvider } from '@/lib/context/GlobalContext';
 
 export const metadata: Metadata = {
   title: 'AfriConnect Exchange',
@@ -41,6 +42,7 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased flex flex-col'
         )}
       >
+        <GlobalProvider>
         <AuthProvider>
           <CartProvider>
             <div className="flex-1">
@@ -50,6 +52,7 @@ export default function RootLayout({
             <Toaster />
           </CartProvider>
         </AuthProvider>
+        </GlobalProvider>
       </body>
     </html>
   );
