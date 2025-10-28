@@ -44,7 +44,7 @@ export function OnboardingFlow() {
         primary_role: (user.roles && user.roles[0]) ?? 'buyer',
       }));
     }
-  }, [user]);
+  }, [user, profile]);
 
   const handleRoleSelection = async (data: { role: string }) => {
     const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
