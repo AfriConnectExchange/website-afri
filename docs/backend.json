@@ -1,2 +1,200 @@
 
-{}
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public and private profile data.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User ID, same as Firebase Auth UID." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "phone": { "type": "string", "description": "User's phone number." },
+        "fullName": { "type": "string", "description": "User's full name." },
+        "profilePictureUrl": { "type": "string", "format": "uri", "description": "URL for the user's avatar." },
+        "bio": { "type": "string", "description": "A short user biography." },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string", "default": "United Kingdom" },
+        "postcode": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string", "enum": ["buyer", "seller", "sme", "admin"] } },
+        "status": { "type": "string", "enum": ["pending", "active", "suspended", "deleted"], "default": "pending" },
+        "verificationStatus": { "type": "string", "enum": ["unverified", "pending", "verified", "rejected"], "default": "unverified" },
+        "kycSubmittedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "roles", "status"]
+    },
+    "UserPreferences": {
+      "title": "User Preferences",
+      "description": "Stores user-specific notification and display settings.",
+      "type": "object",
+      "properties": {
+        "notificationsEnabled": { "type": "boolean", "default": true },
+        "marketingEmails": { "type": "boolean", "default": false }
+      }
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A category for products or services.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": "string" },
+        "parentId": { "type": "string" },
+        "iconUrl": { "type": "string", "format": "uri" },
+        "displayOrder": { "type": "integer" }
+      },
+      "required": ["name", "slug"]
+    },
+    "Listing": {
+      "title": "Product or Service Listing",
+      "description": "Represents an item or service available on the marketplace.",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "listingType": { "type": "string", "enum": ["product", "service"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number", "description": "Price for products or fixed-price services." },
+        "priceFrom": { "type": "number", "description": "Starting price for ranged-price services." },
+        "priceTo": { "type": "number", "description": "Ending price for ranged-price services." },
+        "currency": { "type": "string", "default": "GBP" },
+        "isFree": { "type": "boolean", "default": false },
+        "quantityAvailable": { "type": "integer", "default": 1 },
+        "condition": { "type": "string", "enum": ["new", "used", "refurbished"] },
+        "images": { "type": "array", "items": { "type": "object", "properties": { "url": { "type": "string" }, "alt": { "type": "string" } } } },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "location": { "type": "string" },
+        "isActive": { "type": "boolean", "default": true },
+        "averageRating": { "type": "number", "default": 0 },
+        "reviewCount": { "type": "integer", "default": 0 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sellerId", "listingType", "title", "description"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "An order placed by a buyer for a product or service.",
+      "type": "object",
+      "properties": {
+        "buyerId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "listingId": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "disputed"] },
+        "quantity": { "type": "integer" },
+        "totalAmount": { "type": "number" },
+        "currency": { "type": "string", "default": "GBP" },
+        "deliveryAddress": { "type": "string" },
+        "trackingNumber": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["buyerId", "sellerId", "listingId", "status", "totalAmount"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "orderId": { "type": "string" },
+        "type": { "type": "string", "enum": ["purchase", "barter", "escrow", "refund"] },
+        "paymentMethod": { "type": "string", "enum": ["cash", "card", "wallet", "paypal", "escrow"] },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed", "refunded"] },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "default": "GBP" },
+        "providerTransactionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "status", "amount"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A user review for a product, service, or seller.",
+      "type": "object",
+      "properties": {
+        "reviewerId": { "type": "string" },
+        "revieweeId": { "type": "string" },
+        "listingId": { "type": "string" },
+        "orderId": { "type": "string" },
+        "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "reviewText": { "type": "string" },
+        "isVerifiedPurchase": { "type": "boolean", "default": false },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reviewerId", "revieweeId", "listingId", "rating"]
+    },
+    "SupportTicket": {
+        "title": "Support Ticket",
+        "description": "A support ticket created by a user.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "category": { "type": "string" },
+            "subject": { "type": "string" },
+            "description": { "type": "string" },
+            "status": { "type": "string", "enum": ["open", "in_progress", "resolved", "closed"] },
+            "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "category", "subject", "description"]
+    },
+    "TicketMessage": {
+        "title": "Ticket Message",
+        "description": "A message within a support ticket.",
+        "type": "object",
+        "properties": {
+            "senderId": { "type": "string" },
+            "message": { "type": "string" },
+            "isInternal": { "type": "boolean", "default": false },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["senderId", "message"]
+    }
+  },
+  "auth": {
+    "providers": ["email", "google", "facebook", "phone"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores public and private user profile information."
+    },
+    "/users/{userId}/preferences/{prefsId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "Stores user-specific notification and display preferences."
+    },
+    "/listings/{listingId}": {
+      "schema": { "$ref": "#/entities/Listing" },
+      "description": "Contains all products and services available on the marketplace."
+    },
+    "/listings/{listingId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Reviews for a specific product or service."
+    },
+    "/categories/{categoryId}": {
+        "schema": { "$ref": "#/entities/Category" },
+        "description": "List of all categories for products and services."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Records of all orders placed on the platform."
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "A log of all financial transactions."
+    },
+    "/supportTickets/{ticketId}": {
+        "schema": { "$ref": "#/entities/SupportTicket" },
+        "description": "Stores all customer support tickets."
+    },
+    "/supportTickets/{ticketId}/messages/{messageId}": {
+        "schema": { "$ref": "#/entities/TicketMessage" },
+        "description": "Messages associated with a support ticket."
+    }
+  }
+}
