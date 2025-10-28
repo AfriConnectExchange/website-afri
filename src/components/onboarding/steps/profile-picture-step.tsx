@@ -40,7 +40,7 @@ export function ProfilePictureStep({ data, onDataChange, onNext, onBack }: Profi
 
     try {
       const storage = getStorage();
-      const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+      const storageRef = ref(storage, `profile-pictures/${user.id}/${file.name}`);
       
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
