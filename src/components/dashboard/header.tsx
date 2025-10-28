@@ -52,7 +52,7 @@ interface HeaderProps {
 }
 
 export function Header({ cartCount = 0 }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -269,7 +269,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName ?? user.email ?? undefined} />
+                <AvatarImage src={profile?.profile_picture_url ?? user.avatarUrl ?? undefined} alt={profile?.full_name ?? user.fullName ?? user.email ?? undefined} />
                 <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
               </Avatar>
                         </Button>
@@ -277,7 +277,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{user.fullName || user.email}</p>
+                            <p className="text-sm font-medium leading-none">{profile?.full_name || user.fullName || user.email}</p>
                             <p className="text-xs leading-none text-muted-foreground">
                             {user.email}
                             </p>

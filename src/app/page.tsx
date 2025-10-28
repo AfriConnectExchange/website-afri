@@ -85,7 +85,7 @@ export interface FilterState {
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const { cart, addToCart, cartCount } = useCart();
   
@@ -108,6 +108,12 @@ export default function MarketplacePage() {
     freeShippingOnly: false,
     freeListingsOnly: false,
   });
+
+  useEffect(() => {
+    if (!isAuthLoading && user && !user.onboarding_completed) {
+      router.push('/onboarding');
+    }
+  }, [user, isAuthLoading, router]);
 
   const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
@@ -386,5 +392,3 @@ export default function MarketplacePage() {
     </>
   );
 }
-
-    

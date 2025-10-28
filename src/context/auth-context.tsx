@@ -19,6 +19,8 @@ import {
 } from 'firebase/auth';
 import { useGlobal } from '@/lib/context/GlobalContext';
 export { MockUser } from '@/lib/types';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+
 
 // Define a more specific type for your mock user
 export type UserProfile = DbUserProfile;
@@ -68,15 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      setIsLoading(true);
       if (fbUser) {
           if (!fbUser.emailVerified) {
-            // For unverified users, create a minimal user object so UI can still react
             const minimalUser: AppUser = {
               id: fbUser.uid,
               email: fbUser.email ?? null,
               fullName: fbUser.displayName ?? null,
               avatarUrl: fbUser.photoURL ?? null,
-              roles: []
+              roles: [],
+              onboarding_completed: false
             };
             setUser(minimalUser);
             setProfile(null);
@@ -84,48 +87,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           
-          // For verified users, create the full profile
-          const baseUser: AppUser = {
-            id: fbUser.uid,
-            email: fbUser.email ?? null,
-            fullName: fbUser.displayName ?? null,
-            avatarUrl: fbUser.photoURL ?? null,
-            roles: [] // Will be populated from Firestore
-          };
-
           try {
-            const idToken = await fbUser.getIdToken();
-            const res = await fetch('/api/profile', { 
-                method: 'POST', 
-                headers: { 
-                    Authorization: `Bearer ${idToken}`,
-                    'Content-Type': 'application/json' 
-                }, 
-                body: JSON.stringify({ displayName: fbUser.displayName ?? null }) 
-            });
+            const db = getFirestore();
+            const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+            let userProfile: UserProfile;
 
-            if (res.ok) {
-                const body = await res.json().catch(() => null);
-                const serverProfile = body?.profile ?? body ?? null;
-                
-                if (serverProfile) {
-                    setProfile(serverProfile as UserProfile);
-                    setUser((prev) => ({ ...prev, ...(serverProfile as any) } as AppUser));
-                     if (!serverProfile.onboarding_completed) {
-                        try {
-                            router.push('/onboarding');
-                        } catch (e) {
-                            console.warn("Router not available, couldn't redirect to onboarding.");
-                        }
-                    }
-                }
+            if (userDoc.exists()) {
+                userProfile = userDoc.data() as UserProfile;
             } else {
-                 console.error("Failed to fetch/create profile from server");
-                 setUser(baseUser);
+                 userProfile = {
+                    id: fbUser.uid,
+                    email: fbUser.email ?? '',
+                    full_name: fbUser.displayName ?? '',
+                    roles: ['buyer'],
+                    status: 'active',
+                    onboarding_completed: false,
+                };
             }
+
+            const appUser: AppUser = {
+                id: fbUser.uid,
+                email: fbUser.email,
+                fullName: userProfile.full_name,
+                avatarUrl: fbUser.photoURL,
+                ...userProfile,
+            };
+
+            setUser(appUser);
+            setProfile(userProfile);
+          
           } catch (err) {
-            console.error('Error creating/fetching profile', err);
-            setUser(baseUser); // Set base user as fallback
+            console.error('Error fetching user profile', err);
+            const fallbackUser: AppUser = {
+              id: fbUser.uid,
+              email: fbUser.email,
+              fullName: fbUser.displayName,
+              avatarUrl: fbUser.photoURL,
+              roles: [],
+              onboarding_completed: false
+            };
+            setUser(fallbackUser);
+            setProfile(null);
           }
 
         } else {
@@ -154,6 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/auth/verify-email');
         throw new Error("Email not verified.");
       }
+      // On successful login, the onAuthStateChanged listener will handle setting user state and profile.
+      // We can just redirect to home.
       router.push('/');
     } catch (err: any) {
       throw err; // Re-throw to be caught by UI component
@@ -240,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     user,
     profile,
-    isAuthenticated: !!user && !!user.email, // A more robust check
+    isAuthenticated: !!user?.email && !isLoading,
     login,
     logout,
     updateUser,
@@ -264,5 +268,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
