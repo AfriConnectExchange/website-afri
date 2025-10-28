@@ -1,8 +1,7 @@
 
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-import type { User } from '@supabase/supabase-js';
+import admin from '@/lib/firebaseAdmin';
 
 type LogLevel = 'info' | 'warn' | 'error';
 
@@ -16,28 +15,24 @@ interface LogPayload {
 }
 
 /**
- * Logs a critical system event to the database.
- * This is used for creating an audit trail of all important actions.
- * @param user - The user performing the action.
- * @param payload - The data to be logged.
+ * Logs a critical system event to Firestore.
+ * Accepts either a user id string or an object with an id property.
  */
-export async function logSystemEvent(user: User, payload: LogPayload) {
-  const supabase = createClient();
-
-  const { error } = await supabase.from('transactions').insert({
-    profile_id: user.id,
-    type: payload.type,
-    status: payload.status || 'completed',
-    amount: payload.amount || 0,
-    description: payload.description,
-    order_id: payload.order_id,
-    provider: 'system', // Indicates this is an internal system log
-    metadata: payload.metadata || {},
-  });
-
-  if (error) {
-    console.error('CRITICAL: Failed to log system event:', error);
-    // In a production environment, you might want to send an alert here
-    // as failing to log is a security/audit concern.
+export async function logSystemEvent(userOrId: { id: string } | string, payload: LogPayload) {
+  const userId = typeof userOrId === 'string' ? userOrId : userOrId.id;
+  try {
+    await admin.firestore().collection('transactions').add({
+      profile_id: userId,
+      type: payload.type,
+      status: payload.status || 'completed',
+      amount: payload.amount || 0,
+      description: payload.description,
+      order_id: payload.order_id ?? null,
+      provider: 'system',
+      metadata: payload.metadata || {},
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('CRITICAL: Failed to log system event to Firestore:', err);
   }
 }

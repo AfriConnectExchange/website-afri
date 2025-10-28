@@ -10,9 +10,10 @@ import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
 import MuiSnackbar from '@/components/ui/Snackbar';
 import { useAuth } from '@/context/auth-context';
+import { auth } from '@/lib/firebaseClient';
 
 export function OnboardingFlow() {
-  const { user, updateUser } = useAuth();
+  const { user, profile, updateUser } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -26,14 +27,23 @@ export function OnboardingFlow() {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
 
   useEffect(() => {
-    if(user) {
-        setUserData((prev) => ({
-          ...prev,
-          full_name: user.email || '',
-          phone_number: '',
-          primary_role: user.role || 'buyer',
-        }));
-      }
+    // Prefill onboarding fields from profile, auth user or signup localStorage
+    const signupName = typeof window !== 'undefined' ? localStorage.getItem('signup_name') : null;
+    if (profile) {
+      setUserData((prev) => ({
+        ...prev,
+        full_name: profile.full_name ?? (signupName ?? user?.email ?? ''),
+        phone_number: profile.phone ?? '',
+        primary_role: (profile.roles && profile.roles[0]) ?? user?.roles?.[0] ?? 'buyer',
+      }));
+    } else if (user) {
+      setUserData((prev) => ({
+        ...prev,
+        full_name: signupName ?? user.email ?? '',
+        phone_number: '',
+        primary_role: (user.roles && user.roles[0]) ?? 'buyer',
+      }));
+    }
   }, [user]);
 
   const handleRoleSelection = async (data: { role: string }) => {
@@ -69,15 +79,19 @@ export function OnboardingFlow() {
     setLoading(true);
     try {
       // Update users table with correct columns
+      // include Firebase ID token in Authorization header so server can verify
+      const fbUser = auth.currentUser;
+      const idToken = fbUser ? await fbUser.getIdToken() : null;
       const res = await fetch('/api/onboarding/update-profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
         body: JSON.stringify({
           id: user.id,
           full_name: data.full_name,
           phone: data.phone_number,
           address: data.location,
-          role: userData.primary_role,
+          // server expects 'roles' array
+          roles: [userData.primary_role],
         }),
       });
       const result = await res.json();

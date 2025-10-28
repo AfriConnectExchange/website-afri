@@ -1,7 +1,7 @@
  'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import MuiSnackbar from '@/components/ui/Snackbar';
+import MuiSnackbar, { SnackbarMessage } from '@/components/ui/Snackbar';
 import { auth } from '@/lib/firebaseClient';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
@@ -15,7 +15,7 @@ interface GlobalContextType {
   isLoading: boolean;
   user: AppUser | null;
   profile: UserProfile | null;
-  showSnackbar: (message: string, severity?: 'success' | 'error' | 'info' | 'warning', duration?: number) => void;
+  showSnackbar: (message: string | SnackbarMessage, severity?: 'success' | 'error' | 'info' | 'warning', duration?: number) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -24,9 +24,9 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning'; duration?: number }>({ open: false, message: '', severity: 'info', duration: 5000 });
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string | SnackbarMessage; severity: 'success' | 'error' | 'info' | 'warning'; duration?: number }>({ open: false, message: '', severity: 'info', duration: 5000 });
 
-  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'info', duration = 5000) => {
+  const showSnackbar = (message: string | SnackbarMessage, severity: 'success' | 'error' | 'info' | 'warning' = 'info', duration = 5000) => {
     setSnackbar({ open: true, message, severity, duration });
   };
 

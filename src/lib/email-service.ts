@@ -1,7 +1,6 @@
 
 import nodemailer from 'nodemailer';
 import { logActivity } from './activity-logger';
-import { createServerClient } from './supabase/server';
 
 interface MailOptions {
   to: string;
@@ -20,41 +19,37 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendEmail(options: MailOptions) {
-  const supabase = createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export async function sendEmail(options: MailOptions, actorUserId?: string) {
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       ...options,
     });
-    
-    // Log success activity
-    if(user?.id) {
-        await logActivity({
-          user_id: user.id, // Or a system user ID
-          action: 'email_sent',
-          entity_type: 'email',
-          entity_id: options.to,
-          changes: { subject: options.subject, to: options.to },
-        });
+
+    // Log success activity (actorUserId optional)
+    if (actorUserId) {
+      await logActivity({
+        user_id: actorUserId,
+        action: 'email_sent',
+        entity_type: 'email',
+        entity_id: options.to,
+        changes: { subject: options.subject, to: options.to },
+      });
     }
 
   } catch (error: any) {
     console.error('Email sending failed:', error);
     // Log failure activity
-    if(user?.id) {
-        await logActivity({
-          user_id: user.id, // Or a system user ID
-          action: 'email_failure',
-          entity_type: 'email',
-          entity_id: options.to,
-          changes: { error: error.message, subject: options.subject },
-        });
+    if (actorUserId) {
+      await logActivity({
+        user_id: actorUserId,
+        action: 'email_failure',
+        entity_type: 'email',
+        entity_id: options.to,
+        changes: { error: error.message, subject: options.subject },
+      });
     }
 
-    // Re-throw the error to be handled by the caller
     throw new Error('Failed to send email.');
   }
 }

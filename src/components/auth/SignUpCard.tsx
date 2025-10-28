@@ -82,13 +82,13 @@ export default function SignUpCard({}: Props) {
   setIsLoading(true);
   try {
         if (signupMethod === 'email') {
-      const result = await signUp(formData.email, formData.password);
+  const result = await signUp(formData.email, formData.password, formData.name);
       if (result?.success) {
         showAlert('success', result.message || 'Account created — check your email for a verification link.');
         // keep form disabled while we wait to redirect
         setIsRedirecting(true);
             // persist email so verify page can show it
-            try { localStorage.setItem('signup_email', formData.email); } catch {};
+    try { localStorage.setItem('signup_email', formData.email); localStorage.setItem('signup_name', formData.name); } catch {};
         setTimeout(() => router.push('/auth/verify-email'), 1200);
       } else {
         showAlert('error', result?.message || 'Unable to create account.');

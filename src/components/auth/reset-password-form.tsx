@@ -1,6 +1,6 @@
 
-'use client';
-import { useState, useEffect } from 'react';
+"use client";
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -25,7 +25,9 @@ import { useRouter } from 'next/navigation';
 import { AnimatedButton } from '../ui/animated-button';
 import { PasswordStrength } from './PasswordStrength';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { createSPAClient } from '@/lib/supabase/client';
+import { auth } from '@/lib/firebaseClient';
+import { confirmPasswordReset } from 'firebase/auth';
+import { useSearchParams } from 'next/navigation';
 
 const formSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters.'),
@@ -37,8 +39,8 @@ const formSchema = z.object({
 
 export function ResetPasswordForm() {
   const { toast } = useToast();
-  const supabase = createSPAClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -50,43 +52,25 @@ export function ResetPasswordForm() {
     defaultValues: { password: '', confirmPassword: '' },
   });
   
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
-        if (event === 'PASSWORD_RECOVERY') {
-            // Nothing to do here, user will reset password.
-        }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+  // Get oobCode from URL search params (Firebase password reset code)
+  const oobCode = searchParams?.get('oobCode') || searchParams?.get('oobcode') || null;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setError(null);
-
     try {
-        const { error } = await supabase.auth.updateUser({ password: values.password });
-        if (error) throw error;
-      
-      toast({
-        title: 'Password Updated',
-        description: 'Your password has been successfully updated. You can now log in.',
-      });
+      if (!oobCode) throw new Error('Missing password reset code.');
+      await confirmPasswordReset(auth, oobCode, values.password);
+      toast({ title: 'Password Updated', description: 'Your password has been successfully updated. You can now log in.' });
       setPasswordUpdated(true);
       setTimeout(() => router.push('/auth'), 3000);
     } catch (error: any) {
-        let errorMessage = "An unknown error occurred.";
-        if (error.code === 'auth/invalid-action-code') {
-            errorMessage = 'The password reset link is invalid or has expired. Please request a new one.';
-        } else {
-            errorMessage = error.message;
-        }
-        setError(errorMessage);
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: errorMessage,
-        });
+      let errorMessage = error?.message ?? 'An unknown error occurred.';
+      if (error?.code === 'auth/invalid-action-code') {
+        errorMessage = 'The password reset link is invalid or has expired. Please request a new one.';
+      }
+      setError(errorMessage);
+      toast({ variant: 'destructive', title: 'Error', description: errorMessage });
     }
 
     setIsLoading(false);

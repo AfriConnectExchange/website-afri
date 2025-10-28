@@ -45,31 +45,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // Build app-level user and ensure server-side profile exists
-        const baseUser: AppUser = {
-          id: fbUser.uid,
-          email: fbUser.email ?? null,
-          fullName: fbUser.displayName ?? null,
-          avatarUrl: fbUser.photoURL ?? null,
-          roles: []
-        };
-        setUser(baseUser);
-        try {
-          const idToken = await fbUser.getIdToken();
-          const res = await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: fbUser.displayName ?? null }) });
-          if (res.ok) {
-            // optionally read back the profile from Firestore via client
-            // but server creates/merges it so we can rely on that for now
-            setProfile({ id: fbUser.uid, email: fbUser.email ?? null, full_name: fbUser.displayName ?? null, roles: [] });
-            setUser((prev) => ({ ...prev, email: fbUser.email ?? null, fullName: fbUser.displayName ?? null } as AppUser));
+          // If the user's email is not verified yet, don't create the final profile or redirect to onboarding.
+          // For strict flow we sign the user out after signup and require verification + explicit sign-in.
+          if (!fbUser.emailVerified) {
+            const minimalUser: AppUser = {
+              id: fbUser.uid,
+              email: fbUser.email ?? null,
+              fullName: fbUser.displayName ?? null,
+              avatarUrl: fbUser.photoURL ?? null,
+              roles: []
+            };
+            setUser(minimalUser);
+            setProfile(null);
+            setIsLoading(false);
+            return;
           }
-        } catch (err) {
-          console.error('error creating profile', err);
+
+          // Build app-level user and ensure server-side profile exists for verified users
+          const baseUser: AppUser = {
+            id: fbUser.uid,
+            email: fbUser.email ?? null,
+            fullName: fbUser.displayName ?? null,
+            avatarUrl: fbUser.photoURL ?? null,
+            roles: []
+          };
+          setUser(baseUser);
+          try {
+            const idToken = await fbUser.getIdToken();
+            const res = await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: fbUser.displayName ?? null }) });
+            if (res.ok) {
+              // read the created/merged profile returned by the server
+              const body = await res.json().catch(() => null);
+              const serverProfile = body?.profile ?? body ?? null;
+              if (serverProfile) {
+                setProfile(serverProfile as UserProfile);
+                // merge any returned profile fields into the app user
+                setUser((prev) => ({ ...prev, ...(serverProfile as any) } as AppUser));
+
+                // If onboarding data is missing, redirect to onboarding
+                if (!serverProfile.full_name) {
+                  try {
+                    router.push('/onboarding');
+                  } catch (e) {
+                    // router may not be available in some contexts; ignore
+                  }
+                }
+              } else {
+                setProfile({ id: fbUser.uid, email: fbUser.email ?? null, full_name: fbUser.displayName ?? null, roles: [] });
+                setUser((prev) => ({ ...prev, email: fbUser.email ?? null, fullName: fbUser.displayName ?? null } as AppUser));
+              }
+            }
+          } catch (err) {
+            console.error('error creating profile', err);
+          }
+        } else {
+          setProfile(null);
+          setUser(null);
         }
-      } else {
-        setProfile(null);
-        setUser(null);
-      }
       setIsLoading(false);
     });
     return () => unsub();
@@ -79,9 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+
+      const fbUser = auth.currentUser;
+      // If the user hasn't verified their email, prompt them and sign them out
+      if (fbUser && !fbUser.emailVerified) {
+        try {
+          await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/verify-email` });
+        } catch (e) {
+          // ignore resend errors
+          console.error('resend verification failed', e);
+        }
+        showSnackbar({ title: 'Please verify your email', description: 'A verification link was sent. Check your inbox.' }, 'error');
+        // sign out the unverified session to prevent access until verified
+        await firebaseSignOut(auth);
+        router.push('/auth/signin');
+        return;
+      }
+
       router.push('/');
     } catch (err: any) {
-      throw new Error(err.message || 'Login failed');
+      // show friendly translated message via global snackbar
+      showSnackbar({ code: err?.code, description: err?.message ?? String(err) }, 'error');
+      throw err;
     }
   }, [router]);
 
@@ -93,13 +144,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await firebaseUpdateProfile(user, { displayName });
       }
   // Send verification email
-  await sendEmailVerification(user, { url: `${window.location.origin}/auth/callback` });
-      // Create or merge profile on server
+      await sendEmailVerification(user, { url: `${window.location.origin}/auth/verify-email` });
+      // Strict flow: sign out the newly-created (unverified) session so the user must verify and explicitly sign in.
       try {
-        const idToken = await user.getIdToken();
-        await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: displayName ?? null }) });
+        await firebaseSignOut(auth);
       } catch (e) {
-        console.error('profile creation failed', e);
+        console.error('signout after signup failed', e);
       }
       return { success: true, message: 'Verification email sent. Check your inbox.' };
     } catch (err: any) {

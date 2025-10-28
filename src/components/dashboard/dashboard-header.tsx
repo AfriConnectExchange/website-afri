@@ -27,8 +27,7 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createSPAClient } from '@/lib/supabase/client';
-import { type User as SupabaseUser } from '@supabase/supabase-js';
+import { useAuth } from '@/context/auth-context';
 
 interface DashboardHeaderProps {
   title: string;
@@ -36,46 +35,12 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
-  const supabase = createSPAClient();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const { user, profile, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
-  
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-        if (data) {
-            setProfile(data);
-        }
-      }
-    };
-    
-    if (user) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-    }
-  }, [user, supabase]);
-  
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await logout();
     router.push('/');
   }
 
@@ -203,8 +168,8 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || user.email} />
-                                <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
+                  <AvatarImage src={profile?.avatar_url ?? user?.avatarUrl ?? undefined} alt={profile?.full_name ?? user?.email ?? undefined} />
+                    <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
