@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 import { getAuth } from 'firebase-admin/auth';
@@ -36,7 +37,8 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    await userDocRef.update(profileUpdateData);
+    // Use .set with { merge: true } to create or update fields
+    await userDocRef.set(profileUpdateData, { merge: true });
 
     // Log the successful profile completion
     await logActivity({
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
         created_at: new Date().toISOString()
     });
 
-    // Send a welcome email
+    // Send a welcome email if email is available
     if (userEmail) {
         await sendEmail({
             to: userEmail,
@@ -75,6 +77,6 @@ export async function POST(req: Request) {
     if (error.code === 'auth/id-token-expired') {
         message = 'Your session has expired. Please sign in again.';
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, details: error.message }, { status: 500 });
   }
 }
