@@ -56,11 +56,11 @@ export default function SignUpCard({}: Props) {
     if (isLoading) return;
     
     if (formData.password !== formData.confirmPassword) {
-      showSnackbar('Passwords do not match. Please re-enter your password.', 'error');
+      showSnackbar({ title: 'Passwords do not match', description: 'Please re-enter your password.'}, 'error');
       return;
     }
     if (!formData.acceptTerms) {
-      showSnackbar('You must agree to the Terms of Service.', 'error');
+      showSnackbar({ title: 'Terms not accepted', description: 'You must agree to the Terms of Service.'}, 'error');
       return;
     }
 
@@ -69,17 +69,17 @@ export default function SignUpCard({}: Props) {
         if (signupMethod === 'email') {
             const result = await signUp(formData.email, formData.password, formData.name);
             if (result.success) {
-                showSnackbar(result.message || 'Account created! Please check your email to verify.', 'success');
+                showSnackbar({ title: 'Account created!', description: result.message }, 'success');
                 try { 
                     localStorage.setItem('signup_email', formData.email); 
                     localStorage.setItem('signup_name', formData.name); 
                 } catch {}
                 router.push('/auth/verify-email');
             } else {
-                showSnackbar(result.message || 'Unable to create account.', 'error');
+                showSnackbar({ title: 'Sign-up failed', description: result.message }, 'error');
             }
         } else {
-            showSnackbar('Phone sign-up is not yet implemented.', 'info');
+            showSnackbar({ title: 'Not yet implemented', description: 'Phone sign-up is not yet implemented.'}, 'info');
         }
     } catch (error: any) {
         showSnackbar(`Sign-up Failed: ${error.message}`, 'error');
@@ -274,4 +274,3 @@ export default function SignUpCard({}: Props) {
   );
 }
 
-    

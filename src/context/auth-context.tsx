@@ -14,10 +14,11 @@ import {
   GoogleAuthProvider,
   FacebookAuthProvider,
   signInWithPopup,
+  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { useGlobal } from '@/lib/context/GlobalContext';
 export { MockUser } from '@/lib/types';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 
 // Define a more specific type for your mock user
@@ -60,6 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { title: 'Network error', description: 'Please check your connection and try again.' };
         case 'auth/popup-closed-by-user':
             return { title: 'Sign-in Cancelled', description: 'You closed the sign-in popup before completing.' };
+        case 'auth/email-already-in-use':
+            return { title: 'Email in use', description: 'This email address is already associated with an account.'};
         default:
             return { title: 'Sign-in Failed', description: msg };
     }
@@ -164,29 +167,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
     try {
-        const response = await fetch('/api/auth/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, name: displayName }),
-        });
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
 
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'Failed to create user.');
+        // Update Firebase Auth profile
+        if (displayName) {
+          await firebaseUpdateProfile(fbUser, { displayName });
         }
 
-        // After successful creation via API, we need to sign in the user to get a session
-        // so we can send a verification email.
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        await sendEmailVerification(user, { url: `${window.location.origin}/auth/verify-email` });
+        // Create user profile in Firestore
+        const db = getFirestore();
+        const userRef = doc(db, 'users', fbUser.uid);
+        await setDoc(userRef, {
+            id: fbUser.uid,
+            email: fbUser.email,
+            full_name: displayName ?? null,
+            created_at: new Date().toISOString(),
+            roles: ['buyer'],
+            onboarding_completed: false,
+            status: 'active'
+        }, { merge: true });
+
+        // Send verification email
+        await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/verify-email` });
         
-        // Sign out immediately after sending verification, forcing user to verify and sign in again.
+        // Sign out immediately to force email verification
         await firebaseSignOut(auth);
 
         return { success: true, message: 'Verification email sent. Check your inbox.' };
     } catch (err: any) {
-        return { success: false, message: err.message };
+        const friendlyError = mapAuthError(err);
+        return { success: false, message: friendlyError.description };
     }
   }, []);
   
@@ -195,13 +206,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const result = await signInWithPopup(auth, provider);
         const fbUser = result.user;
+        
+        const db = getFirestore();
+        const userDocRef = doc(db, 'users', fbUser.uid);
+        const userDoc = await getDoc(userDocRef);
 
-        if (!fbUser.emailVerified && fbUser.email) {
-            await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/verify-email` });
-            await firebaseSignOut(auth);
-            showSnackbar({ title: 'Verification Required', description: 'A verification link has been sent to your email. Please verify before signing in.' }, 'info');
-            router.push('/auth/verify-email');
-            return;
+        // If user document doesn't exist, create it
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+                id: fbUser.uid,
+                email: fbUser.email,
+                full_name: fbUser.displayName,
+                avatar_url: fbUser.photoURL,
+                roles: ['buyer'],
+                onboarding_completed: false,
+                status: 'active',
+                created_at: new Date().toISOString(),
+            }, { merge: true });
         }
         
         showSnackbar({ title: `Signed in with ${providerName}`, description: '' }, 'success');
@@ -225,8 +246,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!fbUser) throw new Error('Not authenticated');
     try {
       await firebaseUpdateProfile(fbUser, data as any);
-      const idToken = await fbUser.getIdToken();
-      await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: data.displayName ?? null }) });
+      
+      const db = getFirestore();
+      const userRef = doc(db, 'users', fbUser.uid);
+      await setDoc(userRef, {
+          full_name: data.displayName,
+          avatar_url: data.photoURL,
+          updated_at: new Date().toISOString()
+      }, { merge: true });
+
       setUser(prev => prev ? { ...prev, fullName: data.displayName ?? prev.fullName, avatarUrl: data.photoURL ?? prev.avatarUrl } : null);
     } catch (err: any) {
       throw new Error(err.message || 'Update failed');
