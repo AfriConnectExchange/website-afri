@@ -17,7 +17,8 @@ export async function POST(req: Request) {
       email,
       full_name: name ?? null,
       created_at: new Date().toISOString(),
-      roles: [],
+      roles: ['buyer'], // Default role
+      onboarding_completed: false, // Start with onboarding incomplete
     }, { merge: true });
 
     return NextResponse.json({ success: true, user: { id: userRecord.uid, email, name } });

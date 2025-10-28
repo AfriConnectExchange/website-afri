@@ -109,12 +109,6 @@ export default function MarketplacePage() {
     freeListingsOnly: false,
   });
 
-  useEffect(() => {
-    if (!isAuthLoading && user && !user.onboarding_completed) {
-      router.push('/onboarding');
-    }
-  }, [user, isAuthLoading, router]);
-
   const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
     setLoading(true);
     
