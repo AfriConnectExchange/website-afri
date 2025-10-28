@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +9,7 @@ import { CompletionStep } from './steps/completion-step';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { auth } from '@/lib/firebaseClient';
 
 type OnboardingStep = 'personal' | 'picture' | 'complete';
 
@@ -54,14 +56,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const submitOnboarding = async () => {
-    if (!user) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to complete onboarding.' });
         return;
     }
 
     setIsLoading(true);
     try {
-      const token = await user.getIdToken();
+      const token = await currentUser.getIdToken();
       
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
