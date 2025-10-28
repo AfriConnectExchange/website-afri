@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 import { getAuth } from 'firebase-admin/auth';
 import { logActivity } from '@/lib/activity-logger';
-import { logSystemEvent } from '@/lib/system-logger';
 import { sendEmail } from '@/lib/email-service';
 
 export async function POST(req: Request) {

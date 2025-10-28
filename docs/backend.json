@@ -154,6 +154,37 @@
             "createdAt": { "type": "string", "format": "date-time" }
         },
         "required": ["senderId", "message"]
+    },
+     "ActivityLog": {
+      "title": "Activity Log",
+      "description": "Records significant user or system actions.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "changes": { "type": "object" },
+        "ipAddress": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "action"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "An in-app notification for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "linkUrl": { "type": "string", "format": "uri" },
+        "read": { "type": "boolean", "default": false },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "title", "message"]
     }
   },
   "auth": {
@@ -195,6 +226,14 @@
     "/supportTickets/{ticketId}/messages/{messageId}": {
         "schema": { "$ref": "#/entities/TicketMessage" },
         "description": "Messages associated with a support ticket."
+    },
+    "/activity_logs/{logId}": {
+        "schema": { "$ref": "#/entities/ActivityLog" },
+        "description": "A log of all significant user and system activities."
+    },
+    "/notifications/{notificationId}": {
+        "schema": { "$ref": "#/entities/Notification" },
+        "description": "Stores in-app notifications for users."
     }
   }
 }
