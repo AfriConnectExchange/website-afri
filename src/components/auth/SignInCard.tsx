@@ -20,28 +20,10 @@ type Props = {};
 export default function SignInCard({}: Props) {
     const { login, handleSocialLogin } = useAuth();
     const { showSnackbar } = useGlobal();
-    const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
+    const [formData, setFormData] = useState({ email: 'test@example.com', password: 'password', phone: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
-
-    const mapAuthError = (err: any) => {
-        const code = err?.code || err?.error || null;
-        switch (code) {
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-            case 'auth/invalid-credential':
-                return { title: 'Invalid Credentials', description: 'The email or password you entered is incorrect.' };
-            case 'auth/invalid-email':
-                return { title: 'Invalid Email', description: 'Please enter a valid email address.' };
-            case 'auth/network-request-failed':
-                return { title: 'Network Error', description: 'Please check your connection and try again.' };
-             case 'auth/popup-closed-by-user':
-                return { title: 'Sign-in Cancelled', description: 'You closed the sign-in popup before completing.' };
-            default:
-                return { title: 'Sign-in Failed', description: err.message || 'An unknown error occurred.' };
-        }
-    };
 
     const handleEmailLogin = async () => {
         setIsLoading(true);
@@ -49,8 +31,7 @@ export default function SignInCard({}: Props) {
             await login(formData.email, formData.password);
             // AuthProvider handles navigation on success
         } catch (error: any) {
-            const friendlyError = mapAuthError(error);
-            showSnackbar({ title: friendlyError.title, description: friendlyError.description }, 'error');
+            showSnackbar({ code: error?.code, description: error?.message }, 'error');
         } finally {
             setIsLoading(false);
         }
@@ -58,15 +39,12 @@ export default function SignInCard({}: Props) {
 
     const handlePhoneLogin = async () => {
         if (!formData.phone) {
-            showSnackbar('Phone number is required.', 'error');
+            showSnackbar({ description: 'Phone number is required.'}, 'error');
             return;
         }
         setIsLoading(true);
-        // OTP not implemented yet
-        setTimeout(() => {
-            showSnackbar('Phone login is not yet available.', 'info');
-            setIsLoading(false);
-        }, 1000);
+        showSnackbar({ description: 'Phone login is not yet available.'}, 'info');
+        setIsLoading(false);
     };
 
     const onSocialLogin = async (provider: 'google' | 'facebook') => {
@@ -74,7 +52,7 @@ export default function SignInCard({}: Props) {
         try {
             await handleSocialLogin(provider);
         } catch (error) {
-            // Error is handled in the context's snackbar
+            // error is handled in context
         } finally {
             setSocialLoading(null);
         }
@@ -203,5 +181,3 @@ export default function SignInCard({}: Props) {
         </>
     );
 }
-
-    

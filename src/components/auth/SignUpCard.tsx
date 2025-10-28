@@ -71,18 +71,17 @@ export default function SignUpCard({}: Props) {
             if (result.success) {
                 showSnackbar({ title: 'Account created!', description: result.message }, 'success');
                 try { 
-                    localStorage.setItem('signup_email', formData.email); 
-                    localStorage.setItem('signup_name', formData.name); 
+                    localStorage.setItem('signup_email', formData.email);
                 } catch {}
                 router.push('/auth/verify-email');
             } else {
                 showSnackbar({ title: 'Sign-up failed', description: result.message }, 'error');
             }
         } else {
-            showSnackbar({ title: 'Not yet implemented', description: 'Phone sign-up is not yet implemented.'}, 'info');
+            showSnackbar({ title: 'Not yet implemented', description: 'Phone sign-up is not yet available.'}, 'info');
         }
     } catch (error: any) {
-        showSnackbar(`Sign-up Failed: ${error.message}`, 'error');
+        showSnackbar({description: `Sign-up Failed: ${error.message}`}, 'error');
     } finally {
         setIsLoading(false);
     }
@@ -273,4 +272,3 @@ export default function SignUpCard({}: Props) {
     </>
   );
 }
-

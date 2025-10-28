@@ -2,12 +2,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, sendEmailVerification, updateProfile as firebaseUpdateProfile, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, type User as FirebaseUser } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
-import { auth as clientAuth, db } from '@/lib/firebaseClient'; // Use the client-side instances
+import { auth as clientAuth, db } from '@/lib/firebaseClient';
 
 export type UserProfile = DbUserProfile;
 
@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const { showSnackbar } = useGlobal();
   const router = useRouter();
+  const pathname = usePathname();
 
   const mapAuthError = (err: any) => {
     const code = err?.code || 'auth/unknown-error';
@@ -62,16 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userDoc.exists()) {
         userProfile = userDoc.data() as UserProfile;
       } else {
-        // This case is for social sign-ins where a profile might not exist yet.
         userProfile = {
           id: fbUser.uid,
           email: fbUser.email,
           full_name: fbUser.displayName,
           roles: ['buyer'],
           status: 'active',
-          onboarding_completed: false, // NEW USERS START HERE
+          onboarding_completed: false,
           created_at: new Date().toISOString(),
-          verification_status: 'verified', // Social providers are considered verified
+          verification_status: 'verified',
         };
         await setDoc(userDocRef, userProfile);
       }
@@ -81,9 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: fbUser.email,
         fullName: userProfile.full_name,
         avatarUrl: fbUser.photoURL,
+        roles: userProfile.roles,
+        onboarding_completed: userProfile.onboarding_completed,
         ...userProfile
       };
-
+      
       return { appUser, userProfile };
 
     } catch (error) {
@@ -94,12 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const handleUserSession = useCallback(async (fbUser: FirebaseUser | null) => {
+    setIsLoading(true);
     if (fbUser) {
-      if (!fbUser.emailVerified) {
+      if (!fbUser.emailVerified && !['google.com', 'facebook.com'].includes(fbUser.providerData[0]?.providerId)) {
         setUser({ id: fbUser.uid, email: fbUser.email, roles: [], onboarding_completed: false });
         setProfile(null);
-        // Don't setIsLoading to false here, wait for navigation
-        if (window.location.pathname !== '/auth/verify-email') {
+        if (!pathname.startsWith('/auth/verify-email')) {
           router.push('/auth/verify-email');
         }
       } else {
@@ -107,8 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profileData) {
           setUser(profileData.appUser);
           setProfile(profileData.userProfile);
-          if (!profileData.userProfile.onboarding_completed) {
+          if (!profileData.userProfile.onboarding_completed && !pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
+          } else if (profileData.userProfile.onboarding_completed && (pathname.startsWith('/auth') || pathname.startsWith('/onboarding'))){
+            router.push('/');
           }
         }
       }
@@ -117,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
     }
     setIsLoading(false);
-  }, [router, showSnackbar]);
+  }, [router, pathname, showSnackbar]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(clientAuth, handleUserSession);
@@ -125,13 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [handleUserSession]);
 
   const login = useCallback(async (email: string, password: string) => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(clientAuth, email, password);
-      // onAuthStateChanged will handle the rest
-    } catch (error: any) {
-      const friendlyError = mapAuthError(error);
-      throw new Error(friendlyError.description);
-    }
+    await signInWithEmailAndPassword(clientAuth, email, password);
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
@@ -141,22 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       await firebaseUpdateProfile(fbUser, { displayName: fullName });
       
-      const userProfile = {
+      const userProfile: UserProfile = {
         id: fbUser.uid,
         email: fbUser.email,
         full_name: fullName || null,
         roles: ['buyer'],
-        status: 'active',
-        onboarding_completed: false, // All new users must onboard
+        status: 'pending',
+        onboarding_completed: false,
         created_at: new Date().toISOString(),
         verification_status: 'unverified',
       };
 
       await setDoc(doc(db, 'users', fbUser.uid), userProfile);
-      
-      await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/signin?verified=true` });
-      
-      await firebaseSignOut(clientAuth);
+      await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/verify-email` });
       
       return { success: true, requiresVerification: true, message: 'Verification email sent! Please check your inbox.' };
     } catch (error: any) {
@@ -169,10 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
       await signInWithPopup(clientAuth, provider);
-      // onAuthStateChanged will handle the rest
+      // onAuthStateChanged handles the success case
     } catch (error: any) {
       const friendlyError = mapAuthError(error);
       showSnackbar(friendlyError, 'error');
+      throw error;
     }
   }, [showSnackbar]);
 
@@ -180,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(clientAuth);
     setUser(null);
     setProfile(null);
-    router.push('/auth/signin');
+    router.push('/');
   }, [router]);
 
   const updateUser = useCallback(async (data: { fullName?: string, avatarUrl?: string, [key: string]: any }) => {
@@ -191,38 +187,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (fullName) authUpdate.displayName = fullName;
     if (avatarUrl) authUpdate.photoURL = avatarUrl;
     
-    // Update Firebase Auth profile
     if (Object.keys(authUpdate).length > 0) {
       await firebaseUpdateProfile(clientAuth.currentUser, authUpdate);
     }
     
-    // Update Firestore profile
-    const profileUpdateData = {
-      full_name: fullName,
-      avatar_url: avatarUrl,
-      ...otherProfileData,
-      updated_at: new Date().toISOString()
-    };
+    const profileUpdateData: Record<string, any> = { ...otherProfileData, updated_at: new Date().toISOString() };
+    if (fullName) profileUpdateData.full_name = fullName;
+    if (avatarUrl) profileUpdateData.profile_picture_url = avatarUrl;
     
     const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
     await updateDoc(userDocRef, profileUpdateData);
 
-    // Re-fetch profile to update context
     await fetchUserProfile(clientAuth.currentUser);
 
   }, []);
+
+  const isAuthenticated = useMemo(() => !!user, [user]);
 
   const value = useMemo(() => ({
     isLoading,
     user,
     profile,
-    isAuthenticated: !!user && !isLoading,
+    isAuthenticated,
     login,
     logout,
     signUp,
     updateUser,
     handleSocialLogin,
-  }), [isLoading, user, profile, login, logout, signUp, updateUser, handleSocialLogin]);
+  }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
