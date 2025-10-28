@@ -4,13 +4,10 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, sendEmailVerification, updateProfile as firebaseUpdateProfile, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, type User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
-
-// Initialize Firebase services
-const auth = getAuth();
-const db = getFirestore();
+import { auth as clientAuth, db } from '@/lib/firebaseClient'; // Use the client-side instances
 
 export type UserProfile = DbUserProfile;
 
@@ -65,15 +62,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userDoc.exists()) {
         userProfile = userDoc.data() as UserProfile;
       } else {
-        // If profile doesn't exist, create a basic one.
+        // This case is for social sign-ins where a profile might not exist yet.
         userProfile = {
           id: fbUser.uid,
           email: fbUser.email,
           full_name: fbUser.displayName,
           roles: ['buyer'],
           status: 'active',
-          onboarding_completed: false,
+          onboarding_completed: false, // NEW USERS START HERE
           created_at: new Date().toISOString(),
+          verification_status: 'verified', // Social providers are considered verified
         };
         await setDoc(userDocRef, userProfile);
       }
@@ -95,48 +93,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setIsLoading(true);
-      if (fbUser) {
-        if (!fbUser.emailVerified) {
-          setUser({ id: fbUser.uid, email: fbUser.email, roles: [], onboarding_completed: false });
-          setProfile(null);
-        } else {
-          const profileData = await fetchUserProfile(fbUser);
-          if (profileData) {
-            setUser(profileData.appUser);
-            setProfile(profileData.userProfile);
-          }
+  const handleUserSession = useCallback(async (fbUser: FirebaseUser | null) => {
+    if (fbUser) {
+      if (!fbUser.emailVerified) {
+        setUser({ id: fbUser.uid, email: fbUser.email, roles: [], onboarding_completed: false });
+        setProfile(null);
+        // Don't setIsLoading to false here, wait for navigation
+        if (window.location.pathname !== '/auth/verify-email') {
+          router.push('/auth/verify-email');
         }
       } else {
-        setUser(null);
-        setProfile(null);
+        const profileData = await fetchUserProfile(fbUser);
+        if (profileData) {
+          setUser(profileData.appUser);
+          setProfile(profileData.userProfile);
+          if (!profileData.userProfile.onboarding_completed) {
+            router.push('/onboarding');
+          }
+        }
       }
-      setIsLoading(false);
-    });
+    } else {
+      setUser(null);
+      setProfile(null);
+    }
+    setIsLoading(false);
+  }, [router, showSnackbar]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(clientAuth, handleUserSession);
     return () => unsubscribe();
-  }, []);
+  }, [handleUserSession]);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (!userCredential.user.emailVerified) {
-        await firebaseSignOut(auth);
-        router.push('/auth/verify-email');
-        throw new Error('Please verify your email before signing in.');
-      }
-      // Success is handled by onAuthStateChanged
+      const userCredential = await signInWithEmailAndPassword(clientAuth, email, password);
+      // onAuthStateChanged will handle the rest
     } catch (error: any) {
       const friendlyError = mapAuthError(error);
       throw new Error(friendlyError.description);
     }
-  }, [router]);
+  }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(clientAuth, email, password);
       const fbUser = userCredential.user;
       
       await firebaseUpdateProfile(fbUser, { displayName: fullName });
@@ -147,15 +147,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         full_name: fullName || null,
         roles: ['buyer'],
         status: 'active',
-        onboarding_completed: false,
+        onboarding_completed: false, // All new users must onboard
         created_at: new Date().toISOString(),
+        verification_status: 'unverified',
       };
 
       await setDoc(doc(db, 'users', fbUser.uid), userProfile);
       
       await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/signin?verified=true` });
       
-      await firebaseSignOut(auth);
+      await firebaseSignOut(clientAuth);
       
       return { success: true, requiresVerification: true, message: 'Verification email sent! Please check your inbox.' };
     } catch (error: any) {
@@ -167,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleSocialLogin = useCallback(async (providerName: 'google' | 'facebook') => {
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(clientAuth, provider);
       // onAuthStateChanged will handle the rest
     } catch (error: any) {
       const friendlyError = mapAuthError(error);
@@ -176,14 +177,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [showSnackbar]);
 
   const logout = useCallback(async () => {
-    await firebaseSignOut(auth);
+    await firebaseSignOut(clientAuth);
     setUser(null);
     setProfile(null);
     router.push('/auth/signin');
   }, [router]);
 
   const updateUser = useCallback(async (data: { fullName?: string, avatarUrl?: string, [key: string]: any }) => {
-    if (!auth.currentUser) throw new Error("Not authenticated");
+    if (!clientAuth.currentUser) throw new Error("Not authenticated");
     
     const { fullName, avatarUrl, ...otherProfileData } = data;
     const authUpdate: { displayName?: string, photoURL?: string } = {};
@@ -192,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Update Firebase Auth profile
     if (Object.keys(authUpdate).length > 0) {
-      await firebaseUpdateProfile(auth.currentUser, authUpdate);
+      await firebaseUpdateProfile(clientAuth.currentUser, authUpdate);
     }
     
     // Update Firestore profile
@@ -203,11 +204,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updated_at: new Date().toISOString()
     };
     
-    const userDocRef = doc(db, 'users', auth.currentUser.uid);
-    await setDoc(userDocRef, profileUpdateData, { merge: true });
+    const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
+    await updateDoc(userDocRef, profileUpdateData);
 
     // Re-fetch profile to update context
-    await fetchUserProfile(auth.currentUser);
+    await fetchUserProfile(clientAuth.currentUser);
 
   }, []);
 

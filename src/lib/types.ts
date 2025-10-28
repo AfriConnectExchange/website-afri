@@ -8,6 +8,8 @@ export interface UserProfile {
   roles?: string[];
   status?: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted';
   verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  onboarding_completed?: boolean;
+  [key: string]: any;
 }
 
 // AppUser is the shape the UI components expect. Keep it fairly permissive so
@@ -18,6 +20,7 @@ export interface AppUser {
   fullName?: string | null;
   avatarUrl?: string | null;
   roles?: string[];
+  onboarding_completed?: boolean;
   // include any profile fields commonly used by components
   [key: string]: any;
 }
