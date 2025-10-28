@@ -1,4 +1,3 @@
-
  'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
@@ -7,7 +6,6 @@ import { auth } from '@/lib/firebaseClient';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -166,18 +164,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      if (displayName) {
-        await firebaseUpdateProfile(user, { displayName });
-      }
-      await sendEmailVerification(user, { url: `${window.location.origin}/auth/verify-email` });
-      
-      await firebaseSignOut(auth);
-      
-      return { success: true, message: 'Verification email sent. Check your inbox.' };
+        const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, name: displayName }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to create user.');
+        }
+
+        // After successful creation via API, we need to sign in the user to get a session
+        // so we can send a verification email.
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        await sendEmailVerification(user, { url: `${window.location.origin}/auth/verify-email` });
+        
+        // Sign out immediately after sending verification, forcing user to verify and sign in again.
+        await firebaseSignOut(auth);
+
+        return { success: true, message: 'Verification email sent. Check your inbox.' };
     } catch (err: any) {
-      return { success: false, message: err.message };
+        return { success: false, message: err.message };
     }
   }, []);
   
