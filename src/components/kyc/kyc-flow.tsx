@@ -167,7 +167,8 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
       
       // Update user context to reflect KYC submission (in a real app, this state would come from the backend)
       if (user) {
-        updateUser({ roles: [...(user.roles || []), 'seller'] }); // Add seller role
+  // updateUser currently has a narrow type; allow this during migration and cast to any
+  updateUser({ roles: [...(user.roles || []), 'seller'] } as any); // Add seller role
       }
 
       setVerificationStatus('pending');

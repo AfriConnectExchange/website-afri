@@ -31,11 +31,12 @@ export function ProposeBarterPage() {
             setIsLoading(true);
             try {
                 // Use mock data directly
-                const product = mockProducts.find((p: Product) => p.id === productId);
+                // mockProducts comes from JSON — its shape may differ slightly from the Product type
+                const product = mockProducts.find((p: any) => p.id === productId);
                 if (!product) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Product not found.' });
                 } else {
-                    setTargetProduct(product);
+                    setTargetProduct(product as Product | null);
                 }
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load product.' });

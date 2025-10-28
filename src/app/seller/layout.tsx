@@ -19,7 +19,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         router.push('/seller');
       } else if (isAuthenticated && isAuthPage) {
         router.push('/seller/dashboard');
-      } else if (isAuthenticated && !user?.roles.includes('seller')) {
+    } else if (isAuthenticated && !(user?.roles ?? []).includes('seller')) {
         // Optional: Redirect if user is not a seller
         // router.push('/'); 
       }

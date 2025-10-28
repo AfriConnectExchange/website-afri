@@ -15,7 +15,8 @@ import PhoneInput from 'react-phone-number-input';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { createSPAClient } from '@/lib/supabase/client';
+import { auth } from '@/lib/firebaseClient';
+import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
 
 type Props = {};
 
@@ -57,17 +58,20 @@ export default function SignInCard({}: Props) {
   
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
     setIsLoading(true);
-    const supabase = createSPAClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-            redirectTo: `${window.location.origin}/auth/callback`
+        try {
+            if (provider === 'google') {
+                const p = new GoogleAuthProvider();
+                await signInWithPopup(auth, p);
+            } else {
+                const p = new FacebookAuthProvider();
+                await signInWithPopup(auth, p);
+            }
+            toast({ title: `Signed in with ${provider}` });
+        } catch (err: any) {
+            showAlert('destructive', `Sign-in with ${provider} failed`, err?.message ?? String(err));
+        } finally {
+            setIsLoading(false);
         }
-    });
-    if (error) {
-        showAlert('destructive', `Sign-in with ${provider} failed`, error.message);
-    }
-    setIsLoading(false);
   }
 
   return (

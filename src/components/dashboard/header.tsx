@@ -268,10 +268,10 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                            <Avatar className="h-9 w-9">
-                                <AvatarImage src={user.avatarUrl || ''} alt={user.fullName || user.email} />
-                                <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
-                            </Avatar>
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={user.avatarUrl ?? undefined} alt={user.fullName ?? user.email ?? undefined} />
+                <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
+              </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56" align="end" forceMount>

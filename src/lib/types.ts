@@ -1,3 +1,35 @@
+// Central app-level types to keep a stable shape across the app
+export interface UserProfile {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  roles?: string[];
+  status?: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted';
+  verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+}
+
+// AppUser is the shape the UI components expect. Keep it fairly permissive so
+// migration can be incremental.
+export interface AppUser {
+  id: string;
+  email?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  roles?: string[];
+  // include any profile fields commonly used by components
+  [key: string]: any;
+}
+
+// A small mock user export that some components referenced previously
+export const MockUser: AppUser = {
+  id: 'mock-user',
+  email: 'mock@example.com',
+  fullName: 'Mock User',
+  avatarUrl: '',
+  roles: ['buyer'],
+};
 export type Json =
   | string
   | number

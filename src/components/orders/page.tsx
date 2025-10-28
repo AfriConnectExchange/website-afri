@@ -15,7 +15,7 @@ export default function OrdersPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
       setUser(session?.user ?? null);
       setIsUserLoading(false);
       if (!session?.user) {

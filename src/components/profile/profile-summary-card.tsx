@@ -10,10 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
-import { useAuth, MockUser } from '@/context/auth-context';
+import { useAuth } from '@/context/auth-context';
+import type { AppUser } from '@/lib/types';
 
 interface ProfileSummaryCardProps {
-  user: MockUser;
+  user: AppUser;
   onNavigate: (page: string) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -65,7 +66,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
         <CardContent className="pt-6">
           <div className="text-center">
             <Avatar className="w-20 h-20 mx-auto mb-4 border-2 border-primary/20 p-1">
-              <AvatarImage src={user.avatarUrl} alt={userName} />
+              <AvatarImage src={user.avatarUrl ?? undefined} alt={userName ?? undefined} />
               <AvatarFallback className="text-2xl bg-muted">
                 {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
               </AvatarFallback>

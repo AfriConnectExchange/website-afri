@@ -4,11 +4,11 @@ import React, { useState, useRef, ChangeEvent, KeyboardEvent, useEffect } from '
 import { AnimatedButton } from '../ui/animated-button';
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { type User } from '@supabase/supabase-js';
-
 interface Props {
   phone: string;
-  onAuthSuccess: (user: User) => void;
+  // Use a loose type here during migration; we'll normalize to AppUser once OTP
+  // verification is implemented with Firebase.
+  onAuthSuccess: (user: any) => void;
   onBack: () => void;
   onResend: () => Promise<void>;
 }
@@ -100,7 +100,7 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
             {otp.map((digit, index) => (
               <input
                 key={index}
-                ref={(el) => (inputsRef.current[index] = el)}
+                ref={(el) => { inputsRef.current[index] = el; }}
                 type="text"
                 maxLength={1}
                 value={digit}

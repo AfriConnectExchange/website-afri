@@ -16,7 +16,6 @@ import OTPVerification from '@/components/auth/OTPVerification';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 
 type AuthStep = 'signin' | 'signup' | 'check-email' | 'verify-otp';
@@ -40,7 +39,7 @@ export default function AuthPage() {
       case 'verify-otp':
         return <OTPVerification 
                   phone={phoneForVerification} 
-                  onAuthSuccess={(user: SupabaseUser) => handleOtpSuccess(user)}
+                  onAuthSuccess={(user: any) => handleOtpSuccess(user)}
                   onBack={() => setAuthStep('signin')}
                   onResend={resendOtp}
                 />;

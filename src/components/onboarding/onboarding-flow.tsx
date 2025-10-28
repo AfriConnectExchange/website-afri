@@ -45,7 +45,8 @@ export function OnboardingFlow() {
     } else {
        if (user) {
           try {
-            updateUser({ role });
+            // Cast to any during migration to allow storing custom fields on the user record
+            updateUser({ role } as any);
           } catch(error: any) {
               setSnackbar({ open: true, message: `Failed to Save Role: ${error.message}`, severity: 'error' });
               return;

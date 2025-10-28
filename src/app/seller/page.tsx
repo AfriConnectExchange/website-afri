@@ -36,14 +36,12 @@ export default function SellerAuthPage() {
         setIsLoading(true);
         try {
             // Simulate successful login
-            setTimeout(() => {
+                setTimeout(() => {
                 setIsLoading(false);
                 toast({ title: 'Login successful', description: 'Redirecting to dashboard...', variant: 'default' });
-                login({
-                    email: email || 'seller@example.com',
-                    fullName: 'Test Seller',
-                    roles: ['seller'],
-                });
+                // call the real login signature (email, password). This page simulates a login
+                // so provide a fallback password when one isn't entered.
+                void login(email || 'seller@example.com', password || 'password');
                 router.push('/seller/dashboard');
             }, 1000);
         } catch (error: any) {

@@ -18,7 +18,8 @@ import { PasswordStrength } from './PasswordStrength';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { createSPAClient } from '@/lib/supabase/client';
+import { auth } from '@/lib/firebaseClient';
+import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
 
 type Props = {};
 
@@ -46,18 +47,22 @@ export default function SignUpCard({}: Props) {
   };
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-  setIsLoading(true);
-    const supabase = createSPAClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-            redirectTo: `${window.location.origin}/auth/callback`
-        }
-    });
-    if (error) {
-  showAlert('error', `Sign-up with ${provider} failed: ${error.message}`);
+    setIsLoading(true);
+    try {
+      if (provider === 'google') {
+        const p = new GoogleAuthProvider();
+        await signInWithPopup(auth, p);
+      } else {
+        const p = new FacebookAuthProvider();
+        await signInWithPopup(auth, p);
+      }
+      // After social sign-in, onAuthStateChanged will create/merge profile via server
+      showAlert('success', `Signed up with ${provider}.`);
+    } catch (err: any) {
+      showAlert('error', `Sign-up with ${provider} failed: ${err?.message ?? String(err)}`);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const router = useRouter();

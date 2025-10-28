@@ -1,8 +1,8 @@
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { type NextRequest, NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-    return await updateSession(request)
+export async function middleware(_request: NextRequest) {
+    // Session handling migrated to Firebase; keep this middleware as a passthrough
+    return NextResponse.next();
 }
 
 export const config = {

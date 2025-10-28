@@ -93,7 +93,7 @@ export function SellerSidebar() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={user?.avatarUrl} alt={user?.fullName || user?.email} />
+                        <AvatarImage src={user?.avatarUrl ?? undefined} alt={user?.fullName ?? user?.email ?? undefined} />
                         <AvatarFallback>{user?.fullName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                     </Avatar>
                     <div className="text-sm">

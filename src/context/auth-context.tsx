@@ -1,127 +1,145 @@
 
-'use client';
+ 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { createSPAClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebaseClient';
+import type { User as FirebaseUser } from 'firebase/auth';
+import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  sendEmailVerification,
+  updateProfile as firebaseUpdateProfile,
+} from 'firebase/auth';
+import { useGlobal } from '@/lib/context/GlobalContext';
+export { MockUser } from '@/lib/types';
 
 // Define a more specific type for your mock user
-export interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string | null;
-  roles: string[];
-  avatar_url?: string;
-}
+export type UserProfile = DbUserProfile;
 
 interface AuthContextType {
   isLoading: boolean;
-  user: SupabaseUser | null;
+  user: AppUser | null;
   profile: UserProfile | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUser: (data: Partial<SupabaseUser>) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  updateUser: (data: Partial<{ displayName?: string; photoURL?: string }>) => Promise<void>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<{ success: boolean; message?: string }>;
   handleNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
-  handleOtpSuccess: (user: SupabaseUser) => void;
+  handleOtpSuccess: (user: FirebaseUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = useMemo(() => createSPAClient(), []);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-
-  const { toast } = useToast();
+  const { showSnackbar } = useGlobal();
   const router = useRouter();
 
   useEffect(() => {
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(userProfile as UserProfile | null);
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        // Build app-level user and ensure server-side profile exists
+        const baseUser: AppUser = {
+          id: fbUser.uid,
+          email: fbUser.email ?? null,
+          fullName: fbUser.displayName ?? null,
+          avatarUrl: fbUser.photoURL ?? null,
+          roles: []
+        };
+        setUser(baseUser);
+        try {
+          const idToken = await fbUser.getIdToken();
+          const res = await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: fbUser.displayName ?? null }) });
+          if (res.ok) {
+            // optionally read back the profile from Firestore via client
+            // but server creates/merges it so we can rely on that for now
+            setProfile({ id: fbUser.uid, email: fbUser.email ?? null, full_name: fbUser.displayName ?? null, roles: [] });
+            setUser((prev) => ({ ...prev, email: fbUser.email ?? null, fullName: fbUser.displayName ?? null } as AppUser));
+          }
+        } catch (err) {
+          console.error('error creating profile', err);
+        }
+      } else {
+        setProfile(null);
+        setUser(null);
       }
       setIsLoading(false);
-    };
-
-    getInitialSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        if (event === 'SIGNED_IN' && session?.user) {
-          const { data: userProfile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          setProfile(userProfile as UserProfile | null);
-        } else if (event === 'SIGNED_OUT') {
-          setProfile(null);
-        }
-        setIsLoading(false);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
+    });
+    return () => unsub();
+  }, []);
 
 
   const login = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      throw new Error(error.message);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/');
+    } catch (err: any) {
+      throw new Error(err.message || 'Login failed');
     }
-    // Auth state change will handle setting user and profile
-    router.push('/');
-  }, [supabase, router]);
+  }, [router]);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-    });
-    if (error) {
-      return { success: false, message: error.message };
+  const signUp = useCallback(async (email: string, password: string, displayName?: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      if (displayName) {
+        await firebaseUpdateProfile(user, { displayName });
+      }
+  // Send verification email
+  await sendEmailVerification(user, { url: `${window.location.origin}/auth/callback` });
+      // Create or merge profile on server
+      try {
+        const idToken = await user.getIdToken();
+        await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: displayName ?? null }) });
+      } catch (e) {
+        console.error('profile creation failed', e);
+      }
+      return { success: true, message: 'Verification email sent. Check your inbox.' };
+    } catch (err: any) {
+      return { success: false, message: err.message };
     }
-    // On success, Supabase will send a verification email.
-    return { success: true, message: 'Verification email sent. Check your inbox.' };
-  }, [supabase]);
+  }, []);
 
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
+    await firebaseSignOut(auth);
     router.push('/auth/signin');
-  }, [supabase, router]);
+  }, [router]);
 
-  const updateUser = useCallback(async (data: Partial<SupabaseUser>) => {
-    if (!user) throw new Error("Not authenticated");
-    const { error } = await supabase.auth.updateUser(data);
-    if(error) throw new Error(error.message);
-  }, [user, supabase]);
+  const updateUser = useCallback(async (data: Partial<{ displayName?: string; photoURL?: string }>) => {
+    // Use the real Firebase user from auth to update profile
+    const fbUser = auth.currentUser;
+    if (!fbUser) throw new Error('Not authenticated');
+    try {
+      await firebaseUpdateProfile(fbUser, data as any);
+      // Optionally update Firestore profile via API using the ID token
+      const idToken = await fbUser.getIdToken();
+      await fetch('/api/profile', { method: 'POST', headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: data.displayName ?? null }) });
+    } catch (err: any) {
+      throw new Error(err.message || 'Update failed');
+    }
+  }, [user]);
 
   const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
     // Implement OTP logic if needed
     console.log("OTP needed for:", phone);
   };
 
-  const handleOtpSuccess = (user: SupabaseUser) => {
-    setUser(user);
+  const handleOtpSuccess = (user: FirebaseUser) => {
+    const appUser: AppUser = {
+      id: user.uid,
+      email: user.email ?? null,
+      fullName: user.displayName ?? null,
+      avatarUrl: user.photoURL ?? null,
+      roles: []
+    };
+    setUser(appUser);
     router.push('/');
   };
 

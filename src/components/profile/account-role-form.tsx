@@ -61,7 +61,8 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
     try {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000));
-        updateUser({ roles: [values.primary_role] });
+  // Cast to any during migration to allow storing custom properties on the user
+  updateUser({ roles: [values.primary_role] } as any);
         onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');
         setTimeout(() => window.location.reload(), 1500);
     } catch(error: any) {

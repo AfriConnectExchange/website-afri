@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState, useRef } from 'react';
 import { MailCheck, Loader2 } from 'lucide-react';
 import { AnimatedButton } from '../ui/animated-button';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { createSPAClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 
 interface CheckEmailCardProps {
   email?: string;
@@ -30,27 +30,24 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
     }
   }, [initialEmail]);
 
-  // Poll users table for verification_status. If verified, redirect to main page.
   useEffect(() => {
     let attempts = 0;
     const maxAttempts = 24; // ~2 minutes at 5s interval
-    const supabase = createSPAClient();
 
     const poll = async () => {
       if (!email) return;
       attempts += 1;
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('verification_status')
-          .ilike('email', email)
-          .single();
-  if (!error && (data as any)?.verification_status === 'verified') {
-          showSnackbar('Email verified — signing you in or redirecting...', 'success');
-          // stop polling and redirect
-          if (pollingRef.current) window.clearInterval(pollingRef.current);
-          // small delay so user sees message
-          setTimeout(() => router.push('/'), 900);
+        const db = getFirestore();
+        const q = query(collection(db, 'users'), where('email', '==', email));
+        const snaps = await getDocs(q);
+        if (!snaps.empty) {
+          const data = snaps.docs[0].data() as any;
+          if (data?.verification_status === 'verified') {
+            showSnackbar('Email verified — signing you in or redirecting...', 'success');
+            if (pollingRef.current) window.clearInterval(pollingRef.current);
+            setTimeout(() => router.push('/'), 900);
+          }
         }
       } catch (err) {
         // ignore transient errors
@@ -62,7 +59,6 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
 
     if (email) {
       pollingRef.current = window.setInterval(poll, 5000);
-      // run first immediately
       poll();
     }
 
@@ -88,11 +84,9 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to resend verification');
       showSnackbar('Verification email resent. Check your inbox.', 'success');
-      // cooldown: 60s
       setTimeout(() => setCanResend(true), 60000);
     } catch (err: any) {
       showSnackbar(err?.message || 'Failed to resend verification', 'error');
-      // allow retry sooner if failed
       setTimeout(() => setCanResend(true), 5000);
     } finally {
       setLoadingResend(false);

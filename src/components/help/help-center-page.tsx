@@ -53,9 +53,9 @@ export function HelpCenterPage({ onNavigate }: HelpCenterPageProps) {
   }, [searchQuery, selectedCategory]);
   
   const handleSetCategory = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    // This is a way to programmatically switch tabs
-    document.querySelector('[data-radix-collection-item][value="articles"]')?.click();
+  setSelectedCategory(categoryId);
+  // This is a way to programmatically switch tabs — make the call type-safe
+  (document.querySelector('[data-radix-collection-item][value="articles"]') as HTMLElement | null)?.click();
   };
 
   if (selectedArticle) {

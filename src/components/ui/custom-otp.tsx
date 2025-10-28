@@ -47,7 +47,7 @@ export function CustomOTP({ onComplete, onResend, isLoading, phone }: Props) {
         {otp.map((digit, index) => (
           <input
             key={index}
-            ref={(el) => (inputsRef.current[index] = el)}
+            ref={(el) => { inputsRef.current[index] = el; }}
             type="text"
             maxLength={1}
             value={digit}

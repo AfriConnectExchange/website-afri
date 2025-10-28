@@ -1,28 +1,17 @@
-import {createBrowserClient} from '@supabase/ssr'
-import {ClientType, SassClient} from "@/lib/supabase/unified";
-import {Database} from "@/lib/types";
-
+// Temporary shim for Supabase client to allow incremental migration to Firebase.
+// These stubs should be removed once all Supabase usages are migrated.
 export function createSPAClient() {
-    return createBrowserClient<Database, "public">(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-}
-
-export async function createSPASassClient() {
-    const client = createSPAClient();
-    // This must be some bug that SupabaseClient is not properly recognized, so must be ignored
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new SassClient(client as any, ClientType.SPA);
-}
-
-export async function createSPASassClientAuthenticated() {
-    const client = createSPAClient();
-    const user = await client.auth.getSession();
-    if (!user.data || !user.data.session) {
-        window.location.href = '/auth/signin';
+  return {
+    auth: {
+      // keep the old method name used in the UI; return a consistent shape
+      async signInWithOAuth(_opts: any) {
+        return { error: new Error('Supabase client removed - use Firebase auth instead') };
+      },
+      async getSession() {
+        return { data: { session: null } };
+      }
     }
-    // This must be some bug that SupabaseClient is not properly recognized, so must be ignored
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new SassClient(client as any, ClientType.SPA);
+  } as any;
 }
+
+export default { createSPAClient };
