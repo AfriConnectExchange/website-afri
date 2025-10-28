@@ -15,10 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 import { LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 
 export function UserNav() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   
   const handleLogout = async () => {
     try {
@@ -27,6 +29,7 @@ export function UserNav() {
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
       });
+      router.push('/auth/signin');
     } catch (error) {
        toast({
         variant: 'destructive',
@@ -65,7 +68,7 @@ export function UserNav() {
               <span>Profile</span>
             </DropdownMenuItem>
           </Link>
-          <Link href="/profile">
+          <Link href="/profile?tab=settings">
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
               <span>Account Settings</span>
@@ -81,3 +84,5 @@ export function UserNav() {
     </DropdownMenu>
   );
 }
+
+    

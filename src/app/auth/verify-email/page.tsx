@@ -1,70 +1,94 @@
+
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CheckEmailCard from '@/components/auth/CheckEmailCard';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { applyActionCode } from 'firebase/auth';
+import { applyActionCode, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebaseClient';
+import { PageLoader } from '@/components/ui/loader';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
     const [email, setEmail] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [isVerifying, setIsVerifying] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(true); // Start as true if oobCode exists
+    const [verificationError, setVerificationError] = useState('');
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const { showSnackbar } = useGlobal();
 
     useEffect(() => {
         const oobCode = searchParams.get('oobCode');
-        if (!oobCode) return;
 
-        const run = async () => {
-            setIsVerifying(true);
-            try {
-                await applyActionCode(auth, oobCode);
-                showSnackbar({ title: 'Email verified', description: 'Your email has been verified. Please sign in to continue.' }, 'success');
-                // navigate to sign-in so user can sign in and complete onboarding
-                router.push('/auth/signin');
-            } catch (err: any) {
-                console.error('email verify failed', err);
-                showSnackbar({ code: err?.code, description: err?.message ?? String(err) }, 'error');
-            } finally {
-                setIsVerifying(false);
+        if (oobCode) {
+            const run = async () => {
+                setIsVerifying(true);
+                setVerificationError('');
+                try {
+                    await applyActionCode(auth, oobCode);
+                    showSnackbar({ title: 'Email Verified!', description: 'Your email has been verified. Please sign in to continue.' }, 'success');
+                    router.push('/auth/signin');
+                } catch (err: any) {
+                    console.error('Email verify failed', err);
+                    let message = err?.message ?? String(err);
+                    if (err.code === 'auth/invalid-action-code') {
+                        message = 'The verification link is invalid or has expired. Please request a new one.';
+                    }
+                    setVerificationError(message);
+                    showSnackbar({ code: err?.code, description: message }, 'error');
+                } finally {
+                    setIsVerifying(false);
+                }
+            };
+            run();
+        } else {
+            // No code, user likely navigated here after signup.
+            // Try to get email from localStorage to display it.
+            const storedEmail = localStorage.getItem('signup_email');
+            if (storedEmail) {
+                setEmail(storedEmail);
             }
-        };
-
-        run();
+            setIsVerifying(false);
+        }
     }, [searchParams, router, showSnackbar]);
 
-    const resendVerificationEmail = async () => {
-        if (!email) {
-            showSnackbar('Please enter your email address', 'error');
-            return;
-        }
-        try {
-            setLoading(true);
-            const response = await fetch('/api/auth/resend-verification', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Failed to resend email.');
-            showSnackbar('Verification email has been resent successfully.', 'success');
-        } catch (err: any) {
-            showSnackbar(err?.message || 'An unknown error occurred', 'error');
-        } finally {
-            setLoading(false);
-        }
+    const handleBack = () => {
+        router.push('/auth/signin');
     };
+    
+    if (isVerifying) {
+        return <PageLoader />;
+    }
 
-    const handleBack = () => router.push('/auth/signin');
+    if (verificationError) {
+        return (
+            <CheckEmailCard 
+                email={email} 
+                onBack={handleBack}
+                isVerifying={false} 
+            />
+        )
+    }
 
     return (
         <div className="flex items-center justify-center py-12 px-4">
-            <CheckEmailCard email={email} onBack={handleBack} isVerifying={isVerifying} />
-            {/* keep the email input + resend controls minimal—if you want them visible, we can place them in the card */}
+            <CheckEmailCard 
+                email={email} 
+                onBack={handleBack}
+                isVerifying={isVerifying} 
+            />
         </div>
     );
 }
+
+
+export default function VerifyEmailPage() {
+    return (
+        <Suspense fallback={<PageLoader />}>
+            <VerifyEmailContent />
+        </Suspense>
+    )
+}
+
+    

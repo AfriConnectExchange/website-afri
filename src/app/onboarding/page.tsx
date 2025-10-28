@@ -19,6 +19,12 @@ export default function OnboardingPage() {
     if(isLoading || !user) {
          return <PageLoader />;
     }
+    
+    // Skip onboarding if already completed
+    if (user?.onboarding_completed) {
+        router.push('/');
+        return <PageLoader />;
+    }
   
   return (
     <main className="flex min-h-screen w-full items-center justify-center bg-muted/40 p-4">
@@ -28,3 +34,5 @@ export default function OnboardingPage() {
     </main>
   );
 }
+
+    

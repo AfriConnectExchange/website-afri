@@ -13,40 +13,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { auth } from '@/lib/firebaseClient';
-import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, sendEmailVerification, signOut as firebaseSignOut } from 'firebase/auth';
 
 type Props = {};
 
 export default function SignInCard({}: Props) {
-    const { login } = useAuth();
+    const { login, handleSocialLogin } = useAuth();
     const { showSnackbar } = useGlobal();
     const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-
-    const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
-        const severity = variant === 'destructive' ? 'error' : 'info';
-        showSnackbar({ title, description }, severity);
-    };
+    const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
 
     const mapAuthError = (err: any) => {
         const code = err?.code || err?.error || null;
-        const msg = err?.message ?? String(err ?? 'An error occurred');
         switch (code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-                return { title: 'Invalid credentials', description: 'Email or password is incorrect.' };
+            case 'auth/invalid-credential':
+                return { title: 'Invalid Credentials', description: 'The email or password you entered is incorrect.' };
             case 'auth/invalid-email':
-                return { title: 'Invalid email', description: 'Please enter a valid email address.' };
+                return { title: 'Invalid Email', description: 'Please enter a valid email address.' };
             case 'auth/network-request-failed':
-                return { title: 'Network error', description: 'Please check your connection and try again.' };
-            case 'auth/popup-closed-by-user':
+                return { title: 'Network Error', description: 'Please check your connection and try again.' };
+             case 'auth/popup-closed-by-user':
                 return { title: 'Sign-in Cancelled', description: 'You closed the sign-in popup before completing.' };
             default:
-                return { title: 'Sign-in Failed', description: msg };
+                return { title: 'Sign-in Failed', description: err.message || 'An unknown error occurred.' };
         }
     };
 
@@ -54,10 +47,10 @@ export default function SignInCard({}: Props) {
         setIsLoading(true);
         try {
             await login(formData.email, formData.password);
-            // AuthProvider will handle verification checks and navigation
+            // AuthProvider handles navigation on success
         } catch (error: any) {
-            const friendly = mapAuthError(error);
-            showAlert('destructive', friendly.title, friendly.description);
+            const friendlyError = mapAuthError(error);
+            showSnackbar({ title: friendlyError.title, description: friendlyError.description }, 'error');
         } finally {
             setIsLoading(false);
         }
@@ -65,47 +58,25 @@ export default function SignInCard({}: Props) {
 
     const handlePhoneLogin = async () => {
         if (!formData.phone) {
-            showAlert('destructive', 'Error', 'Phone number is required.');
+            showSnackbar('Phone number is required.', 'error');
             return;
         }
         setIsLoading(true);
         // OTP not implemented yet
         setTimeout(() => {
-            showAlert('destructive', 'Not Implemented', 'Phone login is not yet implemented.');
+            showSnackbar('Phone login is not yet available.', 'info');
             setIsLoading(false);
         }, 1000);
     };
 
-    const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-        setIsLoading(true);
+    const onSocialLogin = async (provider: 'google' | 'facebook') => {
+        setSocialLoading(provider);
         try {
-            if (provider === 'google') {
-                const p = new GoogleAuthProvider();
-                await signInWithPopup(auth, p);
-            } else {
-                const p = new FacebookAuthProvider();
-                await signInWithPopup(auth, p);
-            }
-
-            const fbUser = auth.currentUser;
-            if (fbUser && !fbUser.emailVerified) {
-                try {
-                    await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/verify-email` });
-                } catch (e) {
-                    console.error('resend verification failed', e);
-                }
-                showAlert('destructive', 'Please verify your email', 'A verification link was sent to your email. Check your inbox.');
-                await firebaseSignOut(auth);
-                setIsLoading(false);
-                return;
-            }
-
-            showSnackbar({ title: `Signed in with ${provider}`, description: '' }, 'success');
-        } catch (err: any) {
-            const friendly = mapAuthError(err);
-            showAlert('destructive', friendly.title, friendly.description);
+            await handleSocialLogin(provider);
+        } catch (error) {
+            // Error is handled in the context's snackbar
         } finally {
-            setIsLoading(false);
+            setSocialLoading(null);
         }
     };
 
@@ -115,8 +86,8 @@ export default function SignInCard({}: Props) {
                 <AnimatedButton
                     variant="outline"
                     className="w-full"
-                    onClick={() => handleSocialLogin('google')}
-                    isLoading={isLoading}
+                    onClick={() => onSocialLogin('google')}
+                    isLoading={socialLoading === 'google'}
                 >
                     <FcGoogle className="mr-2" size={24} />
                     Google
@@ -124,8 +95,8 @@ export default function SignInCard({}: Props) {
                 <AnimatedButton
                     variant="outline"
                     className="w-full"
-                    onClick={() => handleSocialLogin('facebook')}
-                    isLoading={isLoading}
+                    onClick={() => onSocialLogin('facebook')}
+                    isLoading={socialLoading === 'facebook'}
                 >
                     <FaFacebook className="mr-2 text-[#1877F2]" size={24} />
                     Facebook
@@ -219,7 +190,7 @@ export default function SignInCard({}: Props) {
             </Tabs>
 
             <div className="mt-6 text-center space-y-2">
-                <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                <Link href="/auth/forgot-password" className="text-sm text-primary hover:underline">
                     Forgot your password?
                 </Link>
                 <div className="text-sm mt-4">
@@ -232,3 +203,5 @@ export default function SignInCard({}: Props) {
         </>
     );
 }
+
+    

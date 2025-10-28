@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -5,7 +6,8 @@ import { MailCheck, Loader2 } from 'lucide-react';
 import { AnimatedButton } from '../ui/animated-button';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import { useRouter } from 'next/navigation';
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
+import { auth } from '@/lib/firebaseClient';
+import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
 
 interface CheckEmailCardProps {
   email?: string;
@@ -19,7 +21,6 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
   const [canResend, setCanResend] = useState(true);
   const { showSnackbar } = useGlobal();
   const router = useRouter();
-  const pollingRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!initialEmail) {
@@ -31,58 +32,29 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
   }, [initialEmail]);
 
   useEffect(() => {
-    let attempts = 0;
-    const maxAttempts = 24; // ~2 minutes at 5s interval
-
-    const poll = async () => {
-      if (!email) return;
-      attempts += 1;
-      try {
-        const db = getFirestore();
-        const q = query(collection(db, 'users'), where('email', '==', email));
-        const snaps = await getDocs(q);
-        if (!snaps.empty) {
-          const data = snaps.docs[0].data() as any;
-          if (data?.verification_status === 'verified') {
-            showSnackbar('Email verified — signing you in or redirecting...', 'success');
-            if (pollingRef.current) window.clearInterval(pollingRef.current);
-            setTimeout(() => router.push('/'), 900);
-          }
+    const unsub = onAuthStateChanged(auth, async (user) => {
+        if(user && user.emailVerified) {
+            showSnackbar('Email verified! Signing you in...', 'success');
+            // This will trigger the auth provider to fetch the profile
+            // and redirect to onboarding or home page.
+            router.push('/');
         }
-      } catch (err) {
-        // ignore transient errors
-      }
-      if (attempts >= maxAttempts && pollingRef.current) {
-        window.clearInterval(pollingRef.current);
-      }
-    };
+    });
 
-    if (email) {
-      pollingRef.current = window.setInterval(poll, 5000);
-      poll();
-    }
+    return () => unsub();
 
-    return () => {
-      if (pollingRef.current) window.clearInterval(pollingRef.current);
-    };
-  }, [email, showSnackbar, router]);
+  }, [router, showSnackbar]);
 
   const resend = async () => {
     if (!canResend) return;
-    if (!email) {
-      showSnackbar('No email available to resend to.', 'error');
+    if (!auth.currentUser) {
+      showSnackbar('No active user session to resend verification.', 'error');
       return;
     }
     setLoadingResend(true);
     setCanResend(false);
     try {
-      const res = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to resend verification');
+      await sendEmailVerification(auth.currentUser, { url: `${window.location.origin}/auth/verify-email` });
       showSnackbar('Verification email resent. Check your inbox.', 'success');
       setTimeout(() => setCanResend(true), 60000);
     } catch (err: any) {
@@ -104,38 +76,38 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
         <h1 className="text-2xl font-semibold mb-3">Check Your Email</h1>
         <p className="text-sm text-muted-foreground mb-4">
           We've sent a verification link to{' '}
-          <span className="font-semibold text-foreground">{email || 'your email'}</span>. Please
+          <span className="font-semibold text-foreground">{email || auth.currentUser?.email || 'your email'}</span>. Please
           check your inbox and follow the link to activate your account.
         </p>
-
-        {isVerifying ? (
-          <div className="flex flex-col items-center justify-center space-y-3">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              Waiting for verification... This page will redirect automatically.
-            </p>
-          </div>
-        ) : (
-          <AnimatedButton
-            onClick={onBack}
-            size="lg"
-            className="w-full"
-            variant="outline"
-          >
-            Back to Sign In
-          </AnimatedButton>
+        
+        {isVerifying && (
+             <div className="flex flex-col items-center justify-center space-y-3">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">
+                Waiting for verification... This page will redirect automatically.
+                </p>
+            </div>
         )}
 
         <div className="mt-6 flex flex-col items-center gap-2">
           <button
             onClick={resend}
             disabled={!canResend || loadingResend}
-            className="text-primary-600 hover:underline disabled:opacity-50"
+            className="text-primary hover:underline disabled:opacity-50"
           >
             {loadingResend ? 'Sending...' : (canResend ? 'Resend verification email' : 'Resend available in 60s')}
           </button>
           <p className="text-xs text-muted-foreground mt-2">Check your spam folder if you don't see the message.</p>
         </div>
+
+        <AnimatedButton
+            onClick={onBack}
+            size="lg"
+            className="w-full mt-6"
+            variant="outline"
+          >
+            Back to Sign In
+          </AnimatedButton>
 
         <p className="text-xs text-muted-foreground mt-6">
           If you're still having trouble, contact support.
@@ -144,3 +116,5 @@ export default function CheckEmailCard({ email: initialEmail, onBack, isVerifyin
     </div>
   );
 }
+
+    

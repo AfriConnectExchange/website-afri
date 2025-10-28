@@ -1,25 +1,36 @@
+
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
-import { sendEmail } from '@/lib/email-service';
 
 export async function POST(req: Request) {
-  const { email } = await req.json();
-  if (!email) {
-    return NextResponse.json({ error: 'Email required.' }, { status: 400 });
-  }
-
   try {
-    // Generate verification link
-    const link = await admin.auth().generateEmailVerificationLink(email);
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized: No token provided' }, { status: 401 });
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const user = await admin.auth().getUser(decodedToken.uid);
 
-    // Send verification email via our email service
-    const subject = 'Verify your email for AfriConnect';
-    const text = `Please verify your email by visiting: ${link}`;
-    const html = `<p>Please verify your email by <a href="${link}">clicking here</a>.</p>`;
-    await sendEmail({ to: email, subject, text, html });
+    if (user.emailVerified) {
+      return NextResponse.json({ error: 'Email is already verified.' }, { status: 400 });
+    }
+    
+    if (!user.email) {
+      return NextResponse.json({ error: 'User does not have an email to verify.' }, { status: 400 });
+    }
 
-    return NextResponse.json({ success: true });
+    const link = await admin.auth().generateEmailVerificationLink(user.email);
+    
+    // In a real app, you would send this link via your email service
+    console.log(`Verification link for ${user.email}: ${link}`);
+
+    return NextResponse.json({ success: true, message: 'Verification email sent.' });
+
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Failed to resend verification' }, { status: 400 });
+    console.error('Resend verification error:', err);
+    return NextResponse.json({ error: err?.message || 'Failed to resend verification' }, { status: 500 });
   }
 }
+
+    

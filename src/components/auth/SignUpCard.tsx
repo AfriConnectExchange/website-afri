@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
+import { Mail, Eye, EyeOff, User } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
 import { Input } from '../ui/input';
@@ -10,7 +10,6 @@ import { AnimatedButton } from '../ui/animated-button';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// @ts-ignore - importing css side-effect for phone input styles
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { Checkbox } from '../ui/checkbox';
@@ -18,20 +17,19 @@ import { PasswordStrength } from './PasswordStrength';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { auth } from '@/lib/firebaseClient';
-import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
 
 type Props = {};
 
 export default function SignUpCard({}: Props) {
-  const { signUp } = useAuth();
+  const { signUp, handleSocialLogin } = useAuth();
   const { showSnackbar } = useGlobal();
+  const router = useRouter();
 
   const [signupMethod, setSignupMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -42,67 +40,52 @@ export default function SignUpCard({}: Props) {
     acceptTerms: false,
   });
 
-  const showAlert = (severity: 'success' | 'error' | 'info' | 'warning', message: string) => {
-    showSnackbar(message, severity);
-  };
-
-  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-    setIsLoading(true);
+  const onSocialLogin = async (provider: 'google' | 'facebook') => {
+    setSocialLoading(provider);
     try {
-      if (provider === 'google') {
-        const p = new GoogleAuthProvider();
-        await signInWithPopup(auth, p);
-      } else {
-        const p = new FacebookAuthProvider();
-        await signInWithPopup(auth, p);
-      }
-      // After social sign-in, onAuthStateChanged will create/merge profile via server
-      showAlert('success', `Signed up with ${provider}.`);
-    } catch (err: any) {
-      showAlert('error', `Sign-up with ${provider} failed: ${err?.message ?? String(err)}`);
+        await handleSocialLogin(provider);
+    } catch (error) {
+        // error is handled in context
     } finally {
-      setIsLoading(false);
+        setSocialLoading(null);
     }
   };
-
-  const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || isRedirecting) return;
+    if (isLoading) return;
+    
     if (formData.password !== formData.confirmPassword) {
-      showAlert('error', 'Passwords do not match. Please re-enter your password.');
+      showSnackbar('Passwords do not match. Please re-enter your password.', 'error');
       return;
     }
     if (!formData.acceptTerms) {
-      showAlert('error', 'Terms not accepted. You must agree to the Terms of Service.');
+      showSnackbar('You must agree to the Terms of Service.', 'error');
       return;
     }
 
-  setIsLoading(true);
-  try {
+    setIsLoading(true);
+    try {
         if (signupMethod === 'email') {
-  const result = await signUp(formData.email, formData.password, formData.name);
-      if (result?.success) {
-        showAlert('success', result.message || 'Account created — check your email for a verification link.');
-        // keep form disabled while we wait to redirect
-        setIsRedirecting(true);
-            // persist email so verify page can show it
-    try { localStorage.setItem('signup_email', formData.email); localStorage.setItem('signup_name', formData.name); } catch {};
-        setTimeout(() => router.push('/auth/verify-email'), 1200);
-      } else {
-        showAlert('error', result?.message || 'Unable to create account.');
-      }
-    } else {
-      // Real Supabase phone signup logic would go here
-  showAlert('error', 'Not Implemented: Phone sign-up is not yet implemented.');
+            const result = await signUp(formData.email, formData.password, formData.name);
+            if (result.success) {
+                showSnackbar(result.message || 'Account created! Please check your email to verify.', 'success');
+                try { 
+                    localStorage.setItem('signup_email', formData.email); 
+                    localStorage.setItem('signup_name', formData.name); 
+                } catch {}
+                router.push('/auth/verify-email');
+            } else {
+                showSnackbar(result.message || 'Unable to create account.', 'error');
+            }
+        } else {
+            showSnackbar('Phone sign-up is not yet implemented.', 'info');
+        }
+    } catch (error: any) {
+        showSnackbar(`Sign-up Failed: ${error.message}`, 'error');
+    } finally {
+        setIsLoading(false);
     }
-  } catch (error: any) {
-    showAlert('error', `Sign-up Failed: ${error.message}`);
-  } finally {
-    // If we are redirecting keep button disabled; otherwise re-enable
-    if (!isRedirecting) setIsLoading(false);
-  }
   };
   
   return (
@@ -111,8 +94,8 @@ export default function SignUpCard({}: Props) {
             <AnimatedButton
                 variant="outline"
                 className="w-full"
-                onClick={() => handleSocialLogin('google')}
-                isLoading={isLoading}
+                onClick={() => onSocialLogin('google')}
+                isLoading={socialLoading === 'google'}
             >
                 <FcGoogle className="mr-2" size={24} />
                 Google
@@ -120,8 +103,8 @@ export default function SignUpCard({}: Props) {
             <AnimatedButton
                 variant="outline"
                 className="w-full"
-                onClick={() => handleSocialLogin('facebook')}
-                isLoading={isLoading}
+                onClick={() => onSocialLogin('facebook')}
+                isLoading={socialLoading === 'facebook'}
             >
                 <FaFacebook className="mr-2 text-[#1877F2]" size={24} />
                 Facebook
@@ -130,7 +113,7 @@ export default function SignUpCard({}: Props) {
 
         <div className="flex items-center my-6">
             <Separator className="flex-1" />
-            <span className="mx-4 text-xs text-muted-foreground">OR SIGN UP WITH</span>
+            <span className="mx-4 text-xs text-muted-foreground uppercase">OR SIGN UP WITH</span>
             <Separator className="flex-1" />
         </div>
 
@@ -270,7 +253,7 @@ export default function SignUpCard({}: Props) {
               type="submit"
               size="lg"
               className="w-full mt-6"
-              isLoading={isLoading || isRedirecting}
+              isLoading={isLoading}
               animationType="glow"
             >
               {signupMethod === 'phone' ? 'Send OTP' : 'Create Account'}
@@ -291,5 +274,4 @@ export default function SignUpCard({}: Props) {
   );
 }
 
-  // place snackbar at the root of the component render
-  
+    
