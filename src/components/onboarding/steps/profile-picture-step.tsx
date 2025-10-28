@@ -7,6 +7,7 @@ import { UploadCloud, User as UserIcon, Loader2 } from 'lucide-react';
 import { OnboardingData } from '../onboarding-flow';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface ProfilePictureStepProps {
   data: Partial<OnboardingData>;
@@ -23,7 +24,7 @@ export function ProfilePictureStep({ data, onDataChange, onNext, onBack }: Profi
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     if (file.size > 2 * 1024 * 1024) { // 2MB limit
       toast({
@@ -37,15 +38,31 @@ export function ProfilePictureStep({ data, onDataChange, onNext, onBack }: Profi
     setIsUploading(true);
     setPreview(URL.createObjectURL(file));
 
-    // MOCK UPLOAD
-    // In a real app, you would upload to a storage service (e.g., Firebase Storage)
-    // and get back a URL.
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const mockUrl = `https://picsum.photos/seed/${user?.id}/200/200`;
-    
-    onDataChange({ avatarUrl: mockUrl });
-    setPreview(mockUrl);
-    setIsUploading(false);
+    try {
+      const storage = getStorage();
+      const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+      
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      onDataChange({ avatarUrl: downloadURL });
+      setPreview(downloadURL);
+      toast({
+        title: 'Upload Successful',
+        description: 'Your new profile picture has been uploaded.',
+      });
+
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Could not upload your profile picture. Please try again.',
+      });
+      setPreview(data.avatarUrl || user.avatarUrl || null); // Revert to old image on failure
+    } finally {
+      setIsUploading(false);
+    }
   };
   
   const getInitials = () => {

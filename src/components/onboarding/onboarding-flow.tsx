@@ -16,6 +16,7 @@ interface OnboardingFlowProps {
 }
 
 export interface OnboardingData {
+  fullName: string;
   phone: string;
   address: string;
   city: string;
@@ -30,6 +31,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('personal');
   const [isLoading, setIsLoading] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
+    fullName: user?.fullName || '',
     phone: '',
     address: '',
     city: '',
@@ -52,11 +54,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const submitOnboarding = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to complete onboarding.' });
+        return;
+    }
+
     setIsLoading(true);
     try {
+      const token = await user.getIdToken();
+      
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(onboardingData),
       });
 
