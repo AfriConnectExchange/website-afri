@@ -35,7 +35,10 @@
       enable = true;
       previews = {
         web = {
-          command = ["npm" "run" "dev" "--" "--port" "$PORT" "--hostname" "0.0.0.0"];
+          # Match the project's package.json dev script which runs on port 3000
+          # (package.json: "next dev --turbopack -p 3000"). Use -p 3000 here so the
+          # preview launches on the same port as local dev by default.
+          command = ["npm" "run" "dev" "--" "-p" "3000" "--hostname" "0.0.0.0"];
           manager = "web";
         };
       };
