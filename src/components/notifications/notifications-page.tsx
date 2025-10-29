@@ -13,7 +13,7 @@ import { NotificationItem, type Notification } from './notification-item';
 import { EmptyState } from './empty-state';
 import { PageLoader } from '../ui/loader';
 import { Skeleton } from '../ui/skeleton';
-import { auth } from '@/lib/firebaseClient';
+import { fetchWithAuth } from '@/lib/api';
 
 interface NotificationsPageProps {
   onNavigate: (page: string) => void;
@@ -58,24 +58,16 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
     const fetchNotifications = async () => {
       setIsLoading(true);
       try {
-        const user = auth.currentUser;
-        if (!user) {
-          throw new Error('You must be logged in to view notifications.');
-        }
-        const token = await user.getIdToken();
-
-        const response = await fetch('/api/notifications/list', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
+        const response = await fetchWithAuth('/api/notifications/list');
+        
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch notifications');
         }
+        
         const data = await response.json();
         setNotifications(data);
+
       } catch (error) {
         toast({
           variant: 'destructive',
@@ -331,5 +323,3 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
     </>
   );
 }
-
-    
