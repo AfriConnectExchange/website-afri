@@ -176,15 +176,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.body.appendChild(container);
     }
 
-    // If there's an existing verifier, try to use it; otherwise create a new one.
-    // Some SDK internals change across versions; it's safest to recreate when
-    // the existing verifier doesn't expose the expected API.
+    // If there's an existing verifier, clear it first (per Firebase docs) so it
+    // doesn't reference a removed DOM element. Then create a fresh verifier.
+    // NOTE: use the documented argument order: new RecaptchaVerifier(containerId, params, auth)
     const existing = (window as any).recaptchaVerifier;
-    if (existing && typeof existing.verify === 'function') {
-      return existing;
-    }
-
     try {
+      if (existing && typeof existing.clear === 'function') {
+        try {
+          existing.clear();
+        } catch (clearErr) {
+          // Non-fatal: log and continue to re-create a verifier
+          console.warn('Failed to clear existing reCAPTCHA verifier:', clearErr);
+        }
+      }
+
       const verifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
         size: 'invisible',
         callback: () => {},
@@ -284,7 +289,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const container = document.getElementById('recaptcha-container');
             if (container) {
-              // Re-init a fresh verifier so subsequent calls have a valid appVerifier.
+              // Clear any existing verifier and create a fresh one using the
+              // documented signature: containerId, params, auth
+              if ((window as any).recaptchaVerifier && typeof (window as any).recaptchaVerifier.clear === 'function') {
+                try {
+                  (window as any).recaptchaVerifier.clear();
+                } catch (clearErr) {
+                  console.warn('Failed to clear recaptchaVerifier during re-init:', clearErr);
+                }
+              }
               (window as any).recaptchaVerifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
                 size: 'invisible',
                 callback: () => {},
