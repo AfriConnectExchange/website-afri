@@ -20,6 +20,7 @@ import { Textarea } from '../ui/textarea';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { useAuth } from '@/context/auth-context';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
