@@ -157,6 +157,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [handleUserSession]);
 
+  // Ensure a valid RecaptchaVerifier exists and the container is present in the DOM.
+  // This will create a hidden container if needed and (re)initialize the verifier so
+  // it won't point at a removed DOM element which causes the "client element has been removed" error.
+  const ensureRecaptchaVerifier = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+
+    let container = document.getElementById('recaptcha-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'recaptcha-container';
+      // keep it out of layout
+      container.style.position = 'absolute';
+      container.style.width = '1px';
+      container.style.height = '1px';
+      container.style.overflow = 'hidden';
+      container.style.left = '-9999px';
+      document.body.appendChild(container);
+    }
+
+    // If there's an existing verifier, try to use it; otherwise create a new one.
+    // Some SDK internals change across versions; it's safest to recreate when
+    // the existing verifier doesn't expose the expected API.
+    const existing = (window as any).recaptchaVerifier;
+    if (existing && typeof existing.verify === 'function') {
+      return existing;
+    }
+
+    try {
+      const verifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {},
+      });
+      (window as any).recaptchaVerifier = verifier;
+      return verifier;
+    } catch (err) {
+      console.error('Failed to initialize reCAPTCHA verifier:', err);
+      return null;
+    }
+  }, []);
+
   const login = useCallback(async (email: string, password: string) => {
     await signInWithEmailAndPassword(clientAuth, email, password);
   }, []);
@@ -201,9 +241,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [showSnackbar]);
 
   const startPhoneAuth = useCallback(async (phone: string) => {
-    const appVerifier = (window as any).recaptchaVerifier;
+    // Ensure we have a fresh/valid verifier right before attempting phone auth.
+    const appVerifier = ensureRecaptchaVerifier();
     if (!appVerifier) {
-      throw new Error("reCAPTCHA verifier not initialized.");
+      throw new Error("reCAPTCHA verifier not initialized or could not be created.");
     }
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
