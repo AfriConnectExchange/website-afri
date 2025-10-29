@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -11,6 +10,7 @@ import { PreferencesForm } from './preferences-form';
 import { AccountActions } from './account-actions';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { AddressBook } from './address-book';
 
 export function ProfilePage() {
   const { user, isLoading } = useAuth();
@@ -90,6 +90,7 @@ export function ProfilePage() {
 
               <TabsContent value="profile" className="space-y-6 mt-0">
                  <PersonalInfoForm onFeedback={handleFeedback} />
+                 <AddressBook onFeedback={handleFeedback} />
                  <AccountRoleForm onFeedback={handleFeedback} />
               </TabsContent>
 

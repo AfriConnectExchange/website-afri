@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,11 +22,8 @@ import { useAuth } from '@/context/auth-context';
 import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
+  fullName: z.string(),
   phone: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  postcode: z.string().optional(),
 });
 
 type PersonalInfoFormValues = z.infer<typeof formSchema>;
@@ -45,9 +41,6 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     defaultValues: {
       fullName: '',
       phone: '',
-      address: '',
-      city: '',
-      postcode: '',
     },
   });
 
@@ -56,9 +49,6 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
         form.reset({
             fullName: profile.full_name || '',
             phone: profile.phone || '',
-            address: profile.address || '',
-            city: profile.city || '',
-            postcode: profile.postcode || '',
         });
     }
   }, [profile, form]);
@@ -73,13 +63,9 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
 
     try {
         await updateUser({
-            full_name: values.fullName,
             phone: values.phone,
-            address: values.address,
-            city: values.city,
-            postcode: values.postcode,
         });
-        onFeedback('success', 'Profile updated successfully!');
+        onFeedback('success', 'Contact info updated successfully!');
     } catch(error: any) {
         onFeedback('error', 'Failed to update profile: ' + error.message);
     }
@@ -107,7 +93,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
            <CardHeader>
             <CardTitle>Personal Information</CardTitle>
             <CardDescription>
-              Update your personal details and contact information.
+              Update your personal details and contact information. Your name cannot be changed.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -119,7 +105,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
                         <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="John Doe" {...field} />
+                            <Input placeholder="John Doe" {...field} readOnly className="bg-muted/50 cursor-not-allowed"/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -145,51 +131,11 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
                   )}
                 />
              </div>
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="123 Main St"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-               <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                    <FormItem>
-                    <Label>City</Label>
-                    <FormControl><Input placeholder="e.g., London" {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                control={form.control}
-                name="postcode"
-                render={({ field }) => (
-                    <FormItem>
-                    <Label>Postcode</Label>
-                    <FormControl><Input placeholder="e.g., SW1A 1AA" {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            </div>
           </CardContent>
           <CardFooter>
              <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Update Profile
+                Save Changes
               </Button>
           </CardFooter>
         </form>
