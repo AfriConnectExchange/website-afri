@@ -13,6 +13,7 @@ import VerifyPhoneModal from './VerifyPhoneModal';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
+import { auth as clientAuth } from '@/lib/firebaseClient';
 import type { AppUser } from '@/lib/types';
 
 interface ProfileSummaryCardProps {
@@ -57,6 +58,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   };
 
   const userName = user.fullName || user.email || 'Unnamed User';
+  const authUser = typeof window !== 'undefined' ? clientAuth.currentUser : null;
   
   const menuItems = [
     { id: 'profile', label: 'My Account', icon: User },
@@ -84,6 +86,16 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                 <div className="flex items-center justify-center gap-2">
                   <Mail className="w-4 h-4" />
                   <span className="truncate">{user.email}</span>
+                  {/* Debug indicator: shows whether email verification comes from Firebase auth or Firestore profile */}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {authUser?.emailVerified ? (
+                      <span className="text-success">auth</span>
+                    ) : user.email_verified ? (
+                      <span className="text-amber-600">profile</span>
+                    ) : (
+                      <span className="text-destructive">unverified</span>
+                    )}
+                  </span>
                   {!user.email_verified && (
                     <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setShowVerifyEmail(true)}>
                       Verify
@@ -95,6 +107,16 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                 <div className="flex items-center justify-center gap-2 mt-2">
                   <Phone className="w-4 h-4" />
                   <span className="truncate">{user.phone}</span>
+                  {/* Debug indicator for phone verification source */}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {authUser?.phoneNumber ? (
+                      <span className="text-success">auth</span>
+                    ) : user.phone_verified ? (
+                      <span className="text-amber-600">profile</span>
+                    ) : (
+                      <span className="text-destructive">unverified</span>
+                    )}
+                  </span>
                   {!user.phone_verified && (
                     <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setShowVerifyPhone(true)}>
                       Verify

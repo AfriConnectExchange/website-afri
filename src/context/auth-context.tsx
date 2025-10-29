@@ -41,6 +41,7 @@ interface AuthContextType {
   signUpWithPhone: (phone: string) => Promise<void>;
   handleOtpSuccess: (user: FirebaseUser) => void;
   resendOtp: (phone: string) => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<ConfirmationResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -86,6 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await updateDoc(userDocRef, { full_name: extraData.displayName });
             userProfile.full_name = extraData.displayName;
         }
+        // Keep Firestore email_verified in sync with Firebase auth state so UI
+        // doesn't prompt to verify an email that's already verified.
+        if (fbUser.emailVerified && !userProfile.email_verified) {
+          try {
+            await updateDoc(userDocRef, { email_verified: true });
+            userProfile.email_verified = true;
+          } catch (err) {
+            console.warn('Failed to update email_verified on profile:', err);
+          }
+        }
       } else {
         userProfile = {
           id: fbUser.uid,
@@ -97,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           status: 'active',
           onboarding_completed: false,
           created_at: new Date().toISOString(),
-          verification_status: 'verified', // Phone verified users are auto-verified
+          verification_status: fbUser.phoneNumber ? 'pending' : 'unverified',
+          email_verified: fbUser.emailVerified ?? false,
+          phone_verified: fbUser.phoneNumber ? true : false,
         };
         await setDoc(userDocRef, userProfile);
       }
@@ -318,9 +331,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [showSnackbar, router]);
   
-  const resendOtp = useCallback(async(phone: string) => {
-      await startPhoneAuth(phone);
-  }, [startPhoneAuth]);
+  // Non-redirecting phone OTP sender for modal flows. Returns the confirmationResult
+  // and does not navigate to the dedicated /auth/verify-phone page.
+  const sendPhoneOtp = useCallback(async (phone: string) => {
+    const appVerifier = ensureRecaptchaVerifier();
+    if (!appVerifier) {
+      throw new Error('reCAPTCHA verifier not initialized or could not be created.');
+    }
+    try {
+      const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
+      (window as any).confirmationResult = confirmationResult;
+      try {
+        showSnackbar({ title: 'OTP Sent', description: `A one-time code was sent to ${phone}.` }, 'success');
+      } catch (snackErr) {
+        // ignore snackbar errors
+      }
+      return confirmationResult;
+    } catch (error: any) {
+      console.error('sendPhoneOtp error:', error);
+      showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error?.message}` }, 'error');
+      throw error;
+    }
+  }, [ensureRecaptchaVerifier, showSnackbar]);
+
+  const resendOtp = useCallback(async (phone: string) => {
+    await sendPhoneOtp(phone);
+  }, [sendPhoneOtp]);
 
   const signInWithPhone = useCallback(async (phone: string) => {
     localStorage.removeItem('phone_signup_displayName');
@@ -407,7 +443,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithPhone,
     signUpWithPhone,
     handleOtpSuccess,
-    resendOtp
+    resendOtp,
+    sendPhoneOtp
   }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin, signInWithPhone, signUpWithPhone, handleOtpSuccess, resendOtp]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

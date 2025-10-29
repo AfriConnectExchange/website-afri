@@ -16,7 +16,7 @@ interface VerifyPhoneModalProps {
 
 export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModalProps) {
   const { toast } = useToast();
-  const { signInWithPhone, resendOtp, handleOtpSuccess } = useAuth();
+  const { sendPhoneOtp, resendOtp, handleOtpSuccess } = useAuth();
   const { showSnackbar } = useGlobal();
   const [status, setStatus] = useState<'idle' | 'sending' | 'ready' | 'verifying' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
     setError(null);
     setStatus('sending');
     try {
-      await signInWithPhone(phone);
+      await sendPhoneOtp(phone);
       setStatus('ready');
       toast({ title: 'OTP Sent', description: `A one-time code was sent to ${phone}.` });
     } catch (err: any) {
@@ -71,7 +71,8 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
   const handleResend = async () => {
     if (!phone) return;
     try {
-      await resendOtp(phone);
+      // Prefer sendPhoneOtp for modal flows to avoid navigation.
+      await sendPhoneOtp(phone);
       setStatus('ready');
       toast({ title: 'OTP Resent', description: `A new code has been sent to ${phone}.` });
     } catch (err: any) {
