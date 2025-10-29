@@ -38,6 +38,26 @@ export function VerifyEmailModal({ open, onOpenChange, email }: VerifyEmailModal
     }
   }, [open]);
 
+  useEffect(() => {
+    // If modal opens but the current Firebase user already has a verified email,
+    // no need to send/poll — refresh profile and close the modal.
+    if (open) {
+      const user = auth.currentUser;
+      if (user && user.emailVerified) {
+        // Refresh profile in auth context and close modal
+        (async () => {
+          try {
+            await updateUser({});
+          } catch (err) {
+            console.warn('Profile refresh after early verified check failed:', err);
+          }
+          onOpenChange(false);
+        })();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const getAuthToken = async () => {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');

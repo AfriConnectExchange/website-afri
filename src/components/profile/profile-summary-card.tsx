@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import VerifyEmailModal from './VerifyEmailModal';
+import VerifyPhoneModal from './VerifyPhoneModal';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -44,6 +45,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   const { toast } = useToast();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showVerifyEmail, setShowVerifyEmail] = useState(false);
+  const [showVerifyPhone, setShowVerifyPhone] = useState(false);
   
   const handleSignOut = async () => {
     await logout();
@@ -89,9 +91,21 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                   )}
                 </div>
               )}
+              {user.phone && (
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <Phone className="w-4 h-4" />
+                  <span className="truncate">{user.phone}</span>
+                  {!user.phone_verified && (
+                    <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setShowVerifyPhone(true)}>
+                      Verify
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <VerifyEmailModal open={showVerifyEmail} onOpenChange={setShowVerifyEmail} email={user.email} />
+            <VerifyPhoneModal open={showVerifyPhone} onOpenChange={setShowVerifyPhone} phone={user.phone} />
 
             <div className="mt-6 space-y-2">
               {menuItems.map(item => (
