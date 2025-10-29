@@ -10,6 +10,7 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { auth } from '@/lib/firebaseClient';
+import { fetchWithAuth } from '@/lib/api';
 
 type OnboardingStep = 'personal' | 'picture' | 'complete';
 
@@ -58,8 +59,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const submitOnboarding = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
+    if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to complete onboarding.' });
         return;
     }
@@ -67,20 +67,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setIsLoading(true);
     try {
       
-      // Update the user profile in Firestore via the context
+      // The updateUser function now handles the API call
       await updateUser({
-          fullName: onboardingData.fullName,
-          phone: onboardingData.phone,
-          email: onboardingData.email,
-          address: onboardingData.address,
-          city: onboardingData.city,
-          postcode: onboardingData.postcode,
-          country: onboardingData.country,
-          avatarUrl: onboardingData.avatarUrl,
+          ...onboardingData,
           onboarding_completed: true,
       });
-
-      // The API call is now abstracted away by the auth context's `updateUser`
       
       toast({
         title: 'Profile Completed!',

@@ -97,8 +97,10 @@ export default function SignUpCard({}: Props) {
                 showSnackbar({ title: 'Sign-up failed', description: result.message }, 'error');
             }
         } else {
-            await signUpWithPhone(formData.phone, { displayName: formData.name });
-            // The auth context will now trigger the OTP flow
+            // Securely store the display name before starting phone auth
+            localStorage.setItem('phone_signup_displayName', formData.name);
+            await signUpWithPhone(formData.phone);
+            // The auth context will now trigger the OTP flow by navigating
         }
     } catch (error: any) {
         showSnackbar({description: `Sign-up Failed: ${error.message}`}, 'error');

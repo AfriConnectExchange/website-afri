@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
@@ -24,6 +23,7 @@ import { getFirestore, doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'f
 import { useGlobal } from '@/lib/context/GlobalContext';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
 import { auth as clientAuth, db } from '@/lib/firebaseClient';
+import { fetchWithAuth } from '../lib/api';
 
 export type UserProfile = DbUserProfile;
 
@@ -38,8 +38,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; user?: FirebaseUser; message?: string; requiresVerification?: boolean; }>;
   handleSocialLogin: (provider: 'google' | 'facebook') => Promise<void>;
   signInWithPhone: (phone: string) => Promise<void>;
-  signUpWithPhone: (phone: string, profileData: { displayName: string }) => Promise<void>;
-  handleNeedsOtp: (callback: (data: { phone: string, resend: () => Promise<void> }) => void) => void;
+  signUpWithPhone: (phone: string) => Promise<void>;
   handleOtpSuccess: (user: FirebaseUser) => void;
   resendOtp: (phone: string) => Promise<void>;
 }
@@ -210,15 +209,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [showSnackbar]);
 
-  const startPhoneAuth = useCallback(async (phone: string, profileData?: { displayName: string }) => {
+  const startPhoneAuth = useCallback(async (phone: string) => {
     const appVerifier = (window as any).recaptchaVerifier;
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
       (window as any).confirmationResult = confirmationResult;
-      (window as any).phoneAuthData = profileData;
-
       router.push(`/auth/verify-phone?phone=${encodeURIComponent(phone)}`);
-      
     } catch (error: any) {
       console.error("Phone auth error:", error);
       showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
@@ -233,27 +229,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [showSnackbar, router]);
   
   const resendOtp = useCallback(async(phone: string) => {
-      const profileData = (window as any).phoneAuthData;
-      await startPhoneAuth(phone, profileData);
+      await startPhoneAuth(phone);
   }, [startPhoneAuth]);
 
   const signInWithPhone = useCallback(async (phone: string) => {
+    localStorage.removeItem('phone_signup_displayName');
     await startPhoneAuth(phone);
   }, [startPhoneAuth]);
 
-  const signUpWithPhone = useCallback(async (phone: string, profileData: { displayName: string }) => {
-    await startPhoneAuth(phone, profileData);
+  const signUpWithPhone = useCallback(async (phone: string) => {
+    await startPhoneAuth(phone);
   }, [startPhoneAuth]);
 
-  // This is no longer needed for UI switching but kept for potential future use
-  const handleNeedsOtp = useCallback((callback: (data: { phone: string, resend: () => Promise<void> }) => void) => {
-    // Deprecated in favor of direct navigation
-  }, []);
+  const handleOtpSuccess = useCallback(async (fbUser: FirebaseUser) => {
+    const displayName = localStorage.getItem('phone_signup_displayName');
+    const extraData = displayName ? { displayName } : {};
+    
+    await handleUserSession(fbUser, extraData);
 
-  const handleOtpSuccess = useCallback(async (user: FirebaseUser) => {
-    const extraData = (window as any).phoneAuthData || {};
-    await handleUserSession(user, extraData);
-    (window as any).phoneAuthData = null;
+    localStorage.removeItem('phone_signup_displayName');
   }, [handleUserSession]);
 
   const logout = useCallback(async () => {
@@ -266,23 +260,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = useCallback(async (data: { fullName?: string, avatarUrl?: string, [key: string]: any }) => {
     if (!clientAuth.currentUser) throw new Error("Not authenticated");
     
-    const { fullName, avatarUrl, ...otherProfileData } = data;
-    const authUpdate: { displayName?: string, photoURL?: string } = {};
-    if (fullName) authUpdate.displayName = fullName;
-    if (avatarUrl) authUpdate.photoURL = avatarUrl;
-    
-    if (Object.keys(authUpdate).length > 0) {
-      await firebaseUpdateProfile(clientAuth.currentUser, authUpdate);
+    // Use the secure API route for onboarding completion
+    if (data.onboarding_completed) {
+        const response = await fetchWithAuth('/api/onboarding/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to complete onboarding.');
+        }
+    } else {
+        // For other profile updates, update directly (or create other specific API routes)
+        const { fullName, avatarUrl, ...otherProfileData } = data;
+        const authUpdate: { displayName?: string, photoURL?: string } = {};
+        if (fullName) authUpdate.displayName = fullName;
+        if (avatarUrl) authUpdate.photoURL = avatarUrl;
+        
+        if (Object.keys(authUpdate).length > 0) {
+          await firebaseUpdateProfile(clientAuth.currentUser, authUpdate);
+        }
+        
+        const profileUpdateData: Record<string, any> = { ...otherProfileData, updated_at: new Date().toISOString() };
+        if (fullName) profileUpdateData.full_name = fullName;
+        if (avatarUrl) profileUpdateData.profile_picture_url = avatarUrl;
+        
+        const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
+        await updateDoc(userDocRef, profileUpdateData);
     }
-    
-    const profileUpdateData: Record<string, any> = { ...otherProfileData, updated_at: new Date().toISOString() };
-    if (fullName) profileUpdateData.full_name = fullName;
-    if (avatarUrl) profileUpdateData.profile_picture_url = avatarUrl;
-    
-    const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
-    await updateDoc(userDocRef, profileUpdateData);
+
 
     // Re-fetch profile to update context state
+    const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
     const profileSnap = await getDoc(userDocRef);
     if(profileSnap.exists()) {
         const newProfile = profileSnap.data() as UserProfile;
@@ -306,10 +316,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     handleSocialLogin,
     signInWithPhone,
     signUpWithPhone,
-    handleNeedsOtp,
     handleOtpSuccess,
     resendOtp
-  }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin, signInWithPhone, signUpWithPhone, handleNeedsOtp, handleOtpSuccess, resendOtp]);
+  }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin, signInWithPhone, signUpWithPhone, handleOtpSuccess, resendOtp]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
