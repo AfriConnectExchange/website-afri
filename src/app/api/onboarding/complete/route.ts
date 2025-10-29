@@ -7,6 +7,27 @@ import { sendEmail } from '@/lib/email-service';
 import { render } from '@react-email/render';
 import { WelcomeEmail } from '@/components/emails/welcome-template';
 
+// Recursively remove any properties with value `undefined` so Firestore
+// doesn't reject the write. We intentionally keep `null` values.
+function sanitizeForFirestore<T>(input: T): T {
+  if (input === null || typeof input !== 'object') return input;
+  if (Array.isArray(input)) {
+    // sanitize each array element
+    return input.map((v) => sanitizeForFirestore(v)) as unknown as T;
+  }
+
+  const out: any = {};
+  for (const [k, v] of Object.entries(input as any)) {
+    if (v === undefined) continue; // drop undefined
+    if (v === null) {
+      out[k] = null;
+      continue;
+    }
+    if (typeof v === 'object') out[k] = sanitizeForFirestore(v);
+    else out[k] = v;
+  }
+  return out as T;
+}
 export async function POST(req: Request) {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -42,7 +63,9 @@ export async function POST(req: Request) {
     };
 
     // Use .set with { merge: true } to create or update fields
-    await userDocRef.set(profileUpdateData, { merge: true });
+  // Remove any undefined fields before saving to Firestore
+  const sanitizedProfileUpdateData = sanitizeForFirestore(profileUpdateData);
+  await userDocRef.set(sanitizedProfileUpdateData, { merge: true });
 
     // Log the successful profile completion
     await logActivity({
