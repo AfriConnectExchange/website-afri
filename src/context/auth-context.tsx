@@ -24,6 +24,7 @@ import { useGlobal } from '@/lib/context/GlobalContext';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
 import { auth as clientAuth, db } from '@/lib/firebaseClient';
 import { fetchWithAuth } from '../lib/api';
+import { createSession, heartbeatSession, revokeSession, getDeviceId } from '@/lib/session-client';
 
 export type UserProfile = DbUserProfile;
 
@@ -149,6 +150,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profileData) {
           setUser(profileData.appUser);
           setProfile(profileData.userProfile);
+          // Create a server-side session record for device/session tracking
+          try {
+            // createSession will fetch ID token internally and persist session_id to localStorage
+            createSession().then(sessionId => {
+              if (sessionId) {
+                console.debug('Session created:', sessionId);
+              }
+            }).catch(err => console.warn('createSession failed', err));
+          } catch (e) {
+            console.warn('createSession error', e);
+          }
           if (!profileData.userProfile.onboarding_completed && !pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
           } else if (profileData.userProfile.onboarding_completed && (pathname.startsWith('/auth') || pathname.startsWith('/onboarding'))){
@@ -162,6 +174,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(false);
   }, [router, pathname, showSnackbar]);
+
+  // Heartbeat: ping session heartbeat periodically while user is signed in
+  useEffect(() => {
+    let timer: any = null;
+    const startHeartbeat = () => {
+      // send immediately then every 2 minutes
+      heartbeatSession().catch(() => {});
+      timer = setInterval(() => {
+        heartbeatSession().catch(() => {});
+      }, 2 * 60 * 1000);
+    };
+
+    if (clientAuth.currentUser) {
+      startHeartbeat();
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(clientAuth, (fbUser) => {
@@ -250,10 +282,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleSocialLogin = useCallback(async (providerName: 'google' | 'facebook') => {
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
-      await signInWithPopup(clientAuth, provider);
+      const result = await signInWithPopup(clientAuth, provider);
+      // Show immediate success feedback. Use additionalUserInfo to guess if this was a sign-up.
+      try {
+        const isNew = (result as any)?.additionalUserInfo?.isNewUser;
+        if (isNew) {
+          showSnackbar({ title: 'Welcome to AfriConnect', description: 'Account created successfully.' }, 'success');
+        } else {
+          showSnackbar({ title: 'Signed in', description: 'Signed in successfully.' }, 'success');
+        }
+      } catch (e) {
+        // If anything goes wrong determining new vs returning user, show a generic success
+        showSnackbar({ title: 'Signed in', description: 'Signed in successfully.' }, 'success');
+      }
     } catch (error: any) {
+      // Log full error for debugging
+      console.error('Social login error', error);
       const friendlyError = mapAuthError(error);
-      showSnackbar(friendlyError, 'error');
+      // Surface the firebase error code in the UI to help debugging (e.g. auth/popup-closed-by-user)
+      const codeHint = error?.code ? ` (${error.code})` : '';
+      showSnackbar({ title: friendlyError.title, description: `${friendlyError.description}${codeHint}` }, 'error');
       throw error;
     }
   }, [showSnackbar]);
@@ -377,10 +425,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [handleUserSession]);
 
   const logout = useCallback(async () => {
-    await firebaseSignOut(clientAuth);
-    setUser(null);
-    setProfile(null);
-    router.push('/');
+    try {
+      // Revoke current session server-side (best-effort)
+      try {
+        await revokeSession();
+      } catch (e) {
+        console.warn('Failed to revoke session on logout', e);
+      }
+    } finally {
+      await firebaseSignOut(clientAuth);
+      setUser(null);
+      setProfile(null);
+      router.push('/');
+    }
   }, [router]);
 
   const updateUser = useCallback(async (data: { fullName?: string, avatarUrl?: string, [key: string]: any }) => {

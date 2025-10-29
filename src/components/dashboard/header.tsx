@@ -9,9 +9,9 @@ import {
   Bell,
   LogOut,
   Package,
-  Settings,
   Handshake,
   TrendingUp,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -88,10 +88,12 @@ export function Header({ cartCount = 0 }: HeaderProps) {
       mobile: [
         { id: '/', label: 'Marketplace', href: '/', show: true, icon: ShoppingCart },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: !!user, icon: Bell },
+        { id: '/orders', label: 'My Orders', href: '/orders', show: !!user, icon: Receipt },
         { id: '/profile', label: 'My Account', href: '/profile', show: !!user, icon: User },
       ],
       dropdown: [
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
+        { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Receipt },
         { id: '/barter', label: 'My Barter Proposals', href: '/barter', show: true, icon: Handshake },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
       ]
@@ -287,8 +289,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                               <Link href="/seller/products"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
                             </>
                            )}
-                           <DropdownMenuSeparator />
-                           <Link href="/profile?tab=settings"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
+                          <DropdownMenuSeparator />
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>

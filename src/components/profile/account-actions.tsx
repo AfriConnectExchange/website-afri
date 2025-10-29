@@ -9,6 +9,9 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
+import { fetchWithAuth } from '@/lib/api';
+import { auth as clientAuth } from '@/lib/firebaseClient';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 
 
 interface AccountActionsProps {
@@ -28,14 +31,26 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   };
   
   const confirmDeactivate = async () => {
+     setShowDeactivateConfirm(false);
      try {
-      await logout();
-      toast({ title: 'Account Deactivated', description: 'You have been signed out. Sign in again to reactivate.' });
-    } catch (e: any) {
-      onFeedback('error', e.message || 'Failed to sign out.');
-    } finally {
-      setShowDeactivateConfirm(false);
-    }
+       // Call server endpoint to deactivate the account (disable Auth user + mark Firestore doc)
+       const res = await fetchWithAuth('/api/account/deactivate', { method: 'POST' });
+       const json = await res.json();
+       if (res.ok && json.ok) {
+         toast({ title: 'Account Deactivated', description: 'Your account was deactivated. You have been signed out.' });
+         // Ensure local sign out
+         try { await logout(); } catch (e) {}
+       } else {
+         // Fallback: sign out locally and show message
+         try { await logout(); } catch (e) {}
+         onFeedback('error', json.error || 'Failed to deactivate account.');
+       }
+     } catch (e: any) {
+       console.error('Deactivation failed', e);
+       // fallback to just sign out locally
+       try { await logout(); } catch (err) {}
+       onFeedback('error', e?.message || 'Failed to deactivate account.');
+     }
   }
 
   const handleDelete = async () => {
@@ -43,9 +58,51 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   };
 
   const confirmDelete = async () => {
-    onFeedback('error', 'Account deletion is a server-side operation and not implemented in this demo.');
-    // In a real app, this would call a Supabase Function to delete user data
     setShowDeleteConfirm(false);
+    try {
+      const res = await fetchWithAuth('/api/account/delete', { method: 'POST' });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast({ title: 'Account deleted', description: 'Your account has been deleted.' });
+        // Attempt local sign out
+        try { await logout(); } catch (e) {}
+        // Redirect to home
+        router.push('/');
+      } else {
+        onFeedback('error', json.error || 'Failed to delete account.');
+      }
+    } catch (e: any) {
+      console.error('Account deletion failed', e);
+      onFeedback('error', e?.message || 'Failed to delete account.');
+    }
+  };
+
+  // Change password flow
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [isChangingPwd, setIsChangingPwd] = useState(false);
+  const [currentPwd, setCurrentPwd] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+
+  const confirmChangePassword = async () => {
+    if (!clientAuth.currentUser || !clientAuth.currentUser.email) {
+      onFeedback('error', 'No authenticated user.');
+      return;
+    }
+    setIsChangingPwd(true);
+    try {
+      const credential = EmailAuthProvider.credential(clientAuth.currentUser.email, currentPwd);
+      await reauthenticateWithCredential(clientAuth.currentUser, credential);
+      await updatePassword(clientAuth.currentUser, newPwd);
+      toast({ title: 'Password changed', description: 'Your password has been updated.' });
+      setShowChangePwd(false);
+      setCurrentPwd('');
+      setNewPwd('');
+    } catch (e: any) {
+      console.error('Change password failed', e);
+      onFeedback('error', e?.message || 'Failed to change password.');
+    } finally {
+      setIsChangingPwd(false);
+    }
   };
 
 
@@ -105,6 +162,23 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
             "This action cannot be reversed."
         ]}
       />
+
+      {/* Inline change password area */}
+      <div className="mt-4 space-y-4">
+        <h4 className="font-medium">Change Password</h4>
+        {!showChangePwd ? (
+          <Button variant="outline" onClick={() => setShowChangePwd(true)}>Change Password</Button>
+        ) : (
+          <div className="space-y-3">
+            <input type="password" placeholder="Current password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} className="w-full p-2 border rounded" />
+            <input type="password" placeholder="New password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} className="w-full p-2 border rounded" />
+            <div className="flex items-center gap-2">
+              <Button onClick={confirmChangePassword} disabled={isChangingPwd}>{isChangingPwd ? 'Changing...' : 'Save new password'}</Button>
+              <Button variant="ghost" onClick={() => { setShowChangePwd(false); setCurrentPwd(''); setNewPwd(''); }}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }

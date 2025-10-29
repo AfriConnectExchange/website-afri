@@ -8,6 +8,7 @@ import { PersonalInfoForm } from './personal-info-form';
 import { AccountRoleForm } from './account-role-form';
 import { PreferencesForm } from './preferences-form';
 import { AccountActions } from './account-actions';
+import { SessionsList } from './sessions-list';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { AddressBook } from './address-book';
@@ -100,6 +101,7 @@ export function ProfilePage() {
 
               <TabsContent value="account" className="space-y-6 mt-0">
                 <AccountActions onFeedback={handleFeedback} />
+                <SessionsList />
               </TabsContent>
             </Tabs>
           </div>

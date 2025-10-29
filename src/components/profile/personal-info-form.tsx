@@ -133,7 +133,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
              </div>
           </CardContent>
           <CardFooter>
-             <Button type="submit" disabled={isSaving}>
+             <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
                 {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>

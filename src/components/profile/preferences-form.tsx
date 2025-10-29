@@ -62,10 +62,8 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
     }
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // In a real app, you would save these preferences to the user profile
-        // updateUser({ preferences: values });
+        // Persist preferences to user profile
+        await updateUser({ preferences: values });
         onFeedback('success', 'Preferences updated successfully!');
     } catch(error: any) {
         onFeedback('error', 'Failed to update preferences: ' + error.message);
@@ -197,7 +195,7 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
             </div>
           </CardContent>
           <CardFooter>
-             <Button type="submit" disabled={isSaving}>
+             <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
                 {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Preferences
               </Button>

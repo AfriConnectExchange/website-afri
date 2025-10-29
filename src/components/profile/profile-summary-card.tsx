@@ -62,6 +62,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   
   const menuItems = [
     { id: 'profile', label: 'My Account', icon: User },
+    { id: 'account', label: 'Settings', icon: Settings },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
     { id: 'transactions', label: 'Transaction History', icon: Receipt },
   ];
