@@ -19,7 +19,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (data: { fullName?: string; avatarUrl?: string; [key: string]: any; }) => Promise<void>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; message?: string; requiresVerification?: boolean; }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ success: boolean; user?: FirebaseUser; message?: string; requiresVerification?: boolean; }>;
   handleSocialLogin: (provider: 'google' | 'facebook') => Promise<void>;
 }
 
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await setDoc(doc(db, 'users', fbUser.uid), userProfile);
       await sendEmailVerification(fbUser, { url: `${window.location.origin}/auth/verify-email` });
       
-      return { success: true, requiresVerification: true, message: 'Verification email sent! Please check your inbox.' };
+      return { success: true, user: fbUser, requiresVerification: true, message: 'Verification email sent! Please check your inbox.' };
     } catch (error: any) {
       const friendlyError = mapAuthError(error);
       return { success: false, message: friendlyError.description };
@@ -226,3 +226,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    

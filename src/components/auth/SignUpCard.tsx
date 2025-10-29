@@ -17,9 +17,7 @@ import { PasswordStrength } from './PasswordStrength';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { logActivity } from '@/lib/activity-logger';
-import { sendEmail } from '@/lib/email-service';
-import admin from '@/lib/firebaseAdmin';
+import { auth } from '@/lib/firebaseClient';
 
 type Props = {};
 
@@ -71,31 +69,19 @@ export default function SignUpCard({}: Props) {
     try {
         if (signupMethod === 'email') {
             const result = await signUp(formData.email, formData.password, formData.name);
+            
             if (result.success && result.user) {
+                // Trigger post-signup actions via API
+                const token = await result.user.getIdToken();
+                fetch('/api/auth/post-signup', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).catch(err => console.error('Failed to trigger post-signup actions:', err));
+
                 showSnackbar({ title: 'Account created!', description: result.message }, 'success');
                 try { 
                     localStorage.setItem('signup_email', formData.email);
                 } catch {}
-                
-                // Send welcome email
-                await sendEmail({
-                    to: result.user.email!,
-                    subject: 'Welcome to AfriConnect Exchange!',
-                    text: `Hi ${result.user.displayName || 'there'},\n\nWelcome to AfriConnect Exchange! We're excited to have you. Please verify your email to get started.\n\nThe AfriConnect Team`,
-                    html: `<p>Hi ${result.user.displayName || 'there'},</p><p>Welcome to AfriConnect Exchange! We're excited to have you. Please verify your email to get started.</p><p>The AfriConnect Team</p>`,
-                }, result.user.uid);
-                
-                // Create welcome notification
-                await admin.firestore().collection('notifications').add({
-                    user_id: result.user.uid,
-                    type: 'system',
-                    title: 'Welcome to AfriConnect Exchange!',
-                    message: 'Thanks for joining! Verify your email to complete your profile.',
-                    read: false,
-                    created_at: new Date().toISOString(),
-                    priority: 'high',
-                });
-
 
                 router.push('/auth/verify-email');
             } else {
@@ -129,7 +115,7 @@ export default function SignUpCard({}: Props) {
                 onClick={() => onSocialLogin('facebook')}
                 isLoading={socialLoading === 'facebook'}
             >
-                <FaFacebook className="mr-2 text-[#1877F2]" size={24} />
+                <FaFacebook className="mr-2" size={24} />
                 Facebook
             </AnimatedButton>
         </div>
@@ -296,3 +282,5 @@ export default function SignUpCard({}: Props) {
     </>
   );
 }
+
+    
