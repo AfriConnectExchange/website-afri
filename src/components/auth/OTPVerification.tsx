@@ -73,9 +73,9 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
     if (resendCooldown > 0) return;
     setIsLoading(true);
     try {
-        await onResend();
-        setResendCooldown(30); // Reset cooldown
-        toast({ title: 'OTP Resent', description: `A new code has been sent to ${phone}.`});
+    await onResend();
+    setResendCooldown(30); // Reset cooldown
+    // Global snackbar (auth context) shows OTP sent; avoid duplicating toasts here.
     } catch (error) {
         // Error is already handled in the onResend implementation (SignIn/Up cards)
     } finally {

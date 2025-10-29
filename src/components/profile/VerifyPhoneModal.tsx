@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { CustomOTP } from '@/components/ui/custom-otp';
 import { useGlobal } from '@/lib/context/GlobalContext';
+import { auth as clientAuth } from '@/lib/firebaseClient';
+import { PhoneAuthProvider, linkWithCredential } from 'firebase/auth';
 
 interface VerifyPhoneModalProps {
   open: boolean;
@@ -34,8 +36,8 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
     setStatus('sending');
     try {
       await sendPhoneOtp(phone);
+      // auth-context already shows a snackbar when OTP is sent; avoid duplicating toasts here.
       setStatus('ready');
-      toast({ title: 'OTP Sent', description: `A one-time code was sent to ${phone}.` });
     } catch (err: any) {
       console.error('start phone verify error', err);
       setStatus('error');
@@ -56,6 +58,29 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
     try {
       const confirmationResult = (window as any).confirmationResult;
       if (!confirmationResult) throw new Error('No confirmation session. Please resend OTP.');
+
+      const currentUser = clientAuth.currentUser;
+      const verificationId = confirmationResult.verificationId;
+
+      if (currentUser) {
+        // If there's a signed-in user (e.g., email/password), link the phone
+        // credential to that user instead of signing in as a separate account.
+        const credential = PhoneAuthProvider.credential(verificationId, otp);
+        try {
+          await linkWithCredential(currentUser, credential);
+          // Refresh session/profile via handleOtpSuccess using currentUser
+          await handleOtpSuccess(currentUser);
+          setStatus('success');
+          try { showSnackbar('Phone linked and verified', 'success', 4000); } catch (e) { /* ignore */ }
+          setTimeout(() => onOpenChange(false), 400);
+          return;
+        } catch (linkErr: any) {
+          console.error('Failed to link phone credential to existing user:', linkErr);
+          // fallthrough to confirmationResult.confirm as a fallback
+        }
+      }
+
+      // Default: confirm sign-in with the phone credential (used by page flows)
       const userCredential = await confirmationResult.confirm(otp);
       await handleOtpSuccess(userCredential.user);
       setStatus('success');
@@ -74,7 +99,7 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
       // Prefer sendPhoneOtp for modal flows to avoid navigation.
       await sendPhoneOtp(phone);
       setStatus('ready');
-      toast({ title: 'OTP Resent', description: `A new code has been sent to ${phone}.` });
+      // auth-context already shows a snackbar for resend; avoid duplicating toasts here.
     } catch (err: any) {
       console.error('resend otp failed', err);
       setError(err?.message || 'Failed to resend OTP');
