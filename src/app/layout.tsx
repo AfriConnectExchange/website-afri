@@ -24,7 +24,9 @@ export default function RootLayout({
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const hideFooterRoutes = [
     '/auth', '/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email',
-    '/onboarding', '/kyc', '/support', '/help', '/error', '/not-found'
+    '/onboarding', '/kyc', '/support', '/help', '/error', '/not-found',
+    // Hide footer for admin area routes
+    '/admin'
   ];
   const shouldHideFooter = hideFooterRoutes.some(route => pathname.startsWith(route));
   return (
