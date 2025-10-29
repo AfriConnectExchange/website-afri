@@ -1,7 +1,7 @@
 
 'use server';
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { logActivity } from './activity-logger';
 
 interface MailOptions {
@@ -11,21 +11,16 @@ interface MailOptions {
   html: string;
 }
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendEmail(options: MailOptions, actorUserId?: string) {
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      ...options,
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'AfriConnect <notifications@africonnectexchange.org>',
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
     });
 
     // Log success activity (actorUserId optional)
@@ -40,7 +35,7 @@ export async function sendEmail(options: MailOptions, actorUserId?: string) {
     }
 
   } catch (error: any) {
-    console.error('Email sending failed:', error);
+    console.error('Email sending failed via Resend:', error);
     // Log failure activity
     if (actorUserId) {
       await logActivity({
