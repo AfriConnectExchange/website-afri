@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -58,10 +59,29 @@ export function VerifyEmailModal({ open, onOpenChange, email }: VerifyEmailModal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  const router = useRouter();
+
+  const [sessionExpired, setSessionExpired] = useState(false);
+
   const getAuthToken = async () => {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');
-    return user.getIdToken(true);
+    try {
+      // Force refresh the token
+      return await user.getIdToken(true);
+    } catch (err: any) {
+      // Try reloading the user once (may refresh internal state) and retry
+      try {
+        await user.reload();
+        return await user.getIdToken(true);
+      } catch (err2: any) {
+        // If token still can't be refreshed, mark session as expired so UI can present re-auth action
+        console.warn('Failed to refresh auth token, user needs to re-authenticate', err2);
+        setSessionExpired(true);
+        // Re-throw so callers can handle messaging
+        throw err2;
+      }
+    }
   };
 
   const startPolling = async (token: string) => {
@@ -137,7 +157,12 @@ export function VerifyEmailModal({ open, onOpenChange, email }: VerifyEmailModal
     } catch (err: any) {
       console.error('send verify error', err);
       setStatus('error');
-      setError(err?.message || 'Failed to send verification email');
+      // Handle token/session expiry cases with a clearer message
+      if (err?.code === 'auth/user-token-expired' || err?.code === 'auth/invalid-user-token' || sessionExpired) {
+        setError('Your session has expired. Please sign in again to continue.');
+      } else {
+        setError(err?.message || 'Failed to send verification email');
+      }
     }
   };
 
@@ -167,9 +192,14 @@ export function VerifyEmailModal({ open, onOpenChange, email }: VerifyEmailModal
         <DialogFooter>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button disabled={status === 'sending' || status === 'polling' || status === 'success'} onClick={handleSend}>
-              {status === 'sending' ? 'Sending…' : status === 'polling' ? 'Waiting…' : 'Send verification email'}
-            </Button>
+            {!sessionExpired ? (
+              <Button disabled={status === 'sending' || status === 'polling' || status === 'success'} onClick={handleSend}>
+                {status === 'sending' ? 'Sending…' : status === 'polling' ? 'Waiting…' : 'Send verification email'}
+              </Button>
+            ) : (
+              // If session expired, show a clear action to re-authenticate instead of attempting to send
+              <Button variant="destructive" onClick={() => router.push('/auth/signin')}>Sign in to continue</Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>
