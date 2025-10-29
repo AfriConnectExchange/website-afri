@@ -91,7 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: fbUser.uid,
           email: fbUser.email,
           phone: fbUser.phoneNumber,
-          full_name: fbUser.displayName || extraData.displayName,
+          // Firestore does not accept undefined — use null when no name is available
+          full_name: fbUser.displayName ?? extraData.displayName ?? null,
           roles: ['buyer'],
           status: 'active',
           onboarding_completed: false,
@@ -207,6 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
       (window as any).confirmationResult = confirmationResult;
+      try {
+        showSnackbar({ title: 'OTP Sent', description: `A one-time code was sent to ${phone}.` }, 'success');
+      } catch (snackErr) {
+        // ignore snackbar errors; proceed to navigation
+      }
       router.push(`/auth/verify-phone?phone=${encodeURIComponent(phone)}`);
     } catch (error: any) {
       console.error("Phone auth error:", error);
