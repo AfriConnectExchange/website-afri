@@ -17,7 +17,8 @@ import { PasswordStrength } from './PasswordStrength';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { auth } from '@/lib/firebaseClient';
+import { RecaptchaVerifier } from 'firebase/auth';
+import { auth as clientAuth } from '@/lib/firebaseClient';
 
 type Props = {};
 
@@ -41,12 +42,12 @@ export default function SignUpCard({}: Props) {
     acceptTerms: false,
   });
   
-    // Add this to your component
     useEffect(() => {
-        const el = document.getElementById('recaptcha-container');
-        if (el) {
-            // This is a placeholder for the invisible reCAPTCHA
-            // Firebase will automatically use it
+        if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
+            (window as any).recaptchaVerifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
+                'size': 'invisible',
+                'callback': (response: any) => {},
+            });
         }
     }, []);
 

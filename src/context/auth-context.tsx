@@ -53,15 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {},
-      });
-    }
-  }, []);
-
   const mapAuthError = (err: any) => {
     const code = err?.code || 'auth/unknown-error';
     switch (code) {
@@ -123,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return { appUser, userProfile };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching user profile:", error);
       showSnackbar({ title: 'Profile Error', description: 'Could not load your user profile.' }, 'error');
       return null;
@@ -211,6 +202,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const startPhoneAuth = useCallback(async (phone: string) => {
     const appVerifier = (window as any).recaptchaVerifier;
+    if (!appVerifier) {
+      throw new Error("reCAPTCHA verifier not initialized.");
+    }
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
       (window as any).confirmationResult = confirmationResult;
@@ -219,8 +213,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Phone auth error:", error);
       showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
       try {
-        const widgetId = appVerifier.render();
-        grecaptcha.reset(widgetId);
+        if(appVerifier.render) {
+          const widgetId = appVerifier.render();
+          grecaptcha.reset(widgetId);
+        }
       } catch (e) {
         console.error("Error resetting reCAPTCHA:", e);
       }
