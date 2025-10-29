@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { CustomOTP } from '@/components/ui/custom-otp';
 import { useGlobal } from '@/lib/context/GlobalContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebaseClient';
 import { auth as clientAuth } from '@/lib/firebaseClient';
 import { PhoneAuthProvider, linkWithCredential } from 'firebase/auth';
 
@@ -18,7 +20,7 @@ interface VerifyPhoneModalProps {
 
 export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModalProps) {
   const { toast } = useToast();
-  const { sendPhoneOtp, resendOtp, handleOtpSuccess } = useAuth();
+  const { sendPhoneOtp, resendOtp, handleOtpSuccess, updateUser } = useAuth();
   const { showSnackbar } = useGlobal();
   const [status, setStatus] = useState<'idle' | 'sending' | 'ready' | 'verifying' | 'success' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -66,18 +68,38 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
         // If there's a signed-in user (e.g., email/password), link the phone
         // credential to that user instead of signing in as a separate account.
         const credential = PhoneAuthProvider.credential(verificationId, otp);
-        try {
-          await linkWithCredential(currentUser, credential);
-          // Refresh session/profile via handleOtpSuccess using currentUser
-          await handleOtpSuccess(currentUser);
-          setStatus('success');
-          try { showSnackbar('Phone linked and verified', 'success', 4000); } catch (e) { /* ignore */ }
-          setTimeout(() => onOpenChange(false), 400);
-          return;
-        } catch (linkErr: any) {
-          console.error('Failed to link phone credential to existing user:', linkErr);
-          // fallthrough to confirmationResult.confirm as a fallback
-        }
+          try {
+            await linkWithCredential(currentUser, credential);
+            // Ensure the Firebase user is reloaded so auth state reflects the new phone
+            try {
+              await currentUser.reload();
+            } catch (reloadErr) {
+              console.warn('Failed to reload currentUser after linking credential:', reloadErr);
+            }
+
+            // Persist phone_verified to Firestore immediately so the profile UI updates.
+            // Do a direct update here to make the write explicit and immediate.
+            try {
+              if (currentUser && currentUser.uid) {
+                const userDocRef = doc(db, 'users', currentUser.uid);
+                await updateDoc(userDocRef, { phone_verified: true, phone });
+              }
+            } catch (profileErr) {
+              console.warn('Failed to directly update profile phone_verified after linking:', profileErr);
+              // Fallback to the higher-level updateUser helper if available
+              try { await updateUser({ phone_verified: true, phone }); } catch {}
+            }
+
+            // Refresh session/profile via handleOtpSuccess using the updated currentUser
+            await handleOtpSuccess(clientAuth.currentUser ?? currentUser);
+            setStatus('success');
+            try { showSnackbar('Phone linked and verified', 'success', 4000); } catch (e) { /* ignore */ }
+            setTimeout(() => onOpenChange(false), 400);
+            return;
+          } catch (linkErr: any) {
+            console.error('Failed to link phone credential to existing user:', linkErr);
+            // fallthrough to confirmationResult.confirm as a fallback
+          }
       }
 
       // Default: confirm sign-in with the phone credential (used by page flows)
