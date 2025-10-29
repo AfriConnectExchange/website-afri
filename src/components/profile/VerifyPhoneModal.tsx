@@ -128,9 +128,26 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
     }
   };
 
+  // Prevent the dialog from being closed (via overlay click / Esc / programmatic)
+  // while the OTP verification flow is active. Only allow closing when status === 'success'.
+  const handleOpenChange = (val: boolean) => {
+    if (!val && status !== 'success') {
+      // ignore attempts to close while verifying
+      return;
+    }
+    onOpenChange(val);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        // Prevent closing by clicking outside the dialog (backdrop) while verifying
+        onInteractOutside={(e) => e.preventDefault()}
+        // Prevent closing via Escape key
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        // Only show the close button once verification succeeds
+        closable={status === 'success'}
+      >
         <DialogHeader>
           <DialogTitle>Verify your phone</DialogTitle>
           <DialogDescription>
@@ -154,7 +171,14 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
 
         <DialogFooter>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            {/* Disable Cancel while OTP flow is active to avoid re-rendering reCAPTCHA and forcing resends */}
+            <Button
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={status !== 'success'}
+            >
+              Cancel
+            </Button>
             <Button disabled={status === 'sending' || status === 'verifying' || status === 'success'} onClick={() => start()}>
               {status === 'sending' ? 'Sending…' : status === 'verifying' ? 'Verifying…' : 'Resend OTP'}
             </Button>

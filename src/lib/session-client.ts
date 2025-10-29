@@ -20,7 +20,7 @@ export function getDeviceId() {
     let id = localStorage.getItem(DEVICE_KEY);
     if (!id) {
       id = generateId();
-      localStorage.setItem(DEVICE_KEY, id);
+        localStorage.setItem(DEVICE_KEY, id!);
     }
     return id;
   } catch (e) {
