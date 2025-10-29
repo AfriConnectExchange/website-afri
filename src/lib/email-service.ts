@@ -16,8 +16,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 function getEnvEmailFrom(): string {
   const from = process.env.EMAIL_FROM;
   if (!from) {
-    throw new Error('EMAIL_FROM is not set in the environment. Set it to a sender on your verified domain, e.g. "AfriConnect <notifications@email.africonnect-exchange.org>"');
+    // Provide a sensible default tied to the verified sending subdomain.
+    // This avoids failing when the env var is missing and ensures we use the
+    // correct domain: email.africonnect-exchange.org
+    return 'AfriConnect <notifications@email.africonnect-exchange.org>';
   }
+
   return from;
 }
 
@@ -44,32 +48,38 @@ export async function sendEmail(options: MailOptions, actorUserId?: string) {
       text: options.text,
     });
 
-    // Log success activity (actorUserId optional) and include resend message id if available
-    if (actorUserId) {
+    // Always log success activity (use 'system' when actorUserId not provided)
+    try {
       await logActivity({
-        user_id: actorUserId,
+        user_id: actorUserId ?? 'system',
         action: 'email_sent',
         entity_type: 'email',
         entity_id: options.to,
         changes: { subject: options.subject, to: options.to, resend_response: resp ?? null },
       });
+    } catch (logErr) {
+      // Logging should not block the response; just warn
+      console.warn('Failed to write email_sent activity log:', logErr);
     }
 
     return resp;
 
   } catch (error: any) {
     console.error('Email sending failed via Resend:', error);
-    // Log failure activity
-    if (actorUserId) {
+    // Always log failure activity (use 'system' when actorUserId not provided)
+    try {
       await logActivity({
-        user_id: actorUserId,
+        user_id: actorUserId ?? 'system',
         action: 'email_failure',
         entity_type: 'email',
         entity_id: options.to,
         changes: { error: error?.message ?? String(error), subject: options.subject },
       });
+    } catch (logErr) {
+      console.warn('Failed to write email_failure activity log:', logErr);
     }
 
-    throw new Error('Failed to send email.');
+    // Rethrow original error so callers can handle it accordingly
+    throw error;
   }
 }
