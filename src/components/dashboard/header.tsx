@@ -282,11 +282,11 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                           {menuItems.dropdown.filter(item => item.show && item.icon).map((item) => (
                              <Link key={item.id} href={item.href}><DropdownMenuItem><item.icon className="mr-2 h-4 w-4" /><span>{item.label}</span></DropdownMenuItem></Link>
                           ))}
-                           {canAccessSellerFeatures && (
+                              {canAccessSellerFeatures && (
                             <>
                               <DropdownMenuSeparator />
-                              <Link href="/seller/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
-                              <Link href="/seller/products"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
+                              <Link href="/vendor/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
+                              <Link href="/vendor/products"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
                             </>
                            )}
                           <DropdownMenuSeparator />

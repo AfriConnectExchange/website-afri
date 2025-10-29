@@ -29,10 +29,10 @@ export function OrderItemsCard({ order, onNavigate }: OrderItemsCardProps) {
             </div>
             <div className="flex-grow">
               <p className="font-medium line-clamp-2">{item.name}</p>
-              <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                 Sold by:{' '}
                 <span
-                  onClick={() => onNavigate(`/seller/${item.seller.id}`)}
+                  onClick={() => onNavigate(`/vendor/${item.seller.id}`)}
                   className="text-primary hover:underline cursor-pointer"
                 >
                   {item.seller.name}
