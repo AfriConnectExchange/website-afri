@@ -30,7 +30,7 @@ export const WelcomeEmail = ({
   return (
     <Html>
       <Head />
-
+      <Preview>{previewText}</Preview>
       <Body
         style={{
           backgroundColor: "#f6f9fc",
@@ -40,7 +40,6 @@ export const WelcomeEmail = ({
           padding: "30px 0",
         }}
       >
-        <Preview>{previewText}</Preview>
         <Container
           style={{
             backgroundColor: "#ffffff",

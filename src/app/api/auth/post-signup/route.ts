@@ -5,7 +5,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { sendEmail } from '@/lib/email-service';
 import { logActivity } from '@/lib/activity-logger';
 import { render } from '@react-email/render';
-import WelcomeTemplate from '@/components/emails/welcome-template';
+import { WelcomeEmail } from '@/components/emails/welcome-template';
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get('Authorization');
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
     }
     
-    const emailHtml = render(<WelcomeTemplate userName={userName} />);
+    const emailHtml = render(<WelcomeEmail userName={userName} />);
 
     // 1. Send Welcome Email
     await sendEmail({
