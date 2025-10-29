@@ -86,27 +86,7 @@ export function ProductsPage() {
     fetchProducts();
   }, [toast]);
   
-  const handleDelete = async (productId: string) => {
-    // Optimistically remove the product from the UI
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
-    
-    try {
-        const response = await fetch('/api/adverts/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId })
-        });
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'Failed to delete product.');
-        }
-        toast({ title: "Product Deleted", description: "The product has been successfully removed." });
-    } catch (error) {
-        toast({ variant: 'destructive', title: "Deletion Failed", description: (error as Error).message });
-        // If the API call fails, re-fetch the products to revert the UI
-        fetchProducts();
-    }
-  }
+  // Product deletion via API has been removed for now.
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -179,7 +159,7 @@ export function ProductsPage() {
                       {product.quantity_available}
                     </TableCell>
                     <TableCell>
-                      <ProductActions productId={product.id} onDelete={() => handleDelete(product.id)} />
+                      <ProductActions productId={product.id} />
                     </TableCell>
                   </TableRow>
                 ))}

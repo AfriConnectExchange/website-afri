@@ -15,11 +15,9 @@ import { ConfirmationModal } from '../ui/confirmation-modal';
 
 interface ProductActionsProps {
   productId: string;
-  onDelete: () => void;
 }
 
-export function ProductActions({ productId, onDelete }: ProductActionsProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+export function ProductActions({ productId }: ProductActionsProps) {
 
   return (
     <>
@@ -36,28 +34,10 @@ export function ProductActions({ productId, onDelete }: ProductActionsProps) {
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive focus:bg-destructive/10"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {showDeleteConfirm && (
-        <ConfirmationModal
-            isOpen={showDeleteConfirm}
-            onClose={() => setShowDeleteConfirm(false)}
-            onConfirm={onDelete}
-            title="Delete Product"
-            description="Are you sure you want to permanently delete this product? This action cannot be undone."
-            confirmText="Delete"
-            type="destructive"
-        />
-      )}
+      {/* Delete action removed temporarily */}
     </>
   );
 }

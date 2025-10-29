@@ -24,7 +24,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   const router = useRouter();
   
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
 
   const handleDeactivate = () => {
     setShowDeactivateConfirm(true);
@@ -53,26 +53,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
      }
   }
 
-  const handleDelete = async () => {
-    setShowDeleteConfirm(true);
-  };
 
-  const confirmDelete = async () => {
-    setShowDeleteConfirm(false);
-    try {
-      // Request scheduled deletion (24h delay)
-      const res = await fetchWithAuth('/api/account/request-deletion', { method: 'POST' });
-      const json = await res.json();
-      if (res.ok && json.ok) {
-        toast({ title: 'Deletion scheduled', description: `Your account is scheduled for deletion at ${json.scheduled_at}.` });
-      } else {
-        onFeedback('error', json.error || 'Failed to schedule account deletion.');
-      }
-    } catch (e: any) {
-      console.error('Account deletion scheduling failed', e);
-      onFeedback('error', e?.message || 'Failed to schedule account deletion.');
-    }
-  };
 
   // Change password flow
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -102,21 +83,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
     }
   };
 
-  // Cancel scheduled deletion
-  const cancelDeletion = async () => {
-    try {
-      const res = await fetchWithAuth('/api/account/cancel-deletion', { method: 'POST' });
-      const json = await res.json();
-      if (res.ok && json.ok) {
-        toast({ title: 'Deletion cancelled', description: 'Your account deletion request has been cancelled.' });
-      } else {
-        onFeedback('error', json.error || 'Failed to cancel deletion.');
-      }
-    } catch (e: any) {
-      console.error('Cancel deletion failed', e);
-      onFeedback('error', e?.message || 'Failed to cancel deletion.');
-    }
-  };
+  // (Deletion scheduling/cancellation removed for now)
 
 
   return (
@@ -127,19 +94,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
           <CardDescription>Manage your account status and data.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {profile?.deletion_scheduled_at && (
-            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="font-medium">Account deletion scheduled</p>
-                  <p className="text-sm text-muted-foreground">Your account is scheduled for deletion on <strong>{new Date(profile.deletion_scheduled_at).toLocaleString()}</strong>. You can cancel this action within 24 hours.</p>
-                </div>
-                <div>
-                  <Button size="sm" variant="ghost" onClick={cancelDeletion}>Cancel Deletion</Button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Scheduled deletion UI removed temporarily */}
           <div className="space-y-2">
             <h4 className="font-medium">Deactivate Account</h4>
             <p className="text-sm text-muted-foreground">
@@ -152,15 +107,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
 
           <Separator />
 
-          <div className="space-y-2">
-            <h4 className="font-medium text-destructive">Delete Account</h4>
-            <p className="text-sm text-muted-foreground">
-              Permanently delete your account and all associated data. This action cannot be undone.
-            </p>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete Account
-            </Button>
-          </div>
+          {/* Account deletion flow removed temporarily */}
         </CardContent>
       </Card>
       
@@ -174,20 +121,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
         type="warning"
       />
 
-      <ConfirmationModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={confirmDelete}
-        title="Confirm Account Deletion"
-        description="This action is permanent and cannot be undone. Are you absolutely sure?"
-        confirmText="Yes, Delete My Account"
-        type="destructive"
-        consequences={[
-            "Your profile and listings will be removed.",
-            "You will lose your order history.",
-            "This action cannot be reversed."
-        ]}
-      />
+      {/* Deletion confirmation removed */}
 
       {/* Inline change password area */}
       <div className="mt-4 space-y-4">

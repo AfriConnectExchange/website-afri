@@ -92,23 +92,11 @@ export function ProductForm() {
         };
         
         try {
-            const response = await fetch('/api/adverts/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            
-            const result = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(result.error || 'Something went wrong.');
-            }
-
-            toast({
-                title: 'Product Listed!',
-                description: `${data.title} has been successfully added to the marketplace.`,
-            });
-            // Reset form or redirect
+                // Creation via API disabled for now — show a notice instead of calling the server.
+                toast({
+                    title: 'Listing Disabled',
+                    description: 'Creating adverts is temporarily disabled.',
+                });
         } catch (error: any) {
             toast({
                 variant: 'destructive',
