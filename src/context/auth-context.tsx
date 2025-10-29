@@ -102,7 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const appUser: AppUser = {
-        id: fbUser.uid,
         email: fbUser.email,
         phone: fbUser.phoneNumber,
         fullName: userProfile.full_name,
@@ -213,9 +212,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Phone auth error:", error);
       showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
       try {
-        if(appVerifier.render) {
-          const widgetId = appVerifier.render();
-          grecaptcha.reset(widgetId);
+        // RecaptchaVerifier.render() returns a Promise<number> in the modular SDK.
+        if (appVerifier && typeof appVerifier.render === 'function') {
+          try {
+            const widgetId = await Promise.resolve(appVerifier.render());
+            if (typeof (window as any).grecaptcha !== 'undefined' && (window as any).grecaptcha && typeof (window as any).grecaptcha.reset === 'function') {
+              try {
+                (window as any).grecaptcha.reset(widgetId);
+              } catch (inner) {
+                console.error('grecaptcha.reset failed:', inner);
+              }
+            }
+          } catch (renderErr) {
+            // render can fail if the original DOM element was removed. Attempt a safe re-init below.
+            console.error('Error rendering reCAPTCHA widget for reset:', renderErr);
+          }
+        }
+
+        // If reset failed because the recaptcha client/element was removed, try to re-create the verifier
+        // only if the recaptcha container exists in the DOM.
+        if (typeof window !== 'undefined') {
+          try {
+            const container = document.getElementById('recaptcha-container');
+            if (container) {
+              // Re-init a fresh verifier so subsequent calls have a valid appVerifier.
+              (window as any).recaptchaVerifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
+                size: 'invisible',
+                callback: () => {},
+              });
+            } else {
+              // Container not present; nothing to do here.
+              // This can happen if the signup component unmounted before the flow completed.
+              console.warn('recaptcha container not found in DOM; skipping re-init');
+            }
+          } catch (reinitErr) {
+            console.error('Failed to re-initialize reCAPTCHA verifier:', reinitErr);
+          }
         }
       } catch (e) {
         console.error("Error resetting reCAPTCHA:", e);
