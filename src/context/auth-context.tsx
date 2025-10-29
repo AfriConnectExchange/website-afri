@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
@@ -40,6 +41,7 @@ interface AuthContextType {
   signUpWithPhone: (phone: string, profileData: { displayName: string }) => Promise<void>;
   handleNeedsOtp: (callback: (data: { phone: string, resend: () => Promise<void> }) => void) => void;
   handleOtpSuccess: (user: FirebaseUser) => void;
+  resendOtp: (phone: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { showSnackbar } = useGlobal();
   const router = useRouter();
   const pathname = usePathname();
-  const [otpCallback, setOtpCallback] = useState<((data: { phone: string, resend: () => Promise<void> }) => void) | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
@@ -216,11 +217,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (window as any).confirmationResult = confirmationResult;
       (window as any).phoneAuthData = profileData;
 
-      const resend = () => startPhoneAuth(phone, profileData);
-
-      if (otpCallback) {
-        otpCallback({ phone, resend });
-      }
+      router.push(`/auth/verify-phone?phone=${encodeURIComponent(phone)}`);
+      
     } catch (error: any) {
       console.error("Phone auth error:", error);
       showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
@@ -232,7 +230,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw error;
     }
-  }, [showSnackbar, otpCallback]);
+  }, [showSnackbar, router]);
+  
+  const resendOtp = useCallback(async(phone: string) => {
+      const profileData = (window as any).phoneAuthData;
+      await startPhoneAuth(phone, profileData);
+  }, [startPhoneAuth]);
 
   const signInWithPhone = useCallback(async (phone: string) => {
     await startPhoneAuth(phone);
@@ -242,8 +245,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await startPhoneAuth(phone, profileData);
   }, [startPhoneAuth]);
 
+  // This is no longer needed for UI switching but kept for potential future use
   const handleNeedsOtp = useCallback((callback: (data: { phone: string, resend: () => Promise<void> }) => void) => {
-    setOtpCallback(() => callback);
+    // Deprecated in favor of direct navigation
   }, []);
 
   const handleOtpSuccess = useCallback(async (user: FirebaseUser) => {
@@ -303,8 +307,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithPhone,
     signUpWithPhone,
     handleNeedsOtp,
-    handleOtpSuccess
-  }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin, signInWithPhone, signUpWithPhone, handleNeedsOtp, handleOtpSuccess]);
+    handleOtpSuccess,
+    resendOtp
+  }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin, signInWithPhone, signUpWithPhone, handleNeedsOtp, handleOtpSuccess, resendOtp]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
