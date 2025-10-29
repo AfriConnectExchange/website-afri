@@ -1,106 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coming Soon - AfriConnect Exchange</title>
+    <title>AfriConnect Exchange - Coming Soon</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        .bg-primary { background-color: #E11D48; }
-        .text-primary { color: #E11D48; }
-        .border-primary { border-color: #E11D48; }
-        .ring-primary { --tw-ring-color: #E11D48; }
-        .bg-secondary { background-color: #F1F5F9; }
-        .hover\:bg-primary-dark:hover { background-color: #c4183d; }
+
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --primary: 346.8 77.2% 49.8%;
+            --primary-foreground: 355.7 100% 97.3%;
+            --secondary: 210 40% 96.1%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+        }
+
+        .bg-primary {
+            background-color: hsl(var(--primary));
+        }
+
+        .text-primary-foreground {
+            color: hsl(var(--primary-foreground));
+        }
     </style>
 </head>
+
 <body class="bg-gray-50 text-gray-800">
 
     <div class="flex flex-col min-h-screen">
+
         <!-- Header -->
-        <header class="py-6 px-4">
-            <div class="container mx-auto flex justify-center items-center">
-                <div class="flex items-center gap-3">
+        <header class="p-4">
+            <div class="container mx-auto flex justify-center">
+                 <div class="flex items-center justify-center gap-3">
                     <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h.01M12 7h.01M16 7h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="text-white font-bold text-lg">AE</span>
                     </div>
-                    <span class="text-xl font-bold">AfriConnect Exchange</span>
+                    <span class="text-xl font-bold text-gray-800">AfriConnect Exchange</span>
                 </div>
             </div>
         </header>
 
         <!-- Main Content -->
-        <main class="flex-grow">
-            <!-- Hero Section -->
-            <section class="text-center py-16 md:py-24 px-4">
-                <div class="container mx-auto max-w-3xl">
-                    <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">Connecting the Diaspora, One Exchange at a Time.</h1>
-                    <p class="text-lg md:text-xl text-gray-600 mb-8">
-                        Our new marketplace is currently under construction. We are building a vibrant platform to empower African diaspora communities through cultural commerce, resource sharing, and digital inclusion.
+        <main class="flex-grow flex items-center justify-center">
+            <div class="container mx-auto px-6 py-12 md:py-20 text-center">
+                <div class="max-w-3xl mx-auto">
+                    <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
+                        Connecting the Diaspora, One Exchange at a Time.
+                    </h1>
+                    <p class="mt-6 text-lg md:text-xl text-gray-600">
+                        Our new marketplace is under construction! We're working hard to create a vibrant platform for authentic African products, skills training, and seamless money transfers.
                     </p>
-                    <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-                        <h2 class="text-2xl font-bold text-primary mb-3">Launching Soon!</h2>
-                        <p class="text-gray-700">We are working hard to bring you an amazing experience. Stay tuned for our official launch.</p>
-                    </div>
-                </div>
-            </section>
 
-            <!-- Features Section -->
-            <section class="bg-white py-16 md:py-20 px-4">
-                <div class="container mx-auto max-w-5xl">
-                    <div class="text-center mb-12">
-                        <h2 class="text-3xl font-bold">What to Expect</h2>
-                        <p class="text-gray-600 mt-2">A platform built by Africans, for Africa and the world.</p>
-                    </div>
-                    <div class="grid md:grid-cols-3 gap-8">
-                        <div class="text-center p-6 bg-gray-50 rounded-lg">
-                            <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                    <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Feature 1 -->
+                        <div class="p-6 bg-white rounded-xl shadow-md border">
+                            <div
+                                class="w-12 h-12 bg-rose-100 text-rose-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                                    <path d="M2 12h20" />
+                                </svg>
                             </div>
-                            <h3 class="text-lg font-semibold mb-2">Authentic Marketplace</h3>
-                            <p class="text-sm text-gray-600">Discover and trade authentic African products, from traditional crafts to modern fashion.</p>
+                            <h3 class="font-semibold text-lg">Authentic Marketplace</h3>
+                            <p class="text-sm text-gray-500 mt-2">Discover and sell unique products from across the African diaspora.</p>
                         </div>
-                        <div class="text-center p-6 bg-gray-50 rounded-lg">
-                            <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        <!-- Feature 2 -->
+                        <div class="p-6 bg-white rounded-xl shadow-md border">
+                             <div
+                                class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                                </svg>
                             </div>
-                            <h3 class="text-lg font-semibold mb-2">Secure Escrow</h3>
-                            <p class="text-sm text-gray-600">Trade with confidence. Our escrow system protects both buyers and sellers until transactions are complete.</p>
+                            <h3 class="font-semibold text-lg">Secure Escrow Payments</h3>
+                            <p class="text-sm text-gray-500 mt-2">Trade with confidence. Your funds are protected until you are satisfied.</p>
                         </div>
-                        <div class="text-center p-6 bg-gray-50 rounded-lg">
-                            <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                               <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <!-- Feature 3 -->
+                        <div class="p-6 bg-white rounded-xl shadow-md border">
+                            <div
+                                class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
                             </div>
-                            <h3 class="text-lg font-semibold mb-2">Community Focused</h3>
-                            <p class="text-sm text-gray-600">Join a growing community, share skills, and build connections that transcend borders.</p>
+                            <h3 class="font-semibold text-lg">Community Empowerment</h3>
+                            <p class="text-sm text-gray-500 mt-2">Join a network that supports growth, learning, and cultural exchange.</p>
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
         </main>
 
         <!-- Footer -->
-        <footer class="bg-gray-800 text-gray-300 py-8 px-4">
-            <div class="container mx-auto text-center">
-                <p class="font-semibold text-white">A project of McBenLeo CIC (Company Number: SC859990)</p>
-                <a href="mailto:info@africonnect-exchange.org" class="text-primary hover:underline mt-2 inline-block">info@africonnect-exchange.org</a>
-                <div class="mt-4 space-x-4 text-sm">
-                    <a href="#" class="hover:underline">Terms</a>
-                    <span>&middot;</span>
-                    <a href="#" class="hover:underline">Privacy</a>
-                    <span>&middot;</span>
-                    <a href="#" class="hover:underline">Cookies</a>
+        <footer class="bg-gray-100 border-t">
+            <div class="container mx-auto px-6 py-8">
+                <div class="text-center text-gray-500">
+                    <p class="font-semibold text-gray-700">A project of McBenLeo CIC (Company Number: SC859990)</p>
+                    <a href="mailto:info@africonnect-exchange.org" class="mt-1 inline-block hover:text-rose-600">info@africonnect-exchange.org</a>
+                    <div class="mt-4 space-x-4 text-sm">
+                        <a href="#" class="hover:text-gray-900">Terms</a>
+                        <span>&middot;</span>
+                        <a href="#" class="hover:text-gray-900">Privacy</a>
+                        <span>&middot;</span>
+                        <a href="#" class="hover:text-gray-900">Cookies</a>
+                    </div>
+                    <p class="mt-4 text-xs">&copy; 2025 AfriConnect Exchange. All rights reserved.</p>
                 </div>
-                <p class="text-xs text-gray-400 mt-4">&copy; <?php echo date("Y"); ?> AfriConnect Exchange. All rights reserved.</p>
             </div>
         </footer>
-
     </div>
 
 </body>
