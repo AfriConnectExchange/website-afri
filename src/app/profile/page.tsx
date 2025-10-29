@@ -25,7 +25,7 @@ export default function UserProfilePage() {
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <Header />
       <main className="flex-1 p-4 md:gap-8 md:p-8">
-        <div className="mx-auto grid w-full max-w-6xl items-start gap-6">
+        <div className="mx-auto grid w-full max-w-7xl items-start gap-6">
           <ProfilePage />
         </div>
       </main>

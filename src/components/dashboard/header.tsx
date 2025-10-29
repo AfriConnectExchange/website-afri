@@ -45,6 +45,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { HeaderSearchBar } from '../marketplace/header-search-bar';
 import { useAuth } from '@/context/auth-context';
+import HeaderNotifications from './HeaderNotifications';
 
 
 interface HeaderProps {
@@ -250,20 +251,11 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                   </motion.div>
                 </Link>
 
-                <Link href="/notifications" passHref>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 relative"
-                  >
-                    <Bell className="w-5 h-5" />
-                     {notificationCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-destructive text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {notificationCount}
-                        </span>
-                     )}
-                  </Button>
-                </Link>
+                {/* Sneak-peek notifications dropdown */}
+                <div>
+                  {/* lazy load the notifications dropdown component to avoid changing behavior when notifications are not used */}
+                  <HeaderNotifications />
+                </div>
                  
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

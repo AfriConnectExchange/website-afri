@@ -1,13 +1,14 @@
 
 'use client';
 
-import { Mail, Phone, MapPin, User, Settings, Receipt, LogOut, ShoppingCart } from 'lucide-react';
+import { Mail, Phone, MapPin, User, Settings, Receipt, LogOut, ShoppingCart, Loader2, UploadCloud } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import VerifyEmailModal from './VerifyEmailModal';
 import VerifyPhoneModal from './VerifyPhoneModal';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
@@ -41,11 +42,12 @@ const getRoleLabel = (role?: string) => {
 };
 
 export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }: ProfileSummaryCardProps) {
-  const { logout } = useAuth();
+  const { logout, updateUser } = useAuth();
   const { toast } = useToast();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showVerifyEmail, setShowVerifyEmail] = useState(false);
   const [showVerifyPhone, setShowVerifyPhone] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const handleSignOut = async () => {
     await logout();
@@ -69,14 +71,60 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
       <Card>
         <CardContent className="pt-6">
           <div className="text-center">
-            <Avatar className="w-20 h-20 mx-auto mb-4 border-2 border-primary/20 p-1">
-              <AvatarImage src={user.avatarUrl ?? undefined} alt={userName ?? undefined} />
-              <AvatarFallback className="text-2xl bg-muted">
-                {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative inline-block">
+              <Avatar className="w-28 h-28 mx-auto mb-4 rounded-full ring-1 ring-primary/10">
+                <AvatarImage src={user.avatarUrl || user.profile_picture_url || undefined} alt={userName ?? undefined} />
+                <AvatarFallback className="text-3xl bg-muted rounded-full">
+                  {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
+                </AvatarFallback>
+              </Avatar>
+
+              {/* hidden file input for changing picture (triggered by the overlay button) */}
+              <input
+                id="profile-picture-upload"
+                type="file"
+                className="hidden"
+                accept="image/png, image/jpeg, image/webp"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !user) return;
+                  if (file.size > 2 * 1024 * 1024) {
+                    toast({ variant: 'destructive', title: 'File too large', description: 'Please upload an image smaller than 2MB.' });
+                    return;
+                  }
+                  setIsUploading(true);
+                  try {
+                    const storage = getStorage();
+                    const storageRef = ref(storage, `profile-pictures/${user.id}/${file.name}`);
+                    const snapshot = await uploadBytes(storageRef, file);
+                    const downloadURL = await getDownloadURL(snapshot.ref);
+
+                    // Update user profile (this will update auth photoURL and Firestore profile)
+                    await updateUser({ avatarUrl: downloadURL });
+                    toast({ title: 'Upload Successful', description: 'Your profile picture has been updated.' });
+                  } catch (err: any) {
+                    console.error('Upload failed:', err);
+                    toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload your profile picture. Please try again.' });
+                  } finally {
+                    setIsUploading(false);
+                  }
+                }}
+              />
+
+              <label htmlFor="profile-picture-upload" className="absolute -right-2 -bottom-2 group">
+                <span className="inline-flex w-10 h-10 rounded-full bg-white border shadow items-center justify-center cursor-pointer transition-colors duration-150 ease-in-out group-hover:bg-primary/80 group-hover:text-white">
+                  <UploadCloud className="w-5 h-5" />
+                </span>
+              </label>
+
+              {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
             <h3 className="font-semibold text-lg mb-1">{userName}</h3>
-            <Badge className={cn('mb-3', getRoleColor(user.roles?.[0]))}>
+            <Badge className={cn('mb-3 transition-colors duration-150', getRoleColor(user.roles?.[0]), 'hover:text-white')}>
               {getRoleLabel(user.roles?.[0])}
             </Badge>
             <div className="text-sm text-muted-foreground space-y-1 my-4">
