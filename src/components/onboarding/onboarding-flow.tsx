@@ -13,10 +13,6 @@ import { auth } from '@/lib/firebaseClient';
 
 type OnboardingStep = 'personal' | 'picture' | 'complete';
 
-interface OnboardingFlowProps {
-  onComplete: () => void;
-}
-
 export interface OnboardingData {
   fullName: string;
   phone: string;
@@ -25,16 +21,22 @@ export interface OnboardingData {
   postcode: string;
   country: string;
   avatarUrl?: string;
+  email?: string;
+}
+
+interface OnboardingFlowProps {
+  onComplete: () => void;
 }
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('personal');
   const [isLoading, setIsLoading] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     fullName: user?.fullName || '',
-    phone: '',
+    phone: user?.phone || '',
+    email: user?.email || '',
     address: '',
     city: '',
     postcode: '',
@@ -64,21 +66,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
     setIsLoading(true);
     try {
-      const token = await currentUser.getIdToken();
       
-      const response = await fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(onboardingData),
+      // Update the user profile in Firestore via the context
+      await updateUser({
+          fullName: onboardingData.fullName,
+          phone: onboardingData.phone,
+          email: onboardingData.email,
+          address: onboardingData.address,
+          city: onboardingData.city,
+          postcode: onboardingData.postcode,
+          country: onboardingData.country,
+          avatarUrl: onboardingData.avatarUrl,
+          onboarding_completed: true,
       });
 
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to complete profile.');
-      }
+      // The API call is now abstracted away by the auth context's `updateUser`
       
       toast({
         title: 'Profile Completed!',

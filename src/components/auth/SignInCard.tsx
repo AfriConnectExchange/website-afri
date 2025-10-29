@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaFacebook } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import { Mail, Eye, EyeOff } from 'lucide-react';
@@ -18,12 +18,22 @@ import { useAuth } from '@/context/auth-context';
 type Props = {};
 
 export default function SignInCard({}: Props) {
-    const { login, handleSocialLogin } = useAuth();
+    const { login, handleSocialLogin, signInWithPhone } = useAuth() as any; // Use `as any` to access new methods
     const { showSnackbar } = useGlobal();
     const [formData, setFormData] = useState({ email: 'test@example.com', password: 'password', phone: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
+
+    // Add this to your component
+    useEffect(() => {
+        const el = document.getElementById('recaptcha-container');
+        if (el) {
+            // This is a placeholder for the invisible reCAPTCHA
+            // Firebase will automatically use it
+        }
+    }, []);
+
 
     const handleEmailLogin = async () => {
         setIsLoading(true);
@@ -43,8 +53,14 @@ export default function SignInCard({}: Props) {
             return;
         }
         setIsLoading(true);
-        showSnackbar({ description: 'Phone login is not yet available.'}, 'info');
-        setIsLoading(false);
+        try {
+            await signInWithPhone(formData.phone);
+            // The auth context will now trigger the OTP flow
+        } catch (error: any) {
+            showSnackbar({ code: error?.code, description: error.message }, 'error');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const onSocialLogin = async (provider: 'google' | 'facebook') => {
@@ -60,6 +76,7 @@ export default function SignInCard({}: Props) {
 
     return (
         <>
+            <div id="recaptcha-container" />
             <div className="flex flex-col sm:flex-row gap-2">
                 <AnimatedButton
                     variant="outline"

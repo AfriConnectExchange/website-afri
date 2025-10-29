@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +15,8 @@ import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Please enter your full name.'),
-  phone: z.string().min(10, 'Please enter a valid phone number.'),
+  email: z.string().email('Please enter a valid email.').optional().or(z.literal('')),
+  phone: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
   address: z.string().min(5, 'Please enter a valid address.'),
   city: z.string().min(2, 'Please enter a city.'),
   postcode: z.string().min(4, 'Please enter a valid postcode.'),
@@ -35,7 +37,8 @@ export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDeta
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: user?.fullName || '',
-      phone: data.phone || '',
+      email: user?.email || '',
+      phone: user?.phone || data.phone || '',
       address: data.address || '',
       city: data.city || '',
       postcode: data.postcode || '',
@@ -69,19 +72,40 @@ export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDeta
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <Label>Phone Number</Label>
-                  <FormControl>
-                    <PhoneInput international defaultCountry="GB" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {/* Conditionally render Email or Phone based on what's missing */}
+            {!user?.email && (
+                 <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label>Email Address (for account recovery)</Label>
+                      <FormControl>
+                        <Input {...field} type="email" placeholder="you@example.com" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            )}
+
+            {!user?.phone && (
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label>Phone Number</Label>
+                      <FormControl>
+                        <PhoneInput international defaultCountry="GB" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            )}
+
              <FormField
               control={form.control}
               name="address"

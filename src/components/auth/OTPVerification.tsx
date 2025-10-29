@@ -55,11 +55,10 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
   const handleOtpVerification = async (otpValue: string) => {
     setIsLoading(true);
     try {
-      // Supabase verification logic would go here
-      // For now, we simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({ title: 'Verification Successful!', description: 'Redirecting...' });
-      // onAuthSuccess(result.user);
+      // Logic now lives in the auth context, which will call `onAuthSuccess` on its own
+      // This component just triggers it.
+      await (window as any).confirmationResult?.confirm(otpValue);
+      // onAuthSuccess will be called by the onAuthStateChanged listener
     } catch (error: any) {
        toast({ variant: 'destructive', title: 'Verification Failed', description: error.message });
        setIsLoading(false);

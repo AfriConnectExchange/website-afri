@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Eye, EyeOff, User } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook } from 'react-icons/fa';
@@ -22,7 +22,7 @@ import { auth } from '@/lib/firebaseClient';
 type Props = {};
 
 export default function SignUpCard({}: Props) {
-  const { signUp, handleSocialLogin } = useAuth();
+  const { signUp, handleSocialLogin, signUpWithPhone } = useAuth() as any; // Use `as any` to access new methods
   const { showSnackbar } = useGlobal();
   const router = useRouter();
 
@@ -40,6 +40,15 @@ export default function SignUpCard({}: Props) {
     confirmPassword: '',
     acceptTerms: false,
   });
+  
+    // Add this to your component
+    useEffect(() => {
+        const el = document.getElementById('recaptcha-container');
+        if (el) {
+            // This is a placeholder for the invisible reCAPTCHA
+            // Firebase will automatically use it
+        }
+    }, []);
 
   const onSocialLogin = async (provider: 'google' | 'facebook') => {
     setSocialLoading(provider);
@@ -56,7 +65,7 @@ export default function SignUpCard({}: Props) {
     e.preventDefault();
     if (isLoading) return;
     
-    if (formData.password !== formData.confirmPassword) {
+    if (signupMethod === 'email' && formData.password !== formData.confirmPassword) {
       showSnackbar({ title: 'Passwords do not match', description: 'Please re-enter your password.'}, 'error');
       return;
     }
@@ -88,7 +97,8 @@ export default function SignUpCard({}: Props) {
                 showSnackbar({ title: 'Sign-up failed', description: result.message }, 'error');
             }
         } else {
-            showSnackbar({ title: 'Not yet implemented', description: 'Phone sign-up is not yet available.'}, 'info');
+            await signUpWithPhone(formData.phone, { displayName: formData.name });
+            // The auth context will now trigger the OTP flow
         }
     } catch (error: any) {
         showSnackbar({description: `Sign-up Failed: ${error.message}`}, 'error');
@@ -99,6 +109,7 @@ export default function SignUpCard({}: Props) {
   
   return (
     <>
+        <div id="recaptcha-container" />
         <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
                 variant="outline"
@@ -184,62 +195,66 @@ export default function SignUpCard({}: Props) {
               </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, password: e.target.value }))
-                  }
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-               <PasswordStrength password={formData.password} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      confirmPassword: e.target.value,
-                    }))
-                  }
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+            {signupMethod === 'email' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, password: e.target.value }))
+                      }
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  <PasswordStrength password={formData.password} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          confirmPassword: e.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
             <div className="flex items-center space-x-2 pt-2">
               <Checkbox
                 id="terms"
@@ -282,5 +297,3 @@ export default function SignUpCard({}: Props) {
     </>
   );
 }
-
-    
