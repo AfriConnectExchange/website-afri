@@ -4,11 +4,15 @@ export interface UserProfile {
   email?: string | null;
   phone?: string | null;
   full_name?: string | null;
-  avatar_url?: string | null;
+  profile_picture_url?: string | null;
   roles?: string[];
   status?: 'pending' | 'active' | 'suspended' | 'deactivated' | 'deleted';
   verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
   onboarding_completed?: boolean;
+  address?: string;
+  city?: string;
+  postcode?: string;
+  country?: string;
   [key: string]: any;
 }
 
@@ -302,6 +306,17 @@ export type Database = {
         }
        },
        activity_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          action: string;
+          entity_type: string | null;
+          entity_id: string | null;
+          changes: Json | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          created_at: string;
+        },
         Insert: {
           user_id: string
           action: string
@@ -322,6 +337,7 @@ export type Database = {
             link_url: string | null;
             read: boolean;
             created_at: string;
+            priority: 'high' | 'medium' | 'low';
          };
          Insert: {
             user_id: string;
@@ -329,6 +345,7 @@ export type Database = {
             title: string;
             message: string;
             link_url?: string | null;
+            priority?: 'high' | 'medium' | 'low';
          };
          Update: {
             read?: boolean;

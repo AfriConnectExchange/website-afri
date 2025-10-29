@@ -12,9 +12,36 @@ import { NotificationSettings } from './notification-settings';
 import { NotificationItem, type Notification } from './notification-item';
 import { EmptyState } from './empty-state';
 import { PageLoader } from '../ui/loader';
+import { Skeleton } from '../ui/skeleton';
 
 interface NotificationsPageProps {
   onNavigate: (page: string) => void;
+}
+
+function NotificationsSkeleton() {
+  return (
+    <div className="space-y-8">
+      {[...Array(2)].map((_, i) => (
+        <div key={i}>
+          <Skeleton className="h-5 w-24 mb-3" />
+          <div className="border rounded-lg">
+            {[...Array(3)].map((_, j) => (
+              <div key={j} className="flex items-start gap-4 p-4 border-b last:border-b-0">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-5 w-1/2" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
@@ -233,9 +260,7 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
 
             <TabsContent value={activeTab} className="mt-6">
               {isLoading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <PageLoader />
-                </div>
+                <NotificationsSkeleton />
               ) : filteredNotifications.length === 0 ? (
                 <EmptyState searchQuery={searchQuery} activeTab={activeTab} />
               ) : (

@@ -23,9 +23,10 @@ import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
-  // Note: Phone number is not part of the mock user, so we make it optional here.
-  phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
+  phone: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
   address: z.string().optional(),
+  city: z.string().optional(),
+  postcode: z.string().optional(),
 });
 
 type PersonalInfoFormValues = z.infer<typeof formSchema>;
@@ -35,27 +36,31 @@ interface PersonalInfoFormProps {
 }
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
-  const { user, updateUser, isLoading } = useAuth();
+  const { user, profile, updateUser, isLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<PersonalInfoFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: '',
-      phoneNumber: '',
+      phone: '',
       address: '',
+      city: '',
+      postcode: '',
     },
   });
 
   useEffect(() => {
-    if (user) {
+    if (profile) {
         form.reset({
-            fullName: user.fullName || '',
-            phoneNumber: '', // Not in mock data
-            address: '', // Not in mock data
+            fullName: profile.full_name || '',
+            phone: profile.phone || '',
+            address: profile.address || '',
+            city: profile.city || '',
+            postcode: profile.postcode || '',
         });
     }
-  }, [user, form]);
+  }, [profile, form]);
 
   const onSubmit = async (values: PersonalInfoFormValues) => {
     setIsSaving(true);
@@ -66,13 +71,12 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     }
 
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        updateUser({
-            // allow custom profile fields during migration
-            // Cast object to any to allow custom profile fields during migration
-            ...( { fullName: values.fullName } as any ),
-            // phone and address are not in our mock user, but in a real app you'd update them
+        await updateUser({
+            full_name: values.fullName,
+            phone: values.phone,
+            address: values.address,
+            city: values.city,
+            postcode: values.postcode,
         });
         onFeedback('success', 'Profile updated successfully!');
     } catch(error: any) {
@@ -122,7 +126,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="phoneNumber"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
@@ -145,10 +149,10 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address / Location</FormLabel>
+                  <FormLabel>Address</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="123 Main St, London, UK"
+                    <Input
+                      placeholder="123 Main St"
                       {...field}
                     />
                   </FormControl>
@@ -156,6 +160,30 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                    <FormItem>
+                    <Label>City</Label>
+                    <FormControl><Input placeholder="e.g., London" {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="postcode"
+                render={({ field }) => (
+                    <FormItem>
+                    <Label>Postcode</Label>
+                    <FormControl><Input placeholder="e.g., SW1A 1AA" {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
           </CardContent>
           <CardFooter>
              <Button type="submit" disabled={isSaving}>
