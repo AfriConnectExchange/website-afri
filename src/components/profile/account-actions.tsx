@@ -19,7 +19,7 @@ interface AccountActionsProps {
 }
 
 export function AccountActions({ onFeedback }: AccountActionsProps) {
-  const { logout } = useAuth();
+  const { logout, profile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -60,20 +60,17 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   const confirmDelete = async () => {
     setShowDeleteConfirm(false);
     try {
-      const res = await fetchWithAuth('/api/account/delete', { method: 'POST' });
+      // Request scheduled deletion (24h delay)
+      const res = await fetchWithAuth('/api/account/request-deletion', { method: 'POST' });
       const json = await res.json();
       if (res.ok && json.ok) {
-        toast({ title: 'Account deleted', description: 'Your account has been deleted.' });
-        // Attempt local sign out
-        try { await logout(); } catch (e) {}
-        // Redirect to home
-        router.push('/');
+        toast({ title: 'Deletion scheduled', description: `Your account is scheduled for deletion at ${json.scheduled_at}.` });
       } else {
-        onFeedback('error', json.error || 'Failed to delete account.');
+        onFeedback('error', json.error || 'Failed to schedule account deletion.');
       }
     } catch (e: any) {
-      console.error('Account deletion failed', e);
-      onFeedback('error', e?.message || 'Failed to delete account.');
+      console.error('Account deletion scheduling failed', e);
+      onFeedback('error', e?.message || 'Failed to schedule account deletion.');
     }
   };
 
@@ -105,6 +102,22 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
     }
   };
 
+  // Cancel scheduled deletion
+  const cancelDeletion = async () => {
+    try {
+      const res = await fetchWithAuth('/api/account/cancel-deletion', { method: 'POST' });
+      const json = await res.json();
+      if (res.ok && json.ok) {
+        toast({ title: 'Deletion cancelled', description: 'Your account deletion request has been cancelled.' });
+      } else {
+        onFeedback('error', json.error || 'Failed to cancel deletion.');
+      }
+    } catch (e: any) {
+      console.error('Cancel deletion failed', e);
+      onFeedback('error', e?.message || 'Failed to cancel deletion.');
+    }
+  };
+
 
   return (
     <>
@@ -114,6 +127,19 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
           <CardDescription>Manage your account status and data.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {profile?.deletion_scheduled_at && (
+            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium">Account deletion scheduled</p>
+                  <p className="text-sm text-muted-foreground">Your account is scheduled for deletion on <strong>{new Date(profile.deletion_scheduled_at).toLocaleString()}</strong>. You can cancel this action within 24 hours.</p>
+                </div>
+                <div>
+                  <Button size="sm" variant="ghost" onClick={cancelDeletion}>Cancel Deletion</Button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <h4 className="font-medium">Deactivate Account</h4>
             <p className="text-sm text-muted-foreground">

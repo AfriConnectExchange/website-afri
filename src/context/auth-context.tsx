@@ -24,6 +24,7 @@ import { useGlobal } from '@/lib/context/GlobalContext';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
 import { auth as clientAuth, db } from '@/lib/firebaseClient';
 import { fetchWithAuth } from '../lib/api';
+import SuspensionModal from '@/components/auth/SuspensionModal';
 import { createSession, heartbeatSession, revokeSession, getDeviceId } from '@/lib/session-client';
 
 export type UserProfile = DbUserProfile;
@@ -51,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+  const [suspensionMessage, setSuspensionMessage] = useState<string | null>(null);
   const { showSnackbar } = useGlobal();
   const router = useRouter();
   const pathname = usePathname();
@@ -248,7 +251,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    await signInWithEmailAndPassword(clientAuth, email, password);
+    try {
+      await signInWithEmailAndPassword(clientAuth, email, password);
+    } catch (err: any) {
+      // Show suspension modal when account is disabled
+      if (err?.code === 'auth/user-disabled') {
+        setSuspensionMessage(err?.message ?? null);
+        setShowSuspensionModal(true);
+        return;
+      }
+      throw err;
+    }
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
@@ -297,6 +310,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       // Log full error for debugging
+      if (error?.code === 'auth/user-disabled') {
+        setSuspensionMessage(error?.message ?? null);
+        setShowSuspensionModal(true);
+        return;
+      }
       console.error('Social login error', error);
       const friendlyError = mapAuthError(error);
       // Surface the firebase error code in the UI to help debugging (e.g. auth/popup-closed-by-user)
@@ -504,7 +522,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sendPhoneOtp
   }), [isLoading, user, profile, isAuthenticated, login, logout, signUp, updateUser, handleSocialLogin, signInWithPhone, signUpWithPhone, handleOtpSuccess, resendOtp]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <SuspensionModal open={showSuspensionModal} onOpenChange={setShowSuspensionModal} message={suspensionMessage} />
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => {
