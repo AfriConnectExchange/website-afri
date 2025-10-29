@@ -28,17 +28,15 @@ export default function AuthPage() {
 
   const router = useRouter();
   const { toast } = useToast();
-  const { handleNeedsOtp, handleOtpSuccess } = useAuth() as any; // Use `as any` to access new methods
+  const { handleNeedsOtp, handleOtpSuccess } = useAuth();
   
   useEffect(() => {
-    // This effect now correctly wires up the OTP handling from the context
     const otpNeededHandler = ({ phone, resend }: { phone: string, resend: () => Promise<void> }) => {
         setPhoneForVerification(phone);
-        setResendOtp(() => resend); // Store the resend function
+        setResendOtp(() => resend);
         setAuthStep('verify-otp');
     };
     
-    // Assumes `auth-context` uses a simple event emitter or callback system for this
     handleNeedsOtp(otpNeededHandler);
 
   }, [handleNeedsOtp]);

@@ -51,17 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { showSnackbar } = useGlobal();
   const router = useRouter();
   const pathname = usePathname();
-  const [otpCallback, setOtpCallback] = useState<Function | null>(null);
+  const [otpCallback, setOtpCallback] = useState<((data: { phone: string, resend: () => Promise<void> }) => void) | null>(null);
 
   useEffect(() => {
-    // This is a common pattern for initializing Firebase services that need the DOM.
-    // We attach the verifier to the window object to ensure it's a singleton.
     if (typeof window !== 'undefined' && !(window as any).recaptchaVerifier) {
       (window as any).recaptchaVerifier = new RecaptchaVerifier(clientAuth, 'recaptcha-container', {
         'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        }
+        'callback': (response: any) => {},
       });
     }
   }, []);
@@ -95,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (userDoc.exists()) {
         userProfile = userDoc.data() as UserProfile;
-        // If there's extra data (like from a phone signup with name), update the profile
         if (Object.keys(extraData).length > 0 && !userProfile.full_name) {
             await updateDoc(userDocRef, { full_name: extraData.displayName });
             userProfile.full_name = extraData.displayName;
@@ -110,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           status: 'active',
           onboarding_completed: false,
           created_at: new Date().toISOString(),
-          verification_status: 'verified',
+          verification_status: 'verified', // Phone verified users are auto-verified
         };
         await setDoc(userDocRef, userProfile);
       }
@@ -218,23 +213,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const appVerifier = (window as any).recaptchaVerifier;
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
-      // Store confirmationResult so it can be used in the OTP screen
       (window as any).confirmationResult = confirmationResult;
-      (window as any).phoneAuthData = profileData; // Store extra data if it's a signup
+      (window as any).phoneAuthData = profileData;
 
       const resend = () => startPhoneAuth(phone, profileData);
 
-      // Trigger the UI to switch to the OTP screen
       if (otpCallback) {
         otpCallback({ phone, resend });
       }
     } catch (error: any) {
       console.error("Phone auth error:", error);
       showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
-      // Reset reCAPTCHA
-      appVerifier.render().then((widgetId: any) => {
+      try {
+        const widgetId = appVerifier.render();
         grecaptcha.reset(widgetId);
-      });
+      } catch (e) {
+        console.error("Error resetting reCAPTCHA:", e);
+      }
       throw error;
     }
   }, [showSnackbar, otpCallback]);
@@ -247,16 +242,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await startPhoneAuth(phone, profileData);
   }, [startPhoneAuth]);
 
-  const handleNeedsOtp = useCallback((callback: Function) => {
+  const handleNeedsOtp = useCallback((callback: (data: { phone: string, resend: () => Promise<void> }) => void) => {
     setOtpCallback(() => callback);
   }, []);
 
   const handleOtpSuccess = useCallback(async (user: FirebaseUser) => {
     const extraData = (window as any).phoneAuthData || {};
     await handleUserSession(user, extraData);
-    (window as any).phoneAuthData = null; // Clean up
+    (window as any).phoneAuthData = null;
   }, [handleUserSession]);
-
 
   const logout = useCallback(async () => {
     await firebaseSignOut(clientAuth);
@@ -284,7 +278,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
     await updateDoc(userDocRef, profileUpdateData);
 
-    await fetchUserProfile(clientAuth.currentUser);
+    // Re-fetch profile to update context state
+    const profileSnap = await getDoc(userDocRef);
+    if(profileSnap.exists()) {
+        const newProfile = profileSnap.data() as UserProfile;
+        setProfile(newProfile);
+        setUser(prev => prev ? ({...prev, ...newProfile}) : null);
+    }
 
   }, []);
 
