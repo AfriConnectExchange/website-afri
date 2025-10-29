@@ -213,6 +213,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (snackErr) {
         // ignore snackbar errors; proceed to navigation
       }
+      // Give the snackbar a short moment to render before navigating so the user sees feedback.
+      await new Promise((res) => setTimeout(res, 250));
       router.push(`/auth/verify-phone?phone=${encodeURIComponent(phone)}`);
     } catch (error: any) {
       console.error("Phone auth error:", error);

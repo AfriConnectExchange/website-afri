@@ -1,7 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
-import { createElement } from 'react';
+import { getAuth } from 'firebase-admin/auth';
 import { logActivity } from '@/lib/activity-logger';
 import { sendEmail } from '@/lib/email-service';
 import { render } from '@react-email/render';
@@ -15,7 +14,7 @@ export async function POST(req: Request) {
   const token = authHeader.split('Bearer ')[1];
 
   try {
-  const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await getAuth().verifyIdToken(token);
     const userId = decodedToken.uid;
     const userEmail = decodedToken.email;
 
@@ -105,7 +104,7 @@ export async function POST(req: Request) {
         // Generate a verification link and send a branded welcome email including the link
         try {
           const verificationLink = await admin.auth().generateEmailVerificationLink(email);
-          const emailHtml = render(createElement(WelcomeEmail, { userName: fullName ?? 'there' }));
+          const emailHtml = render(<WelcomeEmail userName={fullName ?? 'there'} />);
           const resp = await sendEmail({
             to: email,
             subject: 'Welcome to AfriConnect Exchange!',
@@ -130,7 +129,7 @@ export async function POST(req: Request) {
       } else if (userEmail) {
         // If user already has an email in Auth, send the welcome template and log the send
         try {
-          const emailHtml = render(createElement(WelcomeEmail, { userName: fullName ?? 'there' }));
+          const emailHtml = render(<WelcomeEmail userName={fullName ?? 'there'} />);
           const resp = await sendEmail({
             to: userEmail,
             subject: 'Welcome to AfriConnect Exchange!',
@@ -156,7 +155,7 @@ export async function POST(req: Request) {
     } catch (e) {
       console.error('Email handling errors during onboarding completion:', e);
     }
-    
+
     return NextResponse.json({ success: true, message: 'Profile completed successfully.' });
 
   } catch (error: any) {

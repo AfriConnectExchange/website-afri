@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import VerifyEmailModal from './VerifyEmailModal';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
@@ -42,6 +43,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   const { logout } = useAuth();
   const { toast } = useToast();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
   
   const handleSignOut = async () => {
     await logout();
@@ -80,9 +82,16 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                 <div className="flex items-center justify-center gap-2">
                   <Mail className="w-4 h-4" />
                   <span className="truncate">{user.email}</span>
+                  {!user.email_verified && (
+                    <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setShowVerifyEmail(true)}>
+                      Verify
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
+
+            <VerifyEmailModal open={showVerifyEmail} onOpenChange={setShowVerifyEmail} email={user.email} />
 
             <div className="mt-6 space-y-2">
               {menuItems.map(item => (
