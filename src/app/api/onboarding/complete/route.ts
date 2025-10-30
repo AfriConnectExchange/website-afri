@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
+import { geocodeAddress } from '@/lib/geocode';
 import { createElement } from 'react';
 import { logActivity } from '@/lib/activity-logger';
 import { sendEmail } from '@/lib/email-service';
@@ -41,7 +42,30 @@ export async function POST(req: Request) {
     const userEmail = decodedToken.email;
 
   const body = await req.json();
-  const { fullName, phone, address, city, postcode, country, avatarUrl, email } = body || {};
+  const { fullName, phone, address, city, postcode, country, avatarUrl, email, latitude, longitude, place_id, formatted_address, shopName, ownerName, ownerPhone, roles } = body || {};
+
+    // If lat/lng not provided but we have an address, attempt server-side geocoding
+    let finalLatitude = latitude;
+    let finalLongitude = longitude;
+    let finalPlaceId = place_id;
+    let finalFormatted = formatted_address;
+    if ((finalLatitude === undefined || finalLatitude === null || finalLongitude === undefined || finalLongitude === null) && address) {
+      try {
+        const geo = await geocodeAddress(address);
+        if (geo) {
+          finalLatitude = geo.latitude;
+          finalLongitude = geo.longitude;
+          finalPlaceId = geo.place_id ?? finalPlaceId;
+          finalFormatted = geo.formatted_address ?? finalFormatted;
+          // If city/postcode were missing, prefer geocoded values
+          if (!city && geo.city) {
+            // We'll set city below when building profileUpdateData
+          }
+        }
+      } catch (e) {
+        console.warn('Server geocode failed during onboarding completion', e);
+      }
+    }
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
@@ -57,6 +81,18 @@ export async function POST(req: Request) {
       city: city ?? null,
       postcode: postcode ?? null,
       country: country ?? null,
+  latitude: finalLatitude ?? null,
+  longitude: finalLongitude ?? null,
+  place_id: finalPlaceId ?? null,
+  formatted_address: finalFormatted ?? null,
+  // Firestore GeoPoint for spatial queries (keep numeric fields for compatibility)
+  location: (finalLatitude !== undefined && finalLatitude !== null && finalLongitude !== undefined && finalLongitude !== null) ? new admin.firestore.GeoPoint(finalLatitude, finalLongitude) : null,
+      // store simple business/owner info if provided
+      shop_name: shopName ?? null,
+      owner_name: ownerName ?? null,
+      owner_phone: ownerPhone ?? null,
+      // roles (if provided) — keep server-side control; this will overwrite roles only if included
+      roles: roles ?? undefined,
       profile_picture_url: avatarUrl ?? null,
       onboarding_completed: true,
       updated_at: new Date().toISOString(),

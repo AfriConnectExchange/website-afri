@@ -1,6 +1,9 @@
 import React from 'react';
 import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
+import SnackbarContent from '@mui/material/SnackbarContent';
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
+import { useTheme } from '@mui/material/styles';
 
 export interface SnackbarMessage {
   title?: string;
@@ -56,6 +59,17 @@ function translateMessage(raw: string | SnackbarMessage): { title?: string; desc
 export default function MuiSnackbar({ open, message, severity = 'info', autoHideDuration = 5000, onClose, anchorOrigin = { vertical: 'top', horizontal: 'right' } }: SnackbarProps) {
   const { title, description } = translateMessage(message);
 
+  const messageNode = title ? (
+    <div>
+      <strong style={{ display: 'block' }}>{title}</strong>
+      {description ? <div>{description}</div> : null}
+    </div>
+  ) : (
+    <div>{description}</div>
+  );
+
+  const theme = useTheme();
+
   return (
     <Snackbar
       open={open}
@@ -63,22 +77,20 @@ export default function MuiSnackbar({ open, message, severity = 'info', autoHide
       onClose={onClose}
       anchorOrigin={anchorOrigin}
     >
-      <Alert
-        onClose={onClose}
-        severity={severity}
-        variant="filled"
-        sx={{ width: '100%' }}
-        aria-live="polite"
-      >
-        {title ? (
-          <div>
-            <strong>{title}</strong>
-            {description ? <div>{description}</div> : null}
-          </div>
-        ) : (
-          <div>{description}</div>
+      {/* Use SnackbarContent (Material default) — avoid custom success coloring here so MUI's default palette is used. */}
+      <SnackbarContent
+        message={messageNode}
+        action={(
+          <IconButton size="small" aria-label="close" color="inherit" onClick={onClose}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         )}
-      </Alert>
+        role="status"
+        sx={{
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+        }}
+      />
     </Snackbar>
   );
 }

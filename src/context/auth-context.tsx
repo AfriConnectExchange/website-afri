@@ -19,7 +19,7 @@ import {
     ConfirmationResult,
     type User as FirebaseUser 
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, updateDoc, GeoPoint } from 'firebase/firestore';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import type { AppUser, UserProfile as DbUserProfile } from '@/lib/types';
 import { auth as clientAuth, db } from '@/lib/firebaseClient';
@@ -483,10 +483,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await firebaseUpdateProfile(clientAuth.currentUser, authUpdate);
         }
         
-        const profileUpdateData: Record<string, any> = { ...otherProfileData, updated_at: new Date().toISOString() };
+  const profileUpdateData: Record<string, any> = { ...otherProfileData, updated_at: new Date().toISOString() };
         if (fullName) profileUpdateData.full_name = fullName;
         if (avatarUrl) profileUpdateData.profile_picture_url = avatarUrl;
         
+        // If the client provided an address but not lat/lng, ask the server to geocode it
+        try {
+          if (profileUpdateData.address && (profileUpdateData.latitude === undefined || profileUpdateData.longitude === undefined)) {
+            try {
+              const geocodeResp = await fetchWithAuth('/api/geocode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address: profileUpdateData.address }),
+              });
+              if (geocodeResp.ok) {
+                const geocodeJson = await geocodeResp.json();
+                if (geocodeJson?.success && geocodeJson.result) {
+                  const r = geocodeJson.result as any;
+                  profileUpdateData.latitude = r.latitude;
+                  profileUpdateData.longitude = r.longitude;
+                  if (r.formatted_address) profileUpdateData.formatted_address = r.formatted_address;
+                  if (r.place_id) profileUpdateData.place_id = r.place_id;
+                  if (!profileUpdateData.city && r.city) profileUpdateData.city = r.city;
+                  if (!profileUpdateData.postcode && r.postcode) profileUpdateData.postcode = r.postcode;
+                  if (!profileUpdateData.country && r.country) profileUpdateData.country = r.country;
+                }
+              }
+            } catch (e) {
+              // non-fatal: log and continue with profile update without geocode
+              console.warn('Geocode attempt failed in updateUser:', e);
+            }
+          }
+        } catch (e) {
+          console.warn('Error during optional geocode step', e);
+        }
+
+        // If we have numeric latitude/longitude, also write a Firestore GeoPoint for spatial queries
+        try {
+          if ((profileUpdateData.latitude !== undefined && profileUpdateData.latitude !== null) && (profileUpdateData.longitude !== undefined && profileUpdateData.longitude !== null)) {
+            // Create a client-side GeoPoint
+            try {
+              // @ts-ignore - GeoPoint is from firebase/firestore
+              profileUpdateData.location = new GeoPoint(Number(profileUpdateData.latitude), Number(profileUpdateData.longitude));
+            } catch (e) {
+              console.warn('Failed to create GeoPoint on client update:', e);
+            }
+          }
+        } catch (e) {
+          console.warn('Error while preparing GeoPoint for profile update:', e);
+        }
+
         const userDocRef = doc(db, 'users', clientAuth.currentUser.uid);
         await updateDoc(userDocRef, profileUpdateData);
     }

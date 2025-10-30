@@ -16,7 +16,7 @@ export function Logo({
       </div>
       {withText && (
         <h1 className="text-xl font-bold tracking-tight text-foreground" style={{ fontFamily: "Montserrat, Arial, Helvetica, sans-serif" }}>
-          AfriConnect Exchange
+          Africonnect Exchange
         </h1>
       )}
     </div>

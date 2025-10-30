@@ -1,5 +1,5 @@
-'use client';
-import { useState } from 'react';
+"use client";
+import { useState, useRef } from "react";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import AddressInput from '@/components/onboarding/address-input';
+import MapMarker from '@/components/onboarding/map-marker';
 import { PlusCircle, MapPin, Loader2, Home } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
@@ -59,17 +61,24 @@ export function AddressBook({ onFeedback }: AddressBookProps) {
     },
   });
 
+  const selectedCoordsRef = useRef<{ lat?: number | null; lng?: number | null }>({});
+
   const onSubmit = async (values: AddressFormValues) => {
     setIsSaving(true);
     try {
         // In a real app, this would add to a subcollection of addresses.
         // For now, we'll just update the main address on the user profile.
-        await updateUser({
-            address: values.street,
-            city: values.city,
-            postcode: values.postcode,
-            country: values.country,
-        });
+    const payload: any = {
+      address: values.street,
+      city: values.city,
+      postcode: values.postcode,
+      country: values.country,
+    };
+    // include lat/lng if available from autocomplete
+    if ((selectedCoordsRef.current?.lat ?? null) !== null) payload.latitude = selectedCoordsRef.current.lat;
+    if ((selectedCoordsRef.current?.lng ?? null) !== null) payload.longitude = selectedCoordsRef.current.lng;
+
+    await updateUser(payload);
         onFeedback('success', 'Address saved successfully!');
         form.reset();
         setIsDialogOpen(false);
@@ -109,10 +118,31 @@ export function AddressBook({ onFeedback }: AddressBookProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Street Address</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
+                      <>
+                        <FormControl>
+                          <AddressInput
+                            value={field.value}
+                            onChange={(v) => field.onChange(v)}
+                            onSelect={(place) => {
+                              // fill form fields from place components
+                              if (place.formatted_address) form.setValue('street', place.formatted_address);
+                              if (place.city) form.setValue('city', place.city);
+                              if (place.postcode) form.setValue('postcode', place.postcode);
+                              if (place.country) form.setValue('country', place.country);
+                              // store coords for saving
+                              selectedCoordsRef.current = { lat: place.latitude ?? null, lng: place.longitude ?? null };
+                            }}
+                            country={process.env.NEXT_PUBLIC_DEFAULT_COUNTRY || undefined}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        {selectedCoordsRef.current?.lat && selectedCoordsRef.current?.lng && (
+                          <div>
+                            <FormLabel>Adjust location on map</FormLabel>
+                            <MapMarker lat={selectedCoordsRef.current.lat ?? 0} lng={selectedCoordsRef.current.lng ?? 0} onChange={(lat, lng) => { selectedCoordsRef.current = { lat, lng }; }} />
+                          </div>
+                        )}
+                      </>
                     </FormItem>
                   )}
                 />

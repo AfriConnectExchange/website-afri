@@ -6,13 +6,14 @@ import { OnboardingProgress } from './onboarding-progress';
 import { PersonalDetailsStep } from './steps/personal-details-step';
 import { ProfilePictureStep } from './steps/profile-picture-step';
 import { CompletionStep } from './steps/completion-step';
+import TermsStep from './steps/terms-step';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { auth } from '@/lib/firebaseClient';
 import { fetchWithAuth } from '@/lib/api';
 
-type OnboardingStep = 'personal' | 'picture' | 'complete';
+type OnboardingStep = 'personal' | 'terms' | 'picture' | 'complete';
 
 export interface OnboardingData {
   fullName: string;
@@ -23,6 +24,14 @@ export interface OnboardingData {
   country: string;
   avatarUrl?: string;
   email?: string;
+  // Optional seller/business fields
+  shopName?: string | null;
+  isSeller?: boolean;
+  // Terms acceptance
+  agreedToTerms?: boolean;
+  termsDocument?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface OnboardingFlowProps {
@@ -43,6 +52,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     postcode: '',
     country: 'United Kingdom',
     avatarUrl: user?.avatarUrl || '',
+    latitude: null,
+    longitude: null,
+    shopName: null,
+    agreedToTerms: false,
+    termsDocument: null,
+    isSeller: false,
   });
 
   const handleDataChange = (data: Partial<OnboardingData>) => {
@@ -50,12 +65,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const goToNextStep = () => {
-    if (currentStep === 'personal') setCurrentStep('picture');
+    if (currentStep === 'personal') setCurrentStep('terms');
+    else if (currentStep === 'terms') setCurrentStep('picture');
     if (currentStep === 'picture') submitOnboarding();
   };
 
   const goToPreviousStep = () => {
-    if (currentStep === 'picture') setCurrentStep('personal');
+    if (currentStep === 'picture') setCurrentStep('terms');
+    else if (currentStep === 'terms') setCurrentStep('personal');
   };
 
   const submitOnboarding = async () => {
@@ -68,10 +85,17 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     try {
       
       // The updateUser function now handles the API call
-      await updateUser({
-          ...onboardingData,
-          onboarding_completed: true,
-      });
+      const payload: any = { ...onboardingData, onboarding_completed: true };
+      // If user indicated they are a seller, ensure the role is included
+      if (onboardingData.isSeller) {
+        const existingRoles = user?.roles || [];
+        if (!existingRoles.includes('seller')) {
+          payload.roles = [...existingRoles, 'seller'];
+        } else {
+          payload.roles = existingRoles;
+        }
+      }
+      await updateUser(payload);
       
       toast({
         title: 'Profile Completed!',
@@ -118,6 +142,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               data={onboardingData}
               onDataChange={handleDataChange}
               onNext={goToNextStep}
+            />
+          )}
+          {currentStep === 'terms' && (
+            <TermsStep
+              onBack={() => setCurrentStep('personal')}
+              onNext={() => setCurrentStep('picture')}
+              onAgree={(data) => handleDataChange({ agreedToTerms: data.agreed, termsDocument: data.document ?? null })}
             />
           )}
           {currentStep === 'picture' && (

@@ -103,10 +103,10 @@ export default function Footer() {
         <div className="border-t my-6"></div>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[12px]">
-          <div className="flex items-center gap-2">
-             <Logo withText={false} className="text-foreground" />
-             <span className="font-semibold text-foreground text-xs">AfriConnect Exchange</span>
-          </div>
+        <div className="flex items-center gap-1">
+           <Logo withText={false} className="text-foreground" />
+           <span className="font-semibold text-foreground text-xs">AfriConnect Exchange</span>
+         </div>
 
           <div className="text-center text-xs text-muted-foreground order-last md:order-none">
             <p className="font-semibold text-foreground/90 text-[11px]">A project of McBenLeo CIC (Company Number: SC859990)</p>

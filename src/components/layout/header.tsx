@@ -33,6 +33,7 @@ interface HeaderProps {
 export function Header({ cartCount = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
+  const isSeller = !!user?.roles?.includes('seller');
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
@@ -55,6 +56,14 @@ export function Header({ cartCount = 0 }: HeaderProps) {
     { id: '/remittance', label: 'Send Money', href: '/remittance' },
     { id: '/adverts', label: 'My Adverts', icon: TrendingUp, href: '/adverts' },
   ];
+
+  const visibleNavigation = isSeller ? [...navigationItems, { id: '/vendor/dashboard', label: 'Seller Dashboard', href: '/vendor/dashboard' }] : navigationItems;
+  const sellerMenuItems = [
+    { id: '/vendor/dashboard', label: 'Dashboard', href: '/vendor/dashboard' },
+    { id: '/vendor/products', label: 'Products', href: '/vendor/products' },
+    { id: '/vendor/shop-settings', label: 'Shop Settings', href: '/vendor/shop-settings' },
+  ];
+  const navItems = isSeller ? [...navigationItems, ...sellerMenuItems] : navigationItems;
 
   const additionalItems = [
     { id: '/tracking', label: 'Track Orders', href: '/tracking' },
@@ -116,7 +125,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
                 <div className="flex-1 overflow-y-auto pr-2">
                   <div className="space-y-2">
-                    {navigationItems.map((item) => (
+                    {navItems.map((item) => (
                       <Link key={item.id} href={item.href} passHref>
                         <Button
                           variant={pathname === item.href ? 'secondary' : 'ghost'}
@@ -227,7 +236,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden lg:flex items-center gap-2">
-              {navigationItems.map((item) => (
+              {navItems.map((item) => (
                 <Link key={item.id} href={item.href} passHref>
                   <Button
                     variant="ghost"
