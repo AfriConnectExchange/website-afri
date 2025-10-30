@@ -20,6 +20,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
     }
 
+    // Read user doc to see if onboarding already completed or welcome email already sent
+    try {
+      const userDocRef = admin.firestore().collection('users').doc(userId);
+      const userDoc = await userDocRef.get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+      const alreadyWelcomed = !!(userData && (userData.welcome_email_sent === true || userData.onboarding_completed === true));
+      if (alreadyWelcomed) {
+        // Audit log: post-signup detected onboarding already completed or welcome previously sent
+        try {
+          await logActivity({
+            user_id: userId,
+            action: 'post_signup_welcome_skipped',
+            entity_type: 'user',
+            entity_id: userId,
+            changes: { onboarding_completed: !!userData.onboarding_completed, welcome_email_sent: !!userData.welcome_email_sent }
+          });
+        } catch (lae) {
+          console.warn('Failed to write audit log for skipped welcome in post-signup:', lae);
+        }
+      }
+    } catch (docErr) {
+      console.warn('Failed to read user doc in post-signup for welcome-skipped check:', docErr);
+      // continue without blocking post-signup actions
+    }
+
     // 2. Create Welcome Notification
     await admin.firestore().collection('notifications').add({
       user_id: userId,

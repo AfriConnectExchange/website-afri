@@ -255,7 +255,7 @@ export function SupportPage({ onNavigate }: SupportPageProps) {
                         <Mail className="w-5 h-5 text-primary mt-1" />
                         <div>
                             <p className="font-medium text-sm">Email Support</p>
-                            <a href="mailto:info@africonnectexchange.org" className="text-sm text-muted-foreground hover:underline">info@africonnectexchange.org</a>
+                            <a href="mailto:info@africonnect-exchange.org" className="text-sm text-muted-foreground hover:underline">info@africonnect-exchange.org</a>
                         </div>
                     </div>
                     <div className="flex items-start gap-4">

@@ -86,7 +86,7 @@ export const TermsOfService = () => (
     <Section number="8" title="Contact Us">
       <p>If you have any questions about these Terms, please contact us:</p>
       <ul>
-        <li><strong>Email:</strong> <a href="mailto:info@africonnectexchange.org">info@africonnectexchange.org</a></li>
+        <li><strong>Email:</strong> <a href="mailto:info@africonnect-exchange.org">info@africonnect-exchange.org</a></li>
         <li><strong>Address:</strong> AfriConnect Exchange (McBenLeo CIC), 4 Orkney Drive, Kilmarnock, KA3 2HP, Scotland</li>
       </ul>
     </Section>

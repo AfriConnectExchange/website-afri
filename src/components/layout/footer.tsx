@@ -110,7 +110,7 @@ export default function Footer() {
 
           <div className="text-center text-xs text-muted-foreground order-last md:order-none">
             <p className="font-semibold text-foreground/90 text-[11px]">A project of McBenLeo CIC (Company Number: SC859990)</p>
-            <a href="mailto:info@africonnectexchange.org" className="hover:text-primary mt-1 inline-block text-[11px]">info@africonnectexchange.org</a>
+            <a href="mailto:info@africonnect-exchange.org" className="hover:text-primary mt-1 inline-block text-[11px]">info@africonnect-exchange.org</a>
             <div className="mt-2 space-x-3 text-[11px]">
                 <Link href="/terms-of-service" className="hover:text-primary">Terms</Link>
                 <span>&middot;</span>
