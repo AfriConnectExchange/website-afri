@@ -18,8 +18,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Plus Jakarta Sans', 'sans-serif'],
-        headline: ['Plus Jakarta Sans', 'sans-serif'],
+        body: ['Open Sans', 'Arial', 'Helvetica', 'sans-serif'],
+        headline: ['Montserrat', 'Arial', 'Helvetica', 'sans-serif'],
+        ubuntu: ['Ubuntu', 'Arial', 'Helvetica', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -62,6 +63,18 @@ export default {
           '3': 'hsl(var(--chart-3))',
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
+        },
+        brand: {
+          'primary-black': '#000000',
+          'diaspora-orange': '#F4B400',
+          'progress-blue': '#0072CE',
+          'growth-green': '#34A853',
+          'deep-indigo': '#2C2A4A',
+          'warm-clay': '#D96C06',
+          'neutral-white': '#FFFFFF',
+        },
+        gradient: {
+          'logo-arrow': 'linear-gradient(90deg,#34A853,#0072CE 50%,#F4B400)'
         },
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',

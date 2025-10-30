@@ -1,9 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Open+Sans:wght@400;600&family=Ubuntu:ital,wght@1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Brand palette (semantic variables) */
+    --brand-primary-black: #000000; /* Logo text, headings */
+    --brand-diaspora-orange: #F4B400; /* Accent, buttons, highlights */
+    --brand-progress-blue: #0072CE; /* Links, icons, UI accents */
+    --brand-growth-green: #34A853; /* Success states, CTA */
+    --brand-deep-indigo: #2C2A4A; /* Backgrounds, overlays, footer */
+    --brand-warm-clay: #D96C06; /* Cultural highlights, hover states */
+    --brand-neutral-white: #FFFFFF; /* Backgrounds, content areas */
+    /* Gradient reference for logo arrow */
+    --logo-gradient: linear-gradient(90deg, var(--brand-growth-green), var(--brand-progress-blue) 50%, var(--brand-diaspora-orange));
+
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -63,9 +76,48 @@
   * {
     @apply border-border;
   }
+  /* Typography & brand rules */
+  html {
+    font-family: 'Open Sans', Arial, Helvetica, sans-serif;
+  }
+
   body {
     @apply bg-background text-foreground text-sm md:text-base;
     font-feature-settings: "rlig" 1, "calt" 1;
+    color: var(--brand-primary-black);
+    background-color: var(--brand-neutral-white);
+  }
+
+  /* Headings should use Montserrat bold per brand guidelines */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', Arial, Helvetica, sans-serif;
+    color: var(--brand-primary-black);
+    font-weight: 700;
+  }
+
+  /* Small utility for logo placement and usage guidelines */
+  /*
+    Logo Usage Guidelines encoded as helper classes:
+      - .brand-logo: add to the logo wrapper to enforce min-size and no transform
+      - .logo-clear-space: helper to provide minimum clear area (20px)
+  */
+  .brand-logo {
+    display: inline-block;
+    min-width: 100px; /* minimum width for digital use */
+    min-height: 24px;
+    padding: 20px; /* clear space around logo (minimum) */
+  }
+
+  .logo-clear-space {
+    padding: 20px !important; /* ensure minimum 20px around logo */
+  }
+
+  /* Prevent recolor/filters on the logo when applied */
+  .brand-logo img, .brand-logo svg {
+    image-rendering: optimizeQuality;
+    max-width: 100%;
+    height: auto;
+    -webkit-user-drag: none;
   }
 }
 

@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { FreeListingBadge } from './ListingBadges';
 import { motion } from 'framer-motion';
+import VerifiedIcon from '@mui/icons-material/Verified';
 import type { Product } from '@/app/marketplace/page';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -91,12 +92,9 @@ export function ProductCard({
             <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
               <span className="text-[11px] sm:text-xs">{product.seller}</span>
               {product.sellerVerified && (
-                <Badge
-                  variant="outline"
-                  className="text-[9px] sm:text-[10px] px-1 py-0 h-4 border-green-500/50 bg-green-500/10 text-green-700"
-                >
-                  Verified
-                </Badge>
+                <span className="flex items-center" title="Verified seller" aria-label="Verified seller">
+                  <VerifiedIcon className="text-primary w-3.5 h-3.5" />
+                </span>
               )}
             </div>
 
