@@ -2,8 +2,9 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { OnboardingProgress } from './onboarding-progress';
+// OnboardingProgress intentionally removed for this flow — using custom animated cards instead
 import { PersonalDetailsStep } from './steps/personal-details-step';
+import AccountTypeStep from './steps/account-type-step';
 import { ProfilePictureStep } from './steps/profile-picture-step';
 import { CompletionStep } from './steps/completion-step';
 import TermsStep from './steps/terms-step';
@@ -13,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 import { auth } from '@/lib/firebaseClient';
 import { fetchWithAuth } from '@/lib/api';
 
-type OnboardingStep = 'personal' | 'terms' | 'picture' | 'complete';
+type OnboardingStep = 'account' | 'personal' | 'terms' | 'picture' | 'complete';
 
 export interface OnboardingData {
   fullName: string;
@@ -41,7 +42,7 @@ interface OnboardingFlowProps {
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('personal');
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('account');
   const [isLoading, setIsLoading] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     fullName: user?.fullName || '',
@@ -65,7 +66,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const goToNextStep = () => {
-    if (currentStep === 'personal') setCurrentStep('terms');
+    if (currentStep === 'account') setCurrentStep('personal');
+    else if (currentStep === 'personal') setCurrentStep('terms');
     else if (currentStep === 'terms') setCurrentStep('picture');
     if (currentStep === 'picture') submitOnboarding();
   };
@@ -73,6 +75,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const goToPreviousStep = () => {
     if (currentStep === 'picture') setCurrentStep('terms');
     else if (currentStep === 'terms') setCurrentStep('personal');
+    else if (currentStep === 'personal') setCurrentStep('account');
   };
 
   const submitOnboarding = async () => {
@@ -128,7 +131,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div className="w-full max-w-lg">
-      <OnboardingProgress currentStep={currentStep} />
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
@@ -137,11 +139,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           exit={{ opacity: 0, x: -50 }}
           transition={{ duration: 0.3 }}
         >
+          {currentStep === 'account' && (
+            <AccountTypeStep
+              data={onboardingData}
+              onDataChange={handleDataChange}
+              onNext={goToNextStep}
+            />
+          )}
           {currentStep === 'personal' && (
             <PersonalDetailsStep
               data={onboardingData}
               onDataChange={handleDataChange}
               onNext={goToNextStep}
+              onBack={goToPreviousStep}
             />
           )}
           {currentStep === 'terms' && (

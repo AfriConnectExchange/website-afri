@@ -172,6 +172,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } else {
+      // Clear client-side session id to avoid re-using a session tied to a deleted account
+      try {
+        if (typeof window !== 'undefined') {
+          try { localStorage.removeItem('afri_session_id'); } catch (e) {}
+        }
+      } catch (e) {
+        // non-fatal
+      }
       setUser(null);
       setProfile(null);
     }

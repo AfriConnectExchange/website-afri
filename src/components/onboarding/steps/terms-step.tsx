@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 
@@ -99,23 +100,29 @@ export default function TermsStep({ onBack, onNext, onAgree, isSeller = false }:
         <CardDescription>Please review the Terms of Service below. Check the box to accept and continue.</CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="p-4">Loading terms preview…</div>
-        ) : (
-          <div className="prose max-h-72 overflow-y-auto border rounded-md p-4 bg-muted">
-            {termsHtml ? (
-              // Render the site's Terms of Service HTML directly for preview.
-              // eslint-disable-next-line react/no-danger
-              <div dangerouslySetInnerHTML={{ __html: termsHtml }} />
-            ) : (
-              <div>
-                <h4>Quick summary</h4>
-                <p>This document explains your responsibilities as a user of AfriConnect.</p>
-                <p className="text-sm text-muted-foreground">For the full terms, visit the <Link href="/terms-of-service" className="underline">Terms of Service</Link> page.</p>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="prose max-h-72 overflow-y-auto border rounded-md p-4 bg-muted">
+          {termsHtml ? (
+            // Render the site's Terms of Service HTML directly for preview.
+            // eslint-disable-next-line react/no-danger
+            <div dangerouslySetInnerHTML={{ __html: termsHtml }} />
+          ) : loading ? (
+            // Show a skeleton shimmer while the terms are loading so the UI
+            // doesn't flash text like "Loading…" but still signals progress.
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          ) : (
+            <div>
+              <h4>Quick summary</h4>
+              <p>This document explains your responsibilities as a user of AfriConnect.</p>
+              <p className="text-sm text-muted-foreground">For the full terms, visit the <Link href="/terms-of-service" className="underline">Terms of Service</Link> page.</p>
+            </div>
+          )}
+        </div>
 
         <div className="flex items-start gap-3 mt-4">
           <Checkbox id="agree" checked={agreed} onCheckedChange={(v) => setAgreed(!!v)} />

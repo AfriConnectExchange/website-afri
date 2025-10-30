@@ -3,10 +3,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
 interface OnboardingProgressProps {
-  currentStep: 'personal' | 'terms' | 'picture' | 'complete';
+  currentStep: 'account' | 'personal' | 'terms' | 'picture' | 'complete';
 }
 
 const steps = [
+  { id: 'account', title: 'Account Type' },
   { id: 'personal', title: 'Personal Details' },
   { id: 'terms', title: 'Terms' },
   { id: 'picture', title: 'Profile Picture' },

@@ -32,9 +32,10 @@ interface PersonalDetailsStepProps {
   data: Partial<OnboardingData>;
   onDataChange: (data: Partial<OnboardingData>) => void;
   onNext: () => void;
+  onBack?: () => void;
 }
 
-export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDetailsStepProps) {
+export function PersonalDetailsStep({ data, onDataChange, onNext, onBack }: PersonalDetailsStepProps) {
   const { user } = useAuth();
   
   const form = useForm<PersonalDetailsValues>({
@@ -47,7 +48,6 @@ export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDeta
       city: data.city || '',
       postcode: data.postcode || '',
       shopName: data.shopName || '',
-      isSeller: (data as any).isSeller || false,
     },
   });
   
@@ -56,7 +56,7 @@ export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDeta
     onNext();
   }
 
-  const isSeller = form.watch('isSeller');
+  const isSeller = (data as any).isSeller || false;
 
   return (
     <Card>
@@ -67,54 +67,7 @@ export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDeta
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="isSeller"
-              render={({ field }) => (
-                <FormItem>
-                  <Label>Account type</Label>
-                  <div className="flex items-center gap-3 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => field.onChange(false)}
-                      aria-pressed={!field.value}
-                      className={`px-3 py-2 rounded-lg border ${!field.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground'}`}>
-                      Buyer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => field.onChange(true)}
-                      aria-pressed={!!field.value}
-                      className={`px-3 py-2 rounded-lg border ${field.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-foreground'}`}>
-                      Seller
-                    </button>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">Choose whether you'll sell items on AfriConnect. Sellers will have access to shop management tools.</p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {isSeller && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="shopName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label>Shop / Business Name</Label>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g., AfriStore" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                  We'll use your account name and phone as the shop owner contact. If you'd like a different owner contact, update it later in Shop Settings.
-                </div>
-              </>
-            )}
+            {/* Account type selection moved to its own step (AccountTypeStep). */}
             <FormField
               control={form.control}
               name="fullName"
@@ -221,7 +174,12 @@ export function PersonalDetailsStep({ data, onDataChange, onNext }: PersonalDeta
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full">Next</Button>
+            <div className="w-full flex gap-3">
+              {onBack && (
+                <Button variant="outline" onClick={onBack}>Back</Button>
+              )}
+              <Button type="submit" className="ml-auto">Next</Button>
+            </div>
           </CardFooter>
         </form>
       </Form>

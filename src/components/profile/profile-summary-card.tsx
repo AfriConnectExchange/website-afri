@@ -125,9 +125,16 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
               )}
             </div>
             <h3 className="font-semibold text-lg mb-1">{userName}</h3>
-            <Badge className={cn('mb-3 transition-colors duration-150', getRoleColor(user.roles?.[0]), 'hover:text-white')}>
-              {getRoleLabel(user.roles?.[0])}
-            </Badge>
+            {/* Prefer showing 'seller' role if present in the user's roles array */}
+            {(() => {
+              const roles = user.roles || [];
+              const primary = roles.includes('seller') ? 'seller' : (roles[0] || 'buyer');
+              return (
+                <Badge className={cn('mb-3 transition-colors duration-150', getRoleColor(primary), 'hover:text-white')}>
+                  {getRoleLabel(primary)}
+                </Badge>
+              );
+            })()}
             <div className="text-sm text-muted-foreground space-y-1 my-4">
               {user.email && (
                 <div className="flex items-center justify-center gap-2">
