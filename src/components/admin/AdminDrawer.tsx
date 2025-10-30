@@ -17,6 +17,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import CategoryIcon from '@mui/icons-material/Category';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -31,9 +32,10 @@ interface AdminDrawerProps {
   container?: () => Window;
 }
 
-const navItems = [
+export const navItems = [
   { title: 'Dashboard', href: '/admin', icon: <DashboardIcon /> },
   { title: 'Users', href: '/admin/users', icon: <PeopleIcon /> },
+  { title: 'Categories', href: '/admin/categories', icon: <CategoryIcon /> },
   { title: 'Products', href: '/admin/products', icon: <InventoryIcon /> },
   { title: 'Orders', href: '/admin/orders', icon: <ShoppingCartIcon /> },
   { title: 'Settings', href: '/admin/settings', icon: <SettingsIcon /> },
@@ -46,12 +48,18 @@ export default function AdminDrawer({ mobileOpen, handleDrawerToggle, container 
 
   const ACCENT = '#2C2A4A';
 
+  // compute the active nav item using the longest matching href to avoid the
+  // generic '/admin' Dashboard matching everything else
+  const matching = navItems.filter((item) => pathname === item.href || pathname.startsWith(item.href + '/'));
+  matching.sort((a, b) => b.href.length - a.href.length);
+  const active = matching[0] ?? null;
+
   const drawer = (
     <div>
       {/* dense toolbar for compact header */}
       <Toolbar variant="dense" sx={{ px: 1.5 }}>
         <Typography variant="subtitle1" noWrap component="div" sx={{ color: ACCENT, fontWeight: 600 }}>
-          Admin
+          {active?.title ?? 'Admin'}
         </Typography>
       </Toolbar>
       <Divider />
@@ -61,7 +69,8 @@ export default function AdminDrawer({ mobileOpen, handleDrawerToggle, container 
             <ListItemButton
               component={Link}
               href={item.href}
-              selected={pathname === item.href || pathname.startsWith(item.href + '/')}
+              // mark selected only when this item is the best match
+              selected={item.href === active?.href}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(44,42,74,0.08)',

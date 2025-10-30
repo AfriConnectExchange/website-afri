@@ -1,8 +1,6 @@
 export default function AdminPage() {
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold">Admin</h1>
-      <p className="text-sm text-muted-foreground mt-2">This admin area is coming soon.</p>
-    </div>
-  );
+  // Intentionally minimal: the admin root acts as an auth gate. Layout handles
+  // redirect to login/session checks. Keep the page blank to avoid leaking
+  // main-site UI or content. (You can add widgets here later.)
+  return <div aria-hidden="true" />;
 }
