@@ -5,6 +5,7 @@ import React, { useState, useRef, ChangeEvent, KeyboardEvent, useEffect } from '
 import { AnimatedButton } from '../ui/animated-button';
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import RedirectingOverlay from '@/components/ui/RedirectingOverlay';
 interface Props {
   phone: string;
   // Use a loose type here during migration; we'll normalize to AppUser once OTP
@@ -18,6 +19,7 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { toast } = useToast();
   const [resendCooldown, setResendCooldown] = useState(30);
 
@@ -62,7 +64,15 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
         throw new Error('Verification session expired. Please try again.');
       }
       const userCredential = await confirmationResult.confirm(otpValue);
-      onAuthSuccess(userCredential.user);
+      // Show redirecting overlay and wait for the auth context to finish
+      // session handling/navigation so the UI remains disabled until redirect.
+      setIsRedirecting(true);
+      try {
+        await onAuthSuccess(userCredential.user);
+      } finally {
+        // If navigation didn't happen for some reason, clear redirecting state
+        setIsRedirecting(false);
+      }
     } catch (error: any) {
        toast({ variant: 'destructive', title: 'Verification Failed', description: error.message });
        setIsLoading(false);
@@ -86,6 +96,7 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
   return (
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden w-full max-w-md">
         <div className="p-8 sm:p-10 text-center relative">
+         {isRedirecting && <RedirectingOverlay />}
          <AnimatedButton
             onClick={onBack}
             variant="ghost"

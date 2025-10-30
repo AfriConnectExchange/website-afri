@@ -11,12 +11,14 @@ import { PageLoader } from '@/components/ui/loader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, AlertTriangle } from 'lucide-react';
+import RedirectingOverlay from '@/components/ui/RedirectingOverlay';
 
 function VerifyEmailContent() {
     const [email, setEmail] = useState('');
     const [isVerifying, setIsVerifying] = useState(true);
     const [verificationError, setVerificationError] = useState('');
     const [verificationSuccess, setVerificationSuccess] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -65,6 +67,17 @@ function VerifyEmailContent() {
     }
     
     if(verificationSuccess) {
+        // After verification, show success then redirect to sign-in with overlay
+        // so the user sees confirmation and an explicit redirecting UI.
+        if (!isRedirecting) {
+            // Start redirect after a tiny delay so the snackbar is noticeable
+            setTimeout(() => {
+                setIsRedirecting(true);
+                // Navigate after a short pause to let the snackbar render
+                setTimeout(() => router.push('/auth/signin'), 350);
+            }, 250);
+        }
+
         return (
             <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
                  <Card className="w-full max-w-md text-center">
@@ -81,8 +94,9 @@ function VerifyEmailContent() {
                         </Button>
                     </CardContent>
                 </Card>
+                {isRedirecting && <RedirectingOverlay />}
             </div>
-        )
+        );
     }
     
     if (verificationError) {

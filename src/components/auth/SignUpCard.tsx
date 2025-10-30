@@ -15,6 +15,7 @@ import PhoneInput from 'react-phone-number-input';
 import { Checkbox } from '../ui/checkbox';
 import { PasswordStrength } from './PasswordStrength';
 import { useAuth } from '@/context/auth-context';
+import RedirectingOverlay from '@/components/ui/RedirectingOverlay';
 import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import { RecaptchaVerifier } from 'firebase/auth';
@@ -32,6 +33,7 @@ export default function SignUpCard({}: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -52,14 +54,17 @@ export default function SignUpCard({}: Props) {
     }, []);
 
   const onSocialLogin = async (provider: 'google' | 'facebook') => {
-    setSocialLoading(provider);
-    try {
-        await handleSocialLogin(provider);
-    } catch (error) {
-        // error is handled in context
-    } finally {
-        setSocialLoading(null);
-    }
+  setSocialLoading(provider);
+  setIsRedirecting(true);
+  try {
+    await handleSocialLogin(provider);
+  } catch (error) {
+    // error is handled in context
+  } finally {
+    // If navigation didn't occur for some reason, stop showing overlay.
+    setSocialLoading(null);
+    setIsRedirecting(false);
+  }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -88,21 +93,26 @@ export default function SignUpCard({}: Props) {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }).catch(err => console.error('Failed to trigger post-signup actions:', err));
 
-                showSnackbar({ title: 'Account created!', description: result.message }, 'success');
+        showSnackbar({ title: 'Account created!', description: result.message }, 'success');
                 try { 
                     localStorage.setItem('signup_email', formData.email);
                 } catch {}
 
-                router.push('/auth/verify-email');
+        // Show redirecting overlay while the app navigates and the session is finalised
+        setIsRedirecting(true);
+        router.push('/auth/verify-email');
             } else {
                 showSnackbar({ title: 'Sign-up failed', description: result.message }, 'error');
             }
-        } else {
-            // Securely store the display name before starting phone auth
-            localStorage.setItem('phone_signup_displayName', formData.name);
-            await signUpWithPhone(formData.phone);
-            // The auth context will now trigger the OTP flow by navigating
-        }
+    } else {
+      // Phone signup: store display name so it can be applied after OTP verification
+      try {
+        localStorage.setItem('phone_signup_displayName', formData.name);
+      } catch (e) {
+        // non-fatal; proceed without storing display name
+      }
+      await signUpWithPhone(formData.phone);
+    }
     } catch (error: any) {
         showSnackbar({description: `Sign-up Failed: ${error.message}`}, 'error');
     } finally {
@@ -112,6 +122,7 @@ export default function SignUpCard({}: Props) {
   
   return (
     <>
+      {isRedirecting && <RedirectingOverlay />}
         <div id="recaptcha-container" />
         <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
@@ -181,8 +192,9 @@ export default function SignUpCard({}: Props) {
               </TabsContent>
            </Tabs>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+            { (signupMethod === 'email' || signupMethod === 'phone') && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -193,11 +205,12 @@ export default function SignUpCard({}: Props) {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    required
+                    required={signupMethod === 'phone' || signupMethod === 'email'}
                   />
+                </div>
               </div>
-            </div>
-            
+            )}
+
             {signupMethod === 'email' && (
               <>
                 <div className="space-y-2">

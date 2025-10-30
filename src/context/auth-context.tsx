@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         handleUserSession(fbUser);
     });
     return () => unsubscribe();
-  }, [handleUserSession]);
+  }, [handleUserSession, showSnackbar]);
 
   // Ensure a valid RecaptchaVerifier exists and the container is present in the DOM.
   // This will create a hidden container if needed and (re)initialize the verifier so
@@ -444,10 +444,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleOtpSuccess = useCallback(async (fbUser: FirebaseUser) => {
     const displayName = localStorage.getItem('phone_signup_displayName');
     const extraData = displayName ? { displayName } : {};
-    
+
+    // Show success feedback immediately so the user knows verification succeeded
+    try {
+      showSnackbar({ title: 'Phone verified', description: 'Your phone number was verified. Redirecting...' }, 'success');
+    } catch (e) {
+      // non-fatal if snackbar fails
+    }
+
+    // Continue with session handling (this will navigate to onboarding or home)
     await handleUserSession(fbUser, extraData);
 
-    localStorage.removeItem('phone_signup_displayName');
+    // Clean up stored display name after it's been applied
+    try { localStorage.removeItem('phone_signup_displayName'); } catch (e) {}
   }, [handleUserSession]);
 
   const logout = useCallback(async () => {

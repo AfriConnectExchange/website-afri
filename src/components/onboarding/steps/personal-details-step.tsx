@@ -14,6 +14,9 @@ import PhoneInput from 'react-phone-number-input'
 import { OnboardingData } from '../onboarding-flow';
 import AddressInput from '../address-input';
 import { useAuth } from '@/context/auth-context';
+import { fetchWithAuth } from '@/lib/api';
+import { useGlobal } from '@/lib/context/GlobalContext';
+import { useState } from 'react';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Please enter your full name.'),
@@ -37,6 +40,8 @@ interface PersonalDetailsStepProps {
 
 export function PersonalDetailsStep({ data, onDataChange, onNext, onBack }: PersonalDetailsStepProps) {
   const { user } = useAuth();
+  const { showSnackbar } = useGlobal();
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   
   const form = useForm<PersonalDetailsValues>({
     resolver: zodResolver(formSchema),
@@ -51,7 +56,63 @@ export function PersonalDetailsStep({ data, onDataChange, onNext, onBack }: Pers
     },
   });
   
-  const onSubmit = (values: PersonalDetailsValues) => {
+  const onSubmit = async (values: PersonalDetailsValues) => {
+    // If the user provided an email (and they don't already have one), validate
+    // that the email isn't already used by another account before proceeding.
+    if (values.email && !user?.email) {
+      setIsCheckingEmail(true);
+      try {
+        const resp = await fetchWithAuth('/api/profile/check-email-exists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: values.email })
+        });
+        const json = await resp.json();
+        if (json?.exists) {
+          // Email belongs to another account — show form error and snackbar
+          form.setError('email', { type: 'manual', message: 'This email is already in use. Please use a different email or sign in.' });
+          showSnackbar({ title: 'Email already in use', description: 'The email you entered is already registered. Use another email or sign in.' }, 'error');
+          setIsCheckingEmail(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error('Email uniqueness check failed:', err);
+        showSnackbar({ title: 'Email check failed', description: 'Could not verify the email. Please try again.' }, 'error');
+        setIsCheckingEmail(false);
+        return;
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    }
+
+    // If the user provided a phone (and they don't already have one), validate
+    // that the phone isn't already used by another account before proceeding.
+    if (values.phone && !user?.phone) {
+      setIsCheckingEmail(true);
+      try {
+        const resp = await fetchWithAuth('/api/profile/check-phone-exists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: values.phone })
+        });
+        const json = await resp.json();
+        if (json?.exists) {
+          // Phone belongs to another account — show form error and snackbar
+          form.setError('phone', { type: 'manual', message: 'This phone number is already in use. Please use a different number or sign in.' });
+          showSnackbar({ title: 'Phone already in use', description: 'The phone number you entered is already registered. Use another number or sign in.' }, 'error');
+          setIsCheckingEmail(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error('Phone uniqueness check failed:', err);
+        showSnackbar({ title: 'Phone check failed', description: 'Could not verify the phone number. Please try again.' }, 'error');
+        setIsCheckingEmail(false);
+        return;
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    }
+
     onDataChange({ ...values, fullName: values.fullName });
     onNext();
   }
@@ -178,7 +239,9 @@ export function PersonalDetailsStep({ data, onDataChange, onNext, onBack }: Pers
               {onBack && (
                 <Button variant="outline" onClick={onBack}>Back</Button>
               )}
-              <Button type="submit" className="ml-auto">Next</Button>
+              <Button type="submit" className="ml-auto" disabled={isCheckingEmail}>
+                {isCheckingEmail ? 'Checking…' : 'Next'}
+              </Button>
             </div>
           </CardFooter>
         </form>

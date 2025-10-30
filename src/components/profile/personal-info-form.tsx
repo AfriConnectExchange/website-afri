@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { fetchWithAuth } from '@/lib/api';
 import { Textarea } from '../ui/textarea';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
@@ -35,6 +36,7 @@ interface PersonalInfoFormProps {
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
   const { user, profile, updateUser, isLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   const form = useForm<PersonalInfoFormValues>({
     resolver: zodResolver(formSchema),
@@ -61,14 +63,42 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
         return;
     }
 
+    // If phone changed and user currently doesn't have that phone (or it's different),
+    // check server-side if the phone is already associated with another account.
     try {
-        await updateUser({
-            phone: values.phone,
+      if (values.phone && values.phone !== (profile?.phone || '')) {
+        setIsChecking(true);
+        const resp = await fetchWithAuth('/api/profile/check-phone-exists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: values.phone }),
         });
-        onFeedback('success', 'Contact info updated successfully!');
-    } catch(error: any) {
-        onFeedback('error', 'Failed to update profile: ' + error.message);
+        const json = await resp.json();
+        if (json?.exists) {
+          form.setError('phone', { type: 'manual', message: 'This phone number is already in use. Please use a different number or sign in.' });
+          onFeedback('error', 'The phone number you entered is already registered. Use another number or sign in.');
+          setIsChecking(false);
+          setIsSaving(false);
+          return;
+        }
+        setIsChecking(false);
+      }
+    } catch (err: any) {
+      console.error('Phone uniqueness check failed:', err);
+      onFeedback('error', 'Could not verify the phone number. Please try again.');
+      setIsChecking(false);
+      setIsSaving(false);
+      return;
     }
+
+  try {
+    await updateUser({
+      phone: values.phone,
+    });
+    onFeedback('success', 'Contact info updated successfully!');
+  } catch(error: any) {
+    onFeedback('error', 'Failed to update profile: ' + error.message);
+  }
     setIsSaving(false);
   };
   
@@ -133,8 +163,8 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
              </div>
           </CardContent>
           <CardFooter>
-             <Button type="submit" disabled={isSaving || !form.formState.isDirty}>
-                {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+         <Button type="submit" disabled={isSaving || !form.formState.isDirty || isChecking}>
+           {(isSaving || isChecking) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
           </CardFooter>
