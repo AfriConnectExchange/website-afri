@@ -211,6 +211,12 @@ export async function POST(req: Request) {
         } catch (sendErr) {
           console.error('Failed to send welcome email:', sendErr);
         }
+        // mark welcome email as sent to avoid duplicate sends from other flows
+        try {
+          await userDocRef.set({ welcome_email_sent: true }, { merge: true });
+        } catch (weErr) {
+          console.warn('Failed to mark welcome_email_sent after sending:', weErr);
+        }
       }
     } catch (e) {
       console.error('Email handling errors during onboarding completion:', e);

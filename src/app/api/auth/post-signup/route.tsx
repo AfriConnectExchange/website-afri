@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 import { getAuth } from 'firebase-admin/auth';
-import { sendEmail } from '@/lib/email-service';
 import { logActivity } from '@/lib/activity-logger';
-import { render } from '@react-email/render';
-import { WelcomeEmail } from '@/components/emails/welcome-template';
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get('Authorization');
@@ -19,19 +16,9 @@ export async function POST(req: Request) {
     const userEmail = decodedToken.email;
     const userName = decodedToken.name || 'there';
 
-    if (!userId || !userEmail) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
     }
-    
-    const emailHtml = render(<WelcomeEmail userName={userName} />);
-
-    // 1. Send Welcome Email
-    await sendEmail({
-        to: userEmail,
-        subject: 'Welcome to AfriConnect Exchange!',
-        text: `Hi ${userName},\n\nWelcome to AfriConnect Exchange! We're excited to have you. Please verify your email to get started.\n\nThe AfriConnect Team`,
-        html: emailHtml,
-    }, userId);
 
     // 2. Create Welcome Notification
     await admin.firestore().collection('notifications').add({
