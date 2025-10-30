@@ -32,9 +32,22 @@ export default function HeaderNotifications() {
     if (!user) return;
     try {
       const coll = collection(db, 'notifications');
-      const q = query(coll, where('recipientId', '==', user.id), orderBy('created_at', 'desc'), limit(5));
+      // The server APIs and writers use `user_id` as the recipient field. Use
+      // the same field name here so the header dropdown and notifications
+      // page return the same results.
+      const q = query(coll, where('user_id', '==', user.id), orderBy('created_at', 'desc'), limit(5));
       const unsub = onSnapshot(q, (snap) => {
-        const data: NotificationItem[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+        const data: NotificationItem[] = snap.docs.map(d => {
+          const raw = d.data() as any;
+          return {
+            id: d.id,
+            title: raw.title || raw.message || 'Notification',
+            body: raw.body || raw.message || null,
+            link: raw.link || raw.url || null,
+            created_at: raw.created_at || raw.timestamp || null,
+            read: !!raw.read,
+          };
+        });
         setItems(data);
       });
       return () => unsub();
@@ -60,17 +73,19 @@ export default function HeaderNotifications() {
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-80" align="end" forceMount>
+    {/* Increased width and allow scrolling for long notification lists/content so
+      the header dropdown displays nicely in previews. */}
+    <DropdownMenuContent className="w-96 max-h-80 overflow-y-auto" align="end" forceMount>
         <DropdownMenuLabel className="font-medium">Notifications</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.length === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">No recent notifications</div>
         ) : (
           items.map(item => (
-            <Link key={item.id} href={item.link || '/notifications'}>
-              <DropdownMenuItem className="flex flex-col text-sm">
-                <span className="font-medium truncate">{item.title}</span>
-                {item.body && <span className="text-xs text-muted-foreground truncate">{item.body}</span>}
+            <Link key={item.id} href={item.link || '/notifications'} className="block">
+              <DropdownMenuItem className="flex flex-col text-sm py-2 px-3 gap-1">
+                <span className="font-medium leading-snug break-words">{item.title}</span>
+                {item.body && <span className="text-xs text-muted-foreground break-words">{item.body}</span>}
               </DropdownMenuItem>
             </Link>
           ))
