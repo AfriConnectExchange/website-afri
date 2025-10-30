@@ -4,7 +4,9 @@ import { usePathname } from 'next/navigation';
 
 const hideFooterRoutes = [
   '/auth', '/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password', '/auth/verify-email',
-  '/onboarding', '/kyc', '/support', '/help', '/error', '/not-found'
+  '/onboarding', '/kyc', '/support', '/help', '/error', '/not-found',
+  // Admin area should not render the public footer
+  '/admin'
 ];
 
 export default function ConditionalFooter() {
