@@ -1,6 +1,6 @@
 
 'use client';
-import { Star, Heart, ShoppingCart, Gift } from 'lucide-react';
+import { Star, Heart, ShoppingCart, Gift, MapPin } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -40,6 +40,7 @@ export function ProductCard({
   };
   
   const imageSrc = product.images && product.images.length > 0 ? product.images[0] : '';
+  const locationText = (product as any).location_text || (product as any).sellerDetails?.location || '';
 
 
   return (
@@ -89,12 +90,21 @@ export function ProductCard({
               {product.name}
             </h3>
 
-            <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
-              <span className="text-[11px] sm:text-xs">{product.seller}</span>
-              {product.sellerVerified && (
-                <span className="flex items-center" title="Verified seller" aria-label="Verified seller">
-                  <VerifiedIcon className="text-primary w-3.5 h-3.5" />
-                </span>
+            <div className="mb-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] sm:text-xs">{product.seller}</span>
+                {product.sellerVerified && (
+                  <span className="flex items-center" title="Verified seller" aria-label="Verified seller">
+                    <VerifiedIcon className="text-primary w-3.5 h-3.5" />
+                  </span>
+                )}
+              </div>
+
+              {locationText && (
+                <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground mt-1">
+                  <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="truncate max-w-[12rem]">{locationText}</span>
+                </div>
               )}
             </div>
 
