@@ -9,7 +9,6 @@ import { Card, CardContent } from '../ui/card';
 import Image from 'next/image';
 import type { Product } from '@/app/marketplace/page';
 import { useRouter } from 'next/navigation';
-import allProducts from '@/data/mock-products.json';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 
 interface HeaderSearchBarProps {
@@ -42,24 +41,23 @@ export function HeaderSearchBar({ onSearchPerformed }: HeaderSearchBarProps) {
       return;
     }
 
-    const fetchSuggestions = () => {
+    const fetchSuggestions = async () => {
       setIsLoading(true);
       
-      const searchTerms = query.toLowerCase().split(' ').filter(term => term);
-      const filteredProducts = allProducts.filter(p => {
-        const productText = [
-          p.title,
-          p.description,
-          p.seller,
-          p.category,
-          ...(p.tags || [])
-        ].join(' ').toLowerCase();
-        
-        return searchTerms.some(term => productText.includes(term));
-      }).slice(0, 5); // Limit to 5 suggestions
-
-      setSuggestions(filteredProducts as Product[]);
-      setIsLoading(false);
+      try {
+        const response = await fetch(`/api/marketplace/products?q=${encodeURIComponent(query)}&limit=5`);
+        if (response.ok) {
+          const data = await response.json();
+          setSuggestions(data.products || []);
+        } else {
+          setSuggestions([]);
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     const debounceTimeout = setTimeout(fetchSuggestions, 300);

@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import mockProducts from '@/data/mock-products.json';
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
@@ -30,16 +29,16 @@ export function ProposeBarterPage() {
             }
             setIsLoading(true);
             try {
-                // Use mock data directly
-                // mockProducts comes from JSON — its shape may differ slightly from the Product type
-                const product = mockProducts.find((p: any) => p.id === productId);
-                if (!product) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Product not found.' });
-                } else {
-                    setTargetProduct(product as Product | null);
+                // Fetch from real API
+                const response = await fetch(`/api/marketplace/products/${productId}`);
+                if (!response.ok) {
+                    throw new Error('Product not found');
                 }
+                const data = await response.json();
+                setTargetProduct(data.product);
             } catch (error) {
                 toast({ variant: 'destructive', title: 'Error', description: 'Failed to load product.' });
+                setTargetProduct(null);
             }
             setIsLoading(false);
         };
@@ -54,12 +53,36 @@ export function ProposeBarterPage() {
         }
         
         try {
-            // MOCK API CALL
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Call real barter API
+            const response = await fetch('/api/barter/propose', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${await user.getIdToken()}`,
+                },
+                body: JSON.stringify({
+                    recipient_id: targetProduct.seller_id,
+                    target_product_id: targetProduct.id,
+                    offer_type: proposalData.offerType,
+                    item_name: proposalData.itemName,
+                    description: proposalData.description,
+                    estimated_value: proposalData.estimatedValue,
+                    condition: proposalData.condition,
+                    category: proposalData.category,
+                    exchange_location: proposalData.exchangePreference,
+                    expiry: 7, // 7 days
+                }),
+            });
 
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to send proposal');
+            }
+
+            const data = await response.json();
             toast({
                 title: 'Proposal Sent!',
-                description: 'Your barter proposal has been sent to the seller.',
+                description: `Your barter proposal has been sent to the seller. Expires: ${new Date(data.expires_at).toLocaleDateString()}`,
             });
         } catch(error: any) {
             toast({

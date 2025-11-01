@@ -12,7 +12,6 @@ import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
 import { Review } from './reviews-section';
 import { Skeleton } from '../ui/skeleton';
-import mockProducts from '@/data/mock-products.json';
 
 interface ProductPageProps {
   productId: string;
@@ -64,23 +63,23 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
     if (!productId) return;
     setLoading(true);
     try {
-      // Find product in mock data
-      const productData = mockProducts.find((p) => p.id === productId);
-      if (!productData) {
-        toast({
-          variant: 'destructive',
-          title: 'Error fetching product',
-          description: 'This product could not be found.',
-        });
-        setProduct(null);
-      } else {
-        setProduct(productData as Product);
-        // Optionally, fetch reviews from API if needed
-        // const res = await fetch(`/api/reviews/product?productId=${productId}`);
-        // if(res.ok) {
-        //     const reviewData = await res.json();
-        //     setReviews(reviewData);
-        // }
+      // Fetch product from real API
+      const productRes = await fetch(`/api/marketplace/products/${productId}`);
+      if (!productRes.ok) {
+        throw new Error('Product not found');
+      }
+      const productData = await productRes.json();
+      setProduct(productData.product);
+      
+      // Fetch reviews from API
+      try {
+        const reviewsRes = await fetch(`/api/reviews/product?productId=${productId}`);
+        if (reviewsRes.ok) {
+          const reviewData = await reviewsRes.json();
+          setReviews(reviewData.reviews || []);
+        }
+      } catch (reviewErr) {
+        console.error('Error fetching reviews:', reviewErr);
       }
     } catch (error: any) {
       toast({
@@ -88,6 +87,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
         title: 'Error',
         description: error.message || 'Failed to fetch product details.',
       });
+      setProduct(null);
     }
     setLoading(false);
   };

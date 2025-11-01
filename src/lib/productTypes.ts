@@ -36,11 +36,20 @@ export interface ProductImage {
 }
 
 export interface ProductLocation {
+  address?: string;            // Full street address
   city?: string;
-  region?: string; // State/Province
+  region?: string;             // State/Province
   country: string;
   postal_code?: string;
-  // Future: lat/long when user profile has it
+  // Coordinates for distance calculation
+  coordinates?: {
+    lat: number;               // Latitude (-90 to 90)
+    lng: number;               // Longitude (-180 to 180)
+  };
+  // Delivery options
+  delivery_radius_km?: number; // Max delivery distance (0-50km)
+  pickup_available?: boolean;  // Allow local pickup
+  // Legacy support
   latitude?: number;
   longitude?: number;
 }

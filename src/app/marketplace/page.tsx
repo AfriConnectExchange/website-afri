@@ -25,8 +25,6 @@ import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
 import type { Category } from '@/lib/types';
-import allProducts from '@/data/mock-products.json';
-import allCategories from '@/data/mock-categories.json';
 
 export interface Product {
   id: string;
@@ -123,81 +121,92 @@ export default function MarketplacePage() {
     return result;
   }, []);
 
-  const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string, categoryList: Category[]) => {
+  const fetchProducts = useCallback(async (currentFilters: FilterState, currentSortBy: string, categoryList: Category[]) => {
     setLoading(true);
     
-    let filteredProducts: Product[] = [...allProducts] as unknown as Product[];
-
-    // Smart search query
-    if (currentFilters.searchQuery.length >= 3) {
-      const searchTerms = currentFilters.searchQuery.toLowerCase().split(' ').filter(term => term);
-      filteredProducts = filteredProducts.filter(p => {
-        const productText = [
-          p.title,
-          p.description,
-          p.seller,
-          p.category,
-          ...(p.tags || [])
-        ].join(' ').toLowerCase();
-
-        return searchTerms.some(term => productText.includes(term));
-      });
-    }
-
-    // Category
-    if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-      const selectedCategoryId = currentFilters.selectedCategories[0];
-      const selectedCategory = categoryList.find((c: Category) => c.id === selectedCategoryId);
-      if (selectedCategory) {
-        filteredProducts = filteredProducts.filter(p => p.category === selectedCategory.name);
+    try {
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      if (currentFilters.searchQuery.length >= 3) {
+        params.append('q', currentFilters.searchQuery);
       }
+      
+      if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
+        currentFilters.selectedCategories.forEach(cat => params.append('category', cat));
+      }
+      
+      if (currentFilters.priceRange.min !== null) {
+        params.append('minPrice', currentFilters.priceRange.min.toString());
+      }
+      
+      if (currentFilters.priceRange.max !== null) {
+        params.append('maxPrice', currentFilters.priceRange.max.toString());
+      }
+      
+      if (currentFilters.verifiedSellersOnly) {
+        params.append('verifiedOnly', 'true');
+      }
+      
+      if (currentFilters.featuredOnly) {
+        params.append('featuredOnly', 'true');
+      }
+      
+      if (currentFilters.onSaleOnly) {
+        params.append('onSaleOnly', 'true');
+      }
+      
+      if (currentFilters.freeShippingOnly) {
+        params.append('freeShippingOnly', 'true');
+      }
+      
+      if (currentFilters.freeListingsOnly) {
+        params.append('freeListingsOnly', 'true');
+      }
+      
+      params.append('sortBy', currentSortBy);
+      params.append('limit', '50');
+      
+      const response = await fetch(`/api/marketplace/products?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      
+      const data = await response.json();
+      
+      setProducts(data.products || []);
+      setTotalProducts(data.total || 0);
+      
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load products. Please try again.',
+      });
+      setProducts([]);
+      setTotalProducts(0);
+    } finally {
+      setLoading(false);
     }
-
-    // Price range
-    if (currentFilters.priceRange.min !== null) {
-      filteredProducts = filteredProducts.filter(p => p.price >= currentFilters.priceRange.min!);
-    }
-    if (currentFilters.priceRange.max !== null) {
-      filteredProducts = filteredProducts.filter(p => p.price <= currentFilters.priceRange.max!);
-    }
-    
-     // Free listings
-    if (currentFilters.freeListingsOnly) {
-      filteredProducts = filteredProducts.filter(p => p.price === 0);
-    }
-    
-    // Verified sellers
-    if (currentFilters.verifiedSellersOnly) {
-        filteredProducts = filteredProducts.filter(p => p.sellerVerified === true);
-    }
-
-    // Sorting
-    switch (currentSortBy) {
-      case 'price_asc':
-        filteredProducts.sort((a, b) => a.price - b.price);
-        break;
-      case 'price_desc':
-        filteredProducts.sort((a, b) => b.price - a.price);
-        break;
-      case 'average_rating_desc':
-        filteredProducts.sort((a, b) => b.average_rating - a.average_rating);
-        break;
-      case 'created_at_desc':
-      default:
-        filteredProducts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
-    }
-    
-    setProducts(filteredProducts);
-    setTotalProducts(filteredProducts.length);
-    setLoading(false);
-
-  }, []);
+  }, [toast]);
   
-  // Initialize categories once
+  // Initialize categories from API
   useEffect(() => {
-    const categoryList = flattenCategories(allCategories);
-    setCategories(categoryList);
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories/list?includeCounts=true');
+        if (response.ok) {
+          const data = await response.json();
+          const categoryList = flattenCategories(data.categories || []);
+          setCategories(categoryList);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
   }, [flattenCategories]);
   
   useEffect(() => {
