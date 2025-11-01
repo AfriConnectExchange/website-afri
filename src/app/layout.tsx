@@ -5,8 +5,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { CartProvider } from '@/context/cart-context';
 import ConditionalFooter from '@/components/layout/ConditionalFooter';
+import { CookieConsentBanner } from '@/components/layout/CookieConsentBanner';
 
 import { AuthProvider } from '@/context/auth-context';
+import { AdminAuthProvider } from '@/context/admin-auth-context';
 
 import { GlobalProvider } from '@/lib/context/GlobalContext';
 
@@ -46,13 +48,16 @@ export default function RootLayout({
       >
         <GlobalProvider>
         <AuthProvider>
+          <AdminAuthProvider>
           <CartProvider>
             <div className="flex-1">
               {children}
             </div>
             <ConditionalFooter />
+            <CookieConsentBanner />
             <Toaster />
           </CartProvider>
+          </AdminAuthProvider>
         </AuthProvider>
         </GlobalProvider>
       </body>

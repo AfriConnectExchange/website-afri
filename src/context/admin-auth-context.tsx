@@ -4,116 +4,141 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { auth as clientAuth } from '@/lib/firebaseClient';
+import { signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 
-type AdminUser = { username: string } | null;
+type AdminUser = { 
+  uid: string;
+  email: string;
+  roles: string[];
+} | null;
 
 type AdminAuthContextValue = {
-  user: AdminUser;
-  loading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  createAccount: (username: string, password: string) => Promise<boolean>;
+  adminUser: AdminUser;
+  isAdminLoading: boolean;
+  signInAdmin: (email: string, password: string) => Promise<void>;
+  signOutAdmin: () => Promise<void>;
+  getAdminToken: () => Promise<string | null>;
 };
 
 const AdminAuthContext = createContext<AdminAuthContextValue | undefined>(undefined);
 
-const ADMIN_SESSION_KEY = "__afri_admin_session";
-
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AdminUser>(null);
-  const [loading, setLoading] = useState(true);
+  const [adminUser, setAdminUser] = useState<AdminUser>(null);
+  const [isAdminLoading, setIsAdminLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    // hydrate session from sessionStorage
-    try {
-      const s = sessionStorage.getItem(ADMIN_SESSION_KEY);
-      if (s) {
-        const parsed = JSON.parse(s);
-        if (parsed?.username) setUser({ username: parsed.username });
+    // Listen to Firebase auth state changes
+    const unsubscribe = clientAuth.onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        // Check if user has admin role
+        const token = await firebaseUser.getIdToken();
+        const res = await fetch('/api/admin/verify', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        
+        const data = await res.json();
+        
+        if (data.success && data.is_admin) {
+          setAdminUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email!,
+            roles: data.roles || [],
+          });
+        } else {
+          setAdminUser(null);
+        }
+      } else {
+        setAdminUser(null);
       }
-    } catch (e) {
-      // ignore
-    }
-    setLoading(false);
+      setIsAdminLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
-  const createAccount = useCallback(async (username: string, password: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin-auth/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      const json = await res.json();
-      if (json?.ok) {
-        toast({ title: 'Admin account created', description: `Account ${username} created.` });
-        return true;
-      }
-      toast({ title: 'Failed', description: json?.error || 'Could not create account.' });
-      return false;
-    } catch (e: any) {
-      toast({ title: 'Failed', description: e?.message || 'Could not create account.' });
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
 
-  const login = useCallback(async (username: string, password: string) => {
-    setLoading(true);
+  const signInAdmin = useCallback(async (email: string, password: string) => {
+    setIsAdminLoading(true);
     try {
-      const res = await fetch('/api/admin-auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+      // Sign in with Firebase
+      const userCredential = await signInWithEmailAndPassword(clientAuth, email, password);
+      const token = await userCredential.user.getIdToken();
+      
+      // Verify admin role
+      const res = await fetch('/api/admin/verify', {
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-      const json = await res.json();
-      if (json?.ok && json.token) {
-        const session = { username, token: json.token };
-        sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-        setUser({ username });
-        toast({ title: 'Signed in', description: `Welcome back, ${username}` });
-        return true;
+      
+      const data = await res.json();
+      
+      if (!data.success || !data.is_admin) {
+        // Not an admin, sign out
+        await signOut(clientAuth);
+        throw new Error('User does not have admin privileges');
       }
-      toast({ title: 'Invalid credentials', description: json?.error || 'Username or password incorrect.' });
-      return false;
-    } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'Login failed.' });
-      return false;
+      
+      toast({
+        title: "Login Successful",
+        description: "Welcome to the Admin Portal",
+      });
+      
+      router.push('/admin/dashboard');
+    } catch (error: any) {
+      console.error('Admin sign in error:', error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid credentials or insufficient permissions",
+        variant: "destructive",
+      });
+      throw error;
     } finally {
-      setLoading(false);
+      setIsAdminLoading(false);
     }
-  }, [toast]);
+  }, [router, toast]);
 
-  const logout = useCallback(async () => {
+  const signOutAdmin = useCallback(async () => {
     try {
-      const s = sessionStorage.getItem(ADMIN_SESSION_KEY);
-      if (s) {
-        const parsed = JSON.parse(s);
-        const token = parsed?.token;
-        if (token) await fetch('/api/admin-auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-      }
-    } catch (e) {
-      // ignore
+      await signOut(clientAuth);
+      setAdminUser(null);
+      router.push('/admin/login');
+      toast({
+        title: "Signed Out",
+        description: "You have been logged out of the admin portal",
+      });
+    } catch (error) {
+      console.error('Admin sign out error:', error);
     }
-    sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    setUser(null);
-    try { router.push('/admin/login'); } catch (e) {}
-  }, [router]);
+  }, [router, toast]);
+
+  const value: AdminAuthContextValue = {
+    adminUser,
+    isAdminLoading,
+    signInAdmin,
+    signOutAdmin,
+    getAdminToken: async () => {
+      try {
+        const user = clientAuth.currentUser;
+        if (!user) return null;
+        const t = await user.getIdToken();
+        return t;
+      } catch (e) {
+        return null;
+      }
+    },
+  };
 
   return (
-    <AdminAuthContext.Provider value={{ user, loading, login, logout, createAccount }}>
+    <AdminAuthContext.Provider value={value}>
       {children}
     </AdminAuthContext.Provider>
   );
 }
 
-export function useAdminAuth() {
-  const ctx = useContext(AdminAuthContext);
-  if (!ctx) throw new Error("useAdminAuth must be used within AdminAuthProvider");
-  return ctx;
+export function useAdminAuth(): AdminAuthContextValue {
+  const context = useContext(AdminAuthContext);
+  if (context === undefined) {
+    throw new Error("useAdminAuth must be used within AdminAuthProvider");
+  }
+  return context;
 }
-
-export default AdminAuthContext;

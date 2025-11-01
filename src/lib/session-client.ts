@@ -1,4 +1,5 @@
 import { auth as clientAuth } from '@/lib/firebaseClient';
+import { signOut } from 'firebase/auth';
 
 const DEVICE_KEY = 'afri_device_id';
 const SESSION_KEY = 'afri_session_id';
@@ -31,10 +32,30 @@ export function getDeviceId() {
 
 async function fetchWithToken(path: string, options: RequestInit = {}) {
   if (!clientAuth.currentUser) throw new Error('Not authenticated');
-  const token = await clientAuth.currentUser.getIdToken(true);
-  const headers: Record<string,string> = { 'Authorization': `Bearer ${token}` };
-  if (options.headers) Object.assign(headers, options.headers as Record<string,string>);
-  return fetch(path, { ...options, headers });
+  try {
+    const token = await clientAuth.currentUser.getIdToken(true);
+    const headers: Record<string,string> = { 'Authorization': `Bearer ${token}` };
+    if (options.headers) Object.assign(headers, options.headers as Record<string,string>);
+    return fetch(path, { ...options, headers });
+  } catch (err: any) {
+    // Handle expired/invalid tokens by signing out and forcing the user to re-authenticate.
+    const code = err?.code || err?.message || '';
+    if (typeof window !== 'undefined' && (code === 'auth/user-token-expired' || code === 'auth/token-expired' || /token-expir/i.test(String(code)))) {
+      try {
+        // Best-effort sign out
+        await signOut(clientAuth as any);
+      } catch (e) {
+        // ignore
+      }
+      try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+      // Redirect the user to the signin page and include a flag so the UI can show an explanatory message
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/signin?session_expired=1';
+      }
+      throw new Error('session_expired');
+    }
+    throw err;
+  }
 }
 
 export async function createSession() {

@@ -46,7 +46,7 @@ const footerLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-secondary/50 border-t">
+    <footer className="border-t" style={{ backgroundColor: 'var(--brand-deep-indigo)', color: 'var(--brand-neutral-white)' }}>
       <div className="container mx-auto px-4 md:px-6 py-8">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -54,11 +54,21 @@ export default function Footer() {
           <div className="sm:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-6">
             {footerLinks.map((section) => (
               <div key={section.title}>
-                <h3 className="font-semibold mb-2 text-foreground text-xs">{section.title}</h3>
+                <h3 className="font-semibold mb-2 text-xs" style={{ fontFamily: 'Montserrat, Arial, sans-serif', color: 'var(--brand-neutral-white)' }}>
+                  {section.title}
+                </h3>
                 <ul className="space-y-2">
                   {section.links.map((link) => (
                     <li key={link.label}>
-                      <Link href={link.href} className="text-[12px] text-muted-foreground hover:text-primary transition-colors">
+                      <Link 
+                        href={link.href} 
+                        className="text-[12px] transition-colors"
+                        style={{ 
+                          color: 'rgba(255, 255, 255, 0.8)',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'}
+                      >
                         {link.label}
                       </Link>
                     </li>
@@ -69,8 +79,10 @@ export default function Footer() {
 
             {/* Download block placed beside Support links as requested */}
             <div>
-              <h3 className="font-semibold mb-2 text-foreground text-xs">Download the Free App</h3>
-                <div className="text-[12px] text-muted-foreground mb-2">Get it on</div>
+              <h3 className="font-semibold mb-2 text-xs" style={{ fontFamily: 'Montserrat, Arial, sans-serif', color: 'var(--brand-neutral-white)' }}>
+                Download the Free App
+              </h3>
+                <div className="text-[12px] mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Get it on</div>
                 <div className="flex gap-3 items-center">
                   <a href="#" aria-label="Get it on Google Play">
                     <img src="/google-play.svg" alt="Google Play" className="h-9 md:h-10 w-auto" />
@@ -100,30 +112,91 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t my-6"></div>
+        <div className="border-t my-6" style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}></div>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[12px]">
         <div className="flex items-center gap-1">
            <Logo withText={false} className="text-foreground" />
-           <span className="font-semibold text-foreground text-xs">AfriConnect Exchange</span>
+           <span className="font-semibold text-xs" style={{ fontFamily: 'Montserrat, Arial, sans-serif', color: 'var(--brand-neutral-white)' }}>
+             AfriConnect Exchange
+           </span>
          </div>
 
-          <div className="text-center text-xs text-muted-foreground order-last md:order-none">
-            <p className="font-semibold text-foreground/90 text-[11px]">A project of McBenLeo CIC (Company Number: SC859990)</p>
-            <a href="mailto:info@africonnect-exchange.org" className="hover:text-primary mt-1 inline-block text-[11px]">info@africonnect-exchange.org</a>
+          <div className="text-center text-xs order-last md:order-none" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+            <p className="font-semibold text-[11px]" style={{ color: 'var(--brand-neutral-white)' }}>
+              A project of McBenLeo CIC (Company Number: SC859990)
+            </p>
+            <a 
+              href="mailto:info@africonnect-exchange.org" 
+              className="mt-1 inline-block text-[11px] transition-colors"
+              style={{ color: 'var(--brand-progress-blue)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--brand-progress-blue)'}
+            >
+              info@africonnect-exchange.org
+            </a>
             <div className="mt-2 space-x-3 text-[11px]">
-                <Link href="/terms-of-service" className="hover:text-primary">Terms</Link>
+                <Link 
+                  href="/terms-of-service" 
+                  className="transition-colors"
+                  style={{ color: 'rgba(255, 255, 255, 0.8)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'}
+                >
+                  Terms
+                </Link>
                 <span>&middot;</span>
-                <Link href="/privacy-policy" className="hover:text-primary">Privacy</Link>
+                <Link 
+                  href="/privacy-policy" 
+                  className="transition-colors"
+                  style={{ color: 'rgba(255, 255, 255, 0.8)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'}
+                >
+                  Privacy
+                </Link>
                 <span>&middot;</span>
-                <Link href="/cookie-policy" className="hover:text-primary">Cookies</Link>
+                <Link 
+                  href="/cookie-policy" 
+                  className="transition-colors"
+                  style={{ color: 'rgba(255, 255, 255, 0.8)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'}
+                >
+                  Cookies
+                </Link>
+                <span>&middot;</span>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      const event = new CustomEvent('openCookieSettings');
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                  className="transition-colors cursor-pointer"
+                  style={{ color: 'rgba(255, 255, 255, 0.8)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)'}
+                >
+                  Cookie Settings
+                </button>
             </div>
-            <p className="mt-2 text-[11px]">&copy; {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.</p>
+            <p className="mt-2 text-[11px]" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+              &copy; {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.
+            </p>
           </div>
           
           <div className="flex items-center space-x-3">
             {socialLinks.map((link) => (
-              <a key={link.name} href={link.href} aria-label={link.name} className="text-muted-foreground hover:text-primary text-xs">
+              <a 
+                key={link.name} 
+                href={link.href} 
+                aria-label={link.name} 
+                className="text-xs transition-colors"
+                style={{ color: 'var(--brand-progress-blue)' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--brand-diaspora-orange)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--brand-progress-blue)'}
+              >
                 {link.icon}
               </a>
             ))}

@@ -1,127 +1,115 @@
 "use client";
 
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
-import Skeleton from '@mui/material/Skeleton';
-import Link from 'next/link';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import IconButton from '@mui/material/IconButton';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import { auth as clientAuth } from '@/lib/firebaseClient';
-import { useAuth } from '@/context/auth-context';
+import { useState, useEffect } from "react";
+import { useAdminAuth } from "@/context/admin-auth-context";
+import { Category } from "@/lib/types";
+import { Loader2, PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CategoryTree } from "@/components/admin/categories/CategoryTree";
+import { CategoryFormModal } from "@/components/admin/categories/CategoryFormModal";
 
-type Category = {
-  id: string;
-  name: string;
-  type: string;
-  parent_id?: string | null;
-  description?: string | null;
-  is_active?: boolean;
-};
+export default function CategoriesPage() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [allCategoriesFlat, setAllCategoriesFlat] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const { getAdminToken } = useAdminAuth();
 
-export default function AdminCategoriesPage() {
-  const [loading, setLoading] = React.useState(true);
-  const [items, setItems] = React.useState<Category[]>([]);
-  const { user } = useAuth();
-
-  const fetchList = React.useCallback(async () => {
-    setLoading(true);
+  const fetchCategories = async () => {
+    setIsLoading(true);
     try {
-      const token = await clientAuth.currentUser?.getIdToken();
-      const res = await fetch('/api/admin/categories', {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      const token = await getAdminToken();
+      const response = await fetch("/api/admin/categories", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const json = await res.json();
-      if (json?.ok) setItems(json.data || []);
-    } catch (err) {
-      console.warn('Failed to fetch categories', err);
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+      setCategories(data.categories);
+
+      // Create a flat list for the parent dropdown
+      const flatten = (cats: Category[]): Category[] => {
+        return cats.reduce<Category[]>((acc, cat) => {
+          acc.push({ ...cat, children: undefined }); // Add parent
+          if (cat.children && cat.children.length > 0) {
+            acc.push(...flatten(cat.children)); // Add children
+          }
+          return acc;
+        }, []);
+      };
+      setAllCategoriesFlat(flatten(data.categories));
+
+    } catch (err: any) {
+      setError(err.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchCategories();
   }, []);
 
-  React.useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+  const handleOpenModal = (category: Category | null = null) => {
+    setEditingCategory(category);
+    setIsModalOpen(true);
+  };
 
-  const onDelete = React.useCallback(async (id: string) => {
-    if (!confirm('Are you sure you want to disable this category?')) return;
-    try {
-      const token = await clientAuth.currentUser?.getIdToken();
-      const res = await fetch(`/api/admin/categories/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: token ? `Bearer ${token}` : '' },
-      });
-      const json = await res.json();
-      if (json?.ok) fetchList();
-      else alert(json?.error || 'Failed');
-    } catch (err) {
-      console.warn('delete failed', err);
-    }
-  }, [fetchList]);
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingCategory(null);
+  };
+
+  const handleSuccess = () => {
+    fetchCategories();
+    handleCloseModal();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-sky-400" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center text-red-400">
+        <p>Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
-    <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">Categories</Typography>
-        <Button component={Link} href="/admin/categories/new" variant="contained" color="primary" size="small">
-          Add category
+    <div className="p-4 md:p-8">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Product Categories</h1>
+          <p className="text-slate-400">Manage your hierarchical product categories.</p>
+        </div>
+        <Button onClick={() => handleOpenModal()} className="bg-sky-500 hover:bg-sky-600">
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Add Category
         </Button>
-      </Stack>
+      </div>
 
-      <Box>
-        {loading ? (
-          <Stack spacing={1}>
-            {[1, 2, 3, 4].map((i) => (
-              <Stack key={i} direction="row" spacing={2} alignItems="center" sx={{ py: 1 }}>
-                <Skeleton variant="rectangular" width={48} height={32} />
-                <Skeleton variant="text" width="40%" />
-                <Skeleton variant="text" width="20%" />
-              </Stack>
-            ))}
-          </Stack>
-        ) : items.length === 0 ? (
-          <Typography variant="body1">No categories yet — this page will list and manage categories.</Typography>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Parent</TableCell>
-                <TableCell>Active</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{c.name}</TableCell>
-                  <TableCell>{c.type}</TableCell>
-                  <TableCell>{c.parent_id ?? '-'}</TableCell>
-                  <TableCell>{c.is_active ? 'Yes' : 'No'}</TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" component={Link} href={`/admin/categories/${c.id}`}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => onDelete(c.id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Box>
-    </Box>
+      <CategoryTree 
+        categories={categories} 
+        onEdit={handleOpenModal}
+        onDeleteSuccess={fetchCategories}
+      />
+
+      {isModalOpen && (
+        <CategoryFormModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onSuccess={handleSuccess}
+          category={editingCategory}
+          allCategories={allCategoriesFlat}
+        />
+      )}
+    </div>
   );
 }

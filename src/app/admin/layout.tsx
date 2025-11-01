@@ -1,69 +1,56 @@
 "use client";
 
-import * as React from 'react';
-import AdminDrawer, { DRAWER_WIDTH, navItems } from '@/components/admin/AdminDrawer';
-import AdminAppBar from '@/components/admin/AdminAppBar';
-import Box from '@mui/material/Box';
-import Toolbar from '@mui/material/Toolbar';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import adminTheme from '@/components/admin/theme';
-import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
-import { AdminAuthProvider } from '@/context/admin-auth-context';
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAdminAuth } from "@/context/admin-auth-context";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { Loader2 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-  const isDesktop = useMediaQuery(adminTheme.breakpoints.up('sm'));
-  const { user, isLoading } = useAuth();
+  const { adminUser, isAdminLoading } = useAdminAuth();
   const router = useRouter();
-  const pathname = usePathname() || '/admin';
+  const pathname = usePathname();
 
-  // Redirect to admin login if user is neither a firebase-admin nor has an admin session
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const adminSessionRaw = sessionStorage.getItem('__afri_admin_session');
-    const hasAdminSession = !!adminSessionRaw;
-
-    if (!isLoading) {
-      const roles = user?.roles || [];
-      const hasFirebaseAdmin = roles.includes('admin') || roles.includes('superadmin');
-
-      if (!hasFirebaseAdmin && !hasAdminSession) {
-        try { router.push('/admin/login'); } catch (e) {}
-      }
+    // Skip auth check on login and create-account pages
+    if (pathname === "/admin/login" || pathname === "/admin/create-account") {
+      return;
     }
-  }, [isLoading, user, router]);
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+    // If not loading and no admin user, redirect to login
+    if (!isAdminLoading && !adminUser) {
+      router.push("/admin/login");
+    }
+  }, [adminUser, isAdminLoading, router, pathname]);
 
-  // determine active title from navItems using longest matching href
-  const matches = navItems.filter((i) => pathname === i.href || pathname.startsWith(i.href + '/'));
-  matches.sort((a, b) => b.href.length - a.href.length);
-  const active = matches[0] ?? null;
+  // Show loading state
+  if (isAdminLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className="text-slate-400">Loading admin portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Public pages (login, create account)
+  if (pathname === "/admin/login" || pathname === "/admin/create-account") {
+    return <>{children}</>;
+  }
+
+  // Protected admin pages - require authentication
+  if (!adminUser) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
-    <AdminAuthProvider>
-      <ThemeProvider theme={adminTheme}>
-        <CssBaseline />
-        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-  <AdminDrawer mobileOpen={mobileOpen} handleDrawerToggle={handleDrawerToggle} />
-
-  {/* Top AppBar (fixed) */}
-  <AdminAppBar title={active?.title ?? 'Admin'} handleDrawerToggle={handleDrawerToggle} />
-
-        <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 3 }, width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
-          {/* Toolbar spacer to offset fixed AppBar */}
-          <Toolbar />
-
-          <div className="container mx-auto px-2 py-4">{children}</div>
-        </Box>
-        </Box>
-      </ThemeProvider>
-    </AdminAuthProvider>
+    <div className="flex h-screen bg-slate-900">
+      <AdminSidebar />
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
   );
 }

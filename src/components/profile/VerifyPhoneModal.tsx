@@ -36,6 +36,36 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
     if (!phone) return setError('No phone number provided');
     setError(null);
     setStatus('sending');
+    
+    // Check if this phone is already linked to another account
+    try {
+      const currentUser = clientAuth.currentUser;
+      if (currentUser) {
+        const response = await fetch('/api/profile/check-phone-exists', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await currentUser.getIdToken()}`
+          },
+          body: JSON.stringify({ phone }),
+        });
+        
+        const data = await response.json();
+        
+        // If phone exists and it's not the same user, close modal and show snackbar
+        if (data.exists && !data.sameUser) {
+          try {
+            showSnackbar('This phone number is already in use by another account. Please use a different number.', 'error', 5000);
+          } catch (e) { /* ignore */ }
+          onOpenChange(false);
+          return;
+        }
+      }
+    } catch (checkErr) {
+      console.warn('Could not check phone uniqueness:', checkErr);
+      // Continue anyway - we'll handle the error during linking if needed
+    }
+    
     try {
       await sendPhoneOtp(phone);
       // auth-context already shows a snackbar when OTP is sent; avoid duplicating toasts here.
@@ -65,53 +95,98 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
       const verificationId = confirmationResult.verificationId;
 
       if (currentUser) {
-        // If there's a signed-in user (e.g., email/password), link the phone
-        // credential to that user instead of signing in as a separate account.
+        // Strategy: Try to link the phone credential
+        // If it fails because phone exists elsewhere, we'll just verify the code and update Firestore
         const credential = PhoneAuthProvider.credential(verificationId, otp);
+        
+        try {
+          // First, just verify the OTP code is correct by creating a credential
+          // If the OTP is invalid, this will throw an error
+          // If it succeeds but phone exists elsewhere, we catch that and handle it
+          await linkWithCredential(currentUser, credential);
+          
+          // Success! Phone linked to Firebase Auth
           try {
-            await linkWithCredential(currentUser, credential);
-            // Ensure the Firebase user is reloaded so auth state reflects the new phone
-            try {
-              await currentUser.reload();
-            } catch (reloadErr) {
-              console.warn('Failed to reload currentUser after linking credential:', reloadErr);
-            }
+            await currentUser.reload();
+          } catch (reloadErr) {
+            console.warn('Failed to reload currentUser after linking:', reloadErr);
+          }
 
-            // Persist phone_verified to Firestore immediately so the profile UI updates.
-            // Do a direct update here to make the write explicit and immediate.
+          // Update Firestore
+          try {
+            if (currentUser && currentUser.uid) {
+              const userDocRef = doc(db, 'users', currentUser.uid);
+              await updateDoc(userDocRef, { phone_verified: true, phone });
+            }
+          } catch (profileErr) {
+            console.warn('Failed to update Firestore after linking:', profileErr);
+            try { await updateUser({ phone_verified: true, phone }); } catch {}
+          }
+
+          await handleOtpSuccess(clientAuth.currentUser ?? currentUser);
+          setStatus('success');
+          try { showSnackbar('Phone linked and verified', 'success', 4000); } catch (e) {}
+          setTimeout(() => onOpenChange(false), 400);
+          return;
+          
+        } catch (linkErr: any) {
+          console.error('Failed to link phone credential:', linkErr);
+          
+          // If phone exists on another account, the OTP was still validated
+          // (Firebase checks the OTP before checking for duplicate phone)
+          if (linkErr?.code === 'auth/account-exists-with-different-credential') {
+            console.log('Phone exists on another account, updating Firestore only');
+            
             try {
+              // Update Firestore directly since we can't link to Firebase Auth
               if (currentUser && currentUser.uid) {
                 const userDocRef = doc(db, 'users', currentUser.uid);
                 await updateDoc(userDocRef, { phone_verified: true, phone });
+                
+                // Update local context
+                await updateUser({ phone_verified: true, phone });
+                
+                setStatus('success');
+                try { 
+                  showSnackbar('Phone verified successfully', 'success', 4000); 
+                } catch (e) {}
+                setTimeout(() => onOpenChange(false), 400);
+                return;
               }
-            } catch (profileErr) {
-              console.warn('Failed to directly update profile phone_verified after linking:', profileErr);
-              // Fallback to the higher-level updateUser helper if available
-              try { await updateUser({ phone_verified: true, phone }); } catch {}
+            } catch (updateErr: any) {
+              console.error('Failed to update Firestore after phone conflict:', updateErr);
+              setStatus('error');
+              setError('Unable to save phone verification. Please try again.');
+              return;
             }
-
-            // Refresh session/profile via handleOtpSuccess using the updated currentUser
-            await handleOtpSuccess(clientAuth.currentUser ?? currentUser);
-            setStatus('success');
-            try { showSnackbar('Phone linked and verified', 'success', 4000); } catch (e) { /* ignore */ }
-            setTimeout(() => onOpenChange(false), 400);
-            return;
-          } catch (linkErr: any) {
-            console.error('Failed to link phone credential to existing user:', linkErr);
-            // fallthrough to confirmationResult.confirm as a fallback
           }
+          
+          // For other errors, re-throw to be caught by outer catch
+          throw linkErr;
+        }
       }
 
-      // Default: confirm sign-in with the phone credential (used by page flows)
+      // Fallback: No current user, so this is a phone-only sign-in
       const userCredential = await confirmationResult.confirm(otp);
       await handleOtpSuccess(userCredential.user);
       setStatus('success');
-      try { showSnackbar('Phone verified', 'success', 4000); } catch (e) { /* ignore */ }
+      try { showSnackbar('Phone verified', 'success', 4000); } catch (e) {}
       setTimeout(() => onOpenChange(false), 400);
+      
     } catch (err: any) {
       console.error('OTP verify failed', err);
       setStatus('error');
-      setError(err?.message || 'Failed to verify code');
+      
+      // Provide user-friendly error messages
+      if (err?.code === 'auth/invalid-verification-code') {
+        setError('Invalid code. Please check and try again.');
+      } else if (err?.code === 'auth/code-expired') {
+        setError('Code expired. Please request a new one.');
+      } else if (err?.code === 'auth/account-exists-with-different-credential') {
+        setError('This phone number is already in use by another account.');
+      } else {
+        setError(err?.message || 'Failed to verify code');
+      }
     }
   };
 

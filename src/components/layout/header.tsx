@@ -77,17 +77,17 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   };
 
   return (
-    <header className="border-b bg-white sticky top-0 z-50">
+    <header className="border-b bg-white sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4">
-        {/* Top bar */}
-        <div className="hidden md:flex items-center justify-between py-2 border-b">
+        {/* Top bar with brand colors */}
+        <div className="hidden md:flex items-center justify-between py-2 border-b border-border">
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-muted-foreground" />
+            <MapPin className="w-4 h-4 text-brand-progress-blue" />
             <span className="text-sm text-muted-foreground">
               London, UK
             </span>
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm font-semibold" style={{ color: 'var(--brand-growth-green)' }}>
             Free shipping on orders over £50
           </div>
         </div>

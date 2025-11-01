@@ -1,11 +1,705 @@
 
 [
-  { "id": "all", "name": "All Categories", "count": 20 },
-  { "id": "textiles", "name": "Textiles", "count": 5 },
-  { "id": "woodwork", "name": "Woodwork & Carvings", "count": 3 },
-  { "id": "pottery", "name": "Pottery & Ceramics", "count": 2 },
-  { "id": "jewelry", "name": "Jewelry", "count": 4 },
-  { "id": "art", "name": "Art & Paintings", "count": 3 },
-  { "id": "leather", "name": "Leather Goods", "count": 2 },
-  { "id": "beauty", "name": "Health & Beauty", "count": 1 }
+  {
+    "name": "Electronics",
+    "description": "Electronic devices and accessories",
+    "children": [
+      {
+        "name": "Mobile Phones & Tablets",
+        "description": "Smartphones, tablets, and accessories",
+        "children": [
+          { "name": "Smartphones", "description": "Latest smartphones from all brands" },
+          { "name": "Tablets", "description": "Tablets and e-readers" },
+          { "name": "Phone Cases & Covers", "description": "Protective cases and covers" },
+          { "name": "Screen Protectors", "description": "Tempered glass and film protectors" },
+          { "name": "Chargers & Cables", "description": "Charging accessories" },
+          { "name": "Power Banks", "description": "Portable chargers" },
+          { "name": "Phone Holders & Stands", "description": "Mounts and stands" }
+        ]
+      },
+      {
+        "name": "Computers & Laptops",
+        "description": "Desktop computers, laptops, and accessories",
+        "children": [
+          { "name": "Laptops", "description": "Notebooks and ultrabooks" },
+          { "name": "Desktop Computers", "description": "Tower PCs and all-in-ones" },
+          { "name": "Monitors", "description": "Computer displays" },
+          { "name": "Keyboards & Mice", "description": "Input devices" },
+          { "name": "Printers & Scanners", "description": "Printing equipment" },
+          { "name": "External Hard Drives", "description": "Storage devices" },
+          { "name": "USB Flash Drives", "description": "Portable storage" },
+          { "name": "Webcams", "description": "Video cameras for computers" },
+          { "name": "Laptop Bags & Cases", "description": "Protective carrying solutions" }
+        ]
+      },
+      {
+        "name": "Audio & Headphones",
+        "description": "Sound equipment and accessories",
+        "children": [
+          { "name": "Headphones", "description": "Over-ear and on-ear headphones" },
+          { "name": "Earbuds & In-Ear", "description": "In-ear headphones" },
+          { "name": "Wireless Earbuds", "description": "True wireless earbuds" },
+          { "name": "Speakers", "description": "Bluetooth and wired speakers" },
+          { "name": "Soundbars", "description": "TV sound systems" },
+          { "name": "Home Theater Systems", "description": "Complete audio setups" },
+          { "name": "Microphones", "description": "Recording and streaming mics" }
+        ]
+      },
+      {
+        "name": "Cameras & Photography",
+        "description": "Cameras and photography equipment",
+        "children": [
+          { "name": "Digital Cameras", "description": "Point and shoot cameras" },
+          { "name": "DSLR Cameras", "description": "Professional cameras" },
+          { "name": "Mirrorless Cameras", "description": "Compact system cameras" },
+          { "name": "Action Cameras", "description": "Sports and action cams" },
+          { "name": "Camera Lenses", "description": "Interchangeable lenses" },
+          { "name": "Tripods & Stands", "description": "Camera support equipment" },
+          { "name": "Camera Bags", "description": "Protective carrying cases" },
+          { "name": "Memory Cards", "description": "SD cards and storage" }
+        ]
+      },
+      {
+        "name": "Television & Video",
+        "description": "TVs and video equipment",
+        "children": [
+          { "name": "Smart TVs", "description": "Internet-connected televisions" },
+          { "name": "LED TVs", "description": "LED display televisions" },
+          { "name": "OLED TVs", "description": "OLED display televisions" },
+          { "name": "TV Accessories", "description": "Mounts, remotes, and cables" },
+          { "name": "Streaming Devices", "description": "Media streaming boxes" },
+          { "name": "Projectors", "description": "Home and office projectors" }
+        ]
+      },
+      {
+        "name": "Wearable Technology",
+        "description": "Smart wearables and fitness trackers",
+        "children": [
+          { "name": "Smartwatches", "description": "Smart wearable watches" },
+          { "name": "Fitness Trackers", "description": "Activity and health monitors" },
+          { "name": "Smart Glasses", "description": "AR and VR glasses" },
+          { "name": "Smart Rings", "description": "Wearable rings" }
+        ]
+      },
+      {
+        "name": "Gaming",
+        "description": "Gaming consoles and accessories",
+        "children": [
+          { "name": "Gaming Consoles", "description": "PlayStation, Xbox, Nintendo" },
+          { "name": "Gaming Controllers", "description": "Game controllers and joysticks" },
+          { "name": "Gaming Headsets", "description": "Gaming audio equipment" },
+          { "name": "Gaming Keyboards", "description": "Mechanical and gaming keyboards" },
+          { "name": "Gaming Mice", "description": "High-performance gaming mice" },
+          { "name": "Gaming Chairs", "description": "Ergonomic gaming chairs" },
+          { "name": "VR Headsets", "description": "Virtual reality equipment" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Fashion",
+    "description": "Clothing, shoes, and accessories",
+    "children": [
+      {
+        "name": "Men's Fashion",
+        "description": "Men's clothing and accessories",
+        "children": [
+          { "name": "Men's Shirts", "description": "Casual and formal shirts" },
+          { "name": "Men's T-Shirts", "description": "T-shirts and polos" },
+          { "name": "Men's Pants", "description": "Trousers and casual pants" },
+          { "name": "Men's Jeans", "description": "Denim jeans" },
+          { "name": "Men's Suits", "description": "Formal suits and blazers" },
+          { "name": "Men's Jackets & Coats", "description": "Outerwear" },
+          { "name": "Men's Shoes", "description": "Footwear for men" },
+          { "name": "Men's Sneakers", "description": "Athletic and casual sneakers" },
+          { "name": "Men's Accessories", "description": "Belts, ties, and more" },
+          { "name": "Men's Watches", "description": "Wristwatches" },
+          { "name": "Men's Underwear", "description": "Undergarments" }
+        ]
+      },
+      {
+        "name": "Women's Fashion",
+        "description": "Women's clothing and accessories",
+        "children": [
+          { "name": "Women's Dresses", "description": "Casual and formal dresses" },
+          { "name": "Women's Tops", "description": "Blouses, shirts, and tops" },
+          { "name": "Women's Pants", "description": "Trousers and casual pants" },
+          { "name": "Women's Jeans", "description": "Denim jeans" },
+          { "name": "Women's Skirts", "description": "Skirts of all styles" },
+          { "name": "Women's Jackets & Coats", "description": "Outerwear" },
+          { "name": "Women's Shoes", "description": "Footwear for women" },
+          { "name": "Women's Heels", "description": "High heels and pumps" },
+          { "name": "Women's Sneakers", "description": "Athletic and casual sneakers" },
+          { "name": "Women's Handbags", "description": "Purses and handbags" },
+          { "name": "Women's Jewelry", "description": "Necklaces, earrings, bracelets" },
+          { "name": "Women's Watches", "description": "Wristwatches" },
+          { "name": "Women's Underwear & Lingerie", "description": "Undergarments" }
+        ]
+      },
+      {
+        "name": "Kids' Fashion",
+        "description": "Children's clothing",
+        "children": [
+          { "name": "Boys' Clothing", "description": "Clothing for boys" },
+          { "name": "Girls' Clothing", "description": "Clothing for girls" },
+          { "name": "Baby Clothing", "description": "Infant and toddler wear" },
+          { "name": "Kids' Shoes", "description": "Children's footwear" },
+          { "name": "Kids' Accessories", "description": "Bags, hats, and more" }
+        ]
+      },
+      {
+        "name": "Traditional Wear",
+        "description": "African traditional clothing",
+        "children": [
+          { "name": "Dashiki", "description": "Traditional African shirts" },
+          { "name": "Kaftans", "description": "Flowing robes" },
+          { "name": "Ankara Fashion", "description": "African print clothing" },
+          { "name": "Kente Cloth", "description": "Traditional woven fabric items" },
+          { "name": "Boubou", "description": "Traditional gowns" },
+          { "name": "Agbada", "description": "Traditional flowing robes" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Home & Living",
+    "description": "Home goods, furniture, and decor",
+    "children": [
+      {
+        "name": "Furniture",
+        "description": "Home and office furniture",
+        "children": [
+          { "name": "Living Room Furniture", "description": "Sofas, tables, and chairs" },
+          { "name": "Bedroom Furniture", "description": "Beds, dressers, and wardrobes" },
+          { "name": "Dining Room Furniture", "description": "Dining tables and chairs" },
+          { "name": "Office Furniture", "description": "Desks and office chairs" },
+          { "name": "Storage Furniture", "description": "Cabinets and shelves" },
+          { "name": "Outdoor Furniture", "description": "Patio and garden furniture" }
+        ]
+      },
+      {
+        "name": "Home Decor",
+        "description": "Decorative items for the home",
+        "children": [
+          { "name": "Wall Art", "description": "Paintings and prints" },
+          { "name": "Mirrors", "description": "Decorative mirrors" },
+          { "name": "Cushions & Pillows", "description": "Decorative cushions" },
+          { "name": "Curtains & Blinds", "description": "Window treatments" },
+          { "name": "Rugs & Carpets", "description": "Floor coverings" },
+          { "name": "Lighting", "description": "Lamps and light fixtures" },
+          { "name": "Candles & Holders", "description": "Decorative candles" },
+          { "name": "Vases & Planters", "description": "Plant containers" }
+        ]
+      },
+      {
+        "name": "Kitchen & Dining",
+        "description": "Kitchen appliances and dining items",
+        "children": [
+          { "name": "Cookware", "description": "Pots, pans, and cooking vessels" },
+          { "name": "Dinnerware", "description": "Plates, bowls, and dishes" },
+          { "name": "Cutlery", "description": "Knives, forks, and spoons" },
+          { "name": "Glassware", "description": "Glasses and drinkware" },
+          { "name": "Kitchen Appliances", "description": "Blenders, mixers, and more" },
+          { "name": "Storage Containers", "description": "Food storage solutions" },
+          { "name": "Kitchen Utensils", "description": "Cooking tools" }
+        ]
+      },
+      {
+        "name": "Bedding & Bath",
+        "description": "Bedroom and bathroom textiles",
+        "children": [
+          { "name": "Bed Sheets", "description": "Sheet sets and fitted sheets" },
+          { "name": "Comforters & Duvets", "description": "Bed covers" },
+          { "name": "Pillows", "description": "Sleeping pillows" },
+          { "name": "Towels", "description": "Bath and hand towels" },
+          { "name": "Bath Mats", "description": "Bathroom floor mats" },
+          { "name": "Shower Curtains", "description": "Bathroom curtains" }
+        ]
+      },
+      {
+        "name": "Home Appliances",
+        "description": "Large and small home appliances",
+        "children": [
+          { "name": "Refrigerators", "description": "Fridges and freezers" },
+          { "name": "Washing Machines", "description": "Laundry machines" },
+          { "name": "Microwaves", "description": "Microwave ovens" },
+          { "name": "Vacuum Cleaners", "description": "Floor cleaning machines" },
+          { "name": "Air Conditioners", "description": "Cooling systems" },
+          { "name": "Fans", "description": "Electric fans" },
+          { "name": "Irons", "description": "Clothes irons" },
+          { "name": "Water Heaters", "description": "Hot water systems" }
+        ]
+      },
+      {
+        "name": "Garden & Outdoor",
+        "description": "Garden tools and outdoor equipment",
+        "children": [
+          { "name": "Garden Tools", "description": "Shovels, rakes, and tools" },
+          { "name": "Lawn Mowers", "description": "Grass cutting equipment" },
+          { "name": "Garden Furniture", "description": "Outdoor seating" },
+          { "name": "BBQ & Grills", "description": "Outdoor cooking equipment" },
+          { "name": "Plant Seeds", "description": "Seeds for planting" },
+          { "name": "Fertilizers", "description": "Plant nutrients" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Beauty & Personal Care",
+    "description": "Beauty products and personal care items",
+    "children": [
+      {
+        "name": "Skincare",
+        "description": "Facial and body skincare",
+        "children": [
+          { "name": "Moisturizers", "description": "Face and body lotions" },
+          { "name": "Cleansers", "description": "Face wash and cleansing products" },
+          { "name": "Serums", "description": "Concentrated skincare treatments" },
+          { "name": "Face Masks", "description": "Facial treatment masks" },
+          { "name": "Sunscreen", "description": "Sun protection products" },
+          { "name": "Body Lotions", "description": "Body moisturizers" }
+        ]
+      },
+      {
+        "name": "Makeup",
+        "description": "Cosmetics and makeup products",
+        "children": [
+          { "name": "Foundation", "description": "Face makeup base" },
+          { "name": "Lipstick", "description": "Lip color products" },
+          { "name": "Eye Shadow", "description": "Eye makeup" },
+          { "name": "Mascara", "description": "Eyelash makeup" },
+          { "name": "Blush", "description": "Cheek color" },
+          { "name": "Makeup Brushes", "description": "Application tools" }
+        ]
+      },
+      {
+        "name": "Hair Care",
+        "description": "Hair products and treatments",
+        "children": [
+          { "name": "Shampoo", "description": "Hair cleansing products" },
+          { "name": "Conditioner", "description": "Hair conditioning products" },
+          { "name": "Hair Oils", "description": "Hair treatment oils" },
+          { "name": "Hair Styling Products", "description": "Gels, sprays, and creams" },
+          { "name": "Hair Tools", "description": "Dryers, straighteners, curlers" },
+          { "name": "Hair Extensions", "description": "Weaves and wigs" }
+        ]
+      },
+      {
+        "name": "Fragrances",
+        "description": "Perfumes and colognes",
+        "children": [
+          { "name": "Women's Perfumes", "description": "Fragrances for women" },
+          { "name": "Men's Colognes", "description": "Fragrances for men" },
+          { "name": "Body Sprays", "description": "Light fragrance sprays" }
+        ]
+      },
+      {
+        "name": "Personal Care",
+        "description": "Personal hygiene products",
+        "children": [
+          { "name": "Oral Care", "description": "Toothpaste, toothbrushes, mouthwash" },
+          { "name": "Bath & Shower", "description": "Soaps and body wash" },
+          { "name": "Deodorants", "description": "Antiperspirants and deodorants" },
+          { "name": "Shaving", "description": "Razors and shaving products" },
+          { "name": "Feminine Care", "description": "Women's hygiene products" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Sports & Fitness",
+    "description": "Sports equipment and fitness gear",
+    "children": [
+      {
+        "name": "Fitness Equipment",
+        "description": "Home gym and fitness gear",
+        "children": [
+          { "name": "Treadmills", "description": "Running machines" },
+          { "name": "Exercise Bikes", "description": "Stationary bikes" },
+          { "name": "Dumbbells & Weights", "description": "Free weights" },
+          { "name": "Yoga Mats", "description": "Exercise mats" },
+          { "name": "Resistance Bands", "description": "Exercise bands" },
+          { "name": "Pull-up Bars", "description": "Home workout bars" }
+        ]
+      },
+      {
+        "name": "Sports Wear",
+        "description": "Athletic clothing",
+        "children": [
+          { "name": "Sports Shoes", "description": "Athletic footwear" },
+          { "name": "Gym Wear", "description": "Workout clothing" },
+          { "name": "Sports Bras", "description": "Athletic support wear" },
+          { "name": "Compression Wear", "description": "Performance clothing" },
+          { "name": "Swimwear", "description": "Swimming costumes" }
+        ]
+      },
+      {
+        "name": "Outdoor Sports",
+        "description": "Outdoor sports equipment",
+        "children": [
+          { "name": "Bicycles", "description": "Bikes and cycling equipment" },
+          { "name": "Football Equipment", "description": "Soccer gear" },
+          { "name": "Basketball Equipment", "description": "Basketball gear" },
+          { "name": "Tennis Equipment", "description": "Tennis rackets and balls" },
+          { "name": "Camping Gear", "description": "Tents and camping equipment" },
+          { "name": "Fishing Equipment", "description": "Fishing rods and gear" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Books, Movies & Music",
+    "description": "Entertainment media",
+    "children": [
+      {
+        "name": "Books",
+        "description": "Physical and digital books",
+        "children": [
+          { "name": "Fiction", "description": "Novels and stories" },
+          { "name": "Non-Fiction", "description": "Educational and informative books" },
+          { "name": "Children's Books", "description": "Books for kids" },
+          { "name": "Educational Books", "description": "Textbooks and study materials" },
+          { "name": "African Literature", "description": "Books by African authors" }
+        ]
+      },
+      {
+        "name": "Movies & TV",
+        "description": "Video entertainment",
+        "children": [
+          { "name": "DVDs & Blu-rays", "description": "Physical media" },
+          { "name": "African Movies", "description": "Nollywood and African cinema" }
+        ]
+      },
+      {
+        "name": "Music",
+        "description": "Audio entertainment",
+        "children": [
+          { "name": "CDs & Vinyl", "description": "Physical music media" },
+          { "name": "African Music", "description": "Afrobeats, Highlife, and more" },
+          { "name": "Musical Instruments", "description": "Guitars, drums, and more" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Automotive",
+    "description": "Car parts and accessories",
+    "children": [
+      {
+        "name": "Car Parts",
+        "description": "Vehicle replacement parts",
+        "children": [
+          { "name": "Engine Parts", "description": "Engine components" },
+          { "name": "Brake Parts", "description": "Braking system components" },
+          { "name": "Suspension Parts", "description": "Suspension components" },
+          { "name": "Electrical Parts", "description": "Auto electrical components" },
+          { "name": "Tires & Wheels", "description": "Vehicle tires and rims" }
+        ]
+      },
+      {
+        "name": "Car Accessories",
+        "description": "Vehicle accessories",
+        "children": [
+          { "name": "Car Audio", "description": "Stereos and speakers" },
+          { "name": "GPS & Navigation", "description": "Navigation systems" },
+          { "name": "Dash Cams", "description": "Dashboard cameras" },
+          { "name": "Car Covers", "description": "Vehicle protection covers" },
+          { "name": "Car Mats", "description": "Floor mats" },
+          { "name": "Phone Holders", "description": "Mobile phone mounts" }
+        ]
+      },
+      {
+        "name": "Car Care",
+        "description": "Vehicle maintenance products",
+        "children": [
+          { "name": "Car Cleaning", "description": "Wash and cleaning products" },
+          { "name": "Car Polish & Wax", "description": "Paint care products" },
+          { "name": "Motor Oil", "description": "Engine lubricants" },
+          { "name": "Car Tools", "description": "Maintenance tools" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Baby & Kids",
+    "description": "Products for babies and children",
+    "children": [
+      {
+        "name": "Baby Gear",
+        "description": "Baby equipment",
+        "children": [
+          { "name": "Strollers", "description": "Baby carriages" },
+          { "name": "Car Seats", "description": "Child safety seats" },
+          { "name": "Baby Carriers", "description": "Infant carriers" },
+          { "name": "High Chairs", "description": "Feeding chairs" },
+          { "name": "Cribs & Beds", "description": "Baby sleeping furniture" },
+          { "name": "Baby Monitors", "description": "Audio and video monitors" }
+        ]
+      },
+      {
+        "name": "Baby Care",
+        "description": "Baby care products",
+        "children": [
+          { "name": "Diapers", "description": "Disposable and cloth diapers" },
+          { "name": "Baby Wipes", "description": "Cleaning wipes" },
+          { "name": "Baby Bath", "description": "Bath products and tubs" },
+          { "name": "Baby Skincare", "description": "Lotions and creams" },
+          { "name": "Feeding Bottles", "description": "Baby bottles and accessories" }
+        ]
+      },
+      {
+        "name": "Toys",
+        "description": "Children's toys",
+        "children": [
+          { "name": "Educational Toys", "description": "Learning toys" },
+          { "name": "Action Figures", "description": "Toy figures" },
+          { "name": "Dolls", "description": "Toy dolls" },
+          { "name": "Building Toys", "description": "Construction toys" },
+          { "name": "Remote Control Toys", "description": "RC vehicles" },
+          { "name": "Outdoor Toys", "description": "Playground equipment" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Food & Groceries",
+    "description": "Food items and groceries",
+    "children": [
+      {
+        "name": "Fresh Produce",
+        "description": "Fruits and vegetables",
+        "children": [
+          { "name": "Fruits", "description": "Fresh fruits" },
+          { "name": "Vegetables", "description": "Fresh vegetables" }
+        ]
+      },
+      {
+        "name": "Pantry Staples",
+        "description": "Cooking essentials",
+        "children": [
+          { "name": "Rice & Grains", "description": "Rice, wheat, and grains" },
+          { "name": "Pasta & Noodles", "description": "Dried pasta products" },
+          { "name": "Cooking Oil", "description": "Oils for cooking" },
+          { "name": "Spices & Seasonings", "description": "Flavor enhancers" },
+          { "name": "Canned Foods", "description": "Preserved foods" }
+        ]
+      },
+      {
+        "name": "Beverages",
+        "description": "Drinks",
+        "children": [
+          { "name": "Water", "description": "Bottled water" },
+          { "name": "Soft Drinks", "description": "Sodas and carbonated drinks" },
+          { "name": "Juices", "description": "Fruit juices" },
+          { "name": "Tea & Coffee", "description": "Hot beverages" },
+          { "name": "Energy Drinks", "description": "Energizing beverages" }
+        ]
+      },
+      {
+        "name": "Snacks",
+        "description": "Snack foods",
+        "children": [
+          { "name": "Chips & Crisps", "description": "Potato chips" },
+          { "name": "Cookies & Biscuits", "description": "Sweet snacks" },
+          { "name": "Nuts & Seeds", "description": "Healthy snacks" },
+          { "name": "Chocolates & Candy", "description": "Confectionery" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Health & Wellness",
+    "description": "Health products and wellness items",
+    "children": [
+      {
+        "name": "Vitamins & Supplements",
+        "description": "Nutritional supplements",
+        "children": [
+          { "name": "Multivitamins", "description": "Complete vitamin formulas" },
+          { "name": "Vitamin C", "description": "Immune support" },
+          { "name": "Vitamin D", "description": "Bone health" },
+          { "name": "Protein Supplements", "description": "Protein powders" },
+          { "name": "Herbal Supplements", "description": "Natural remedies" }
+        ]
+      },
+      {
+        "name": "Medical Supplies",
+        "description": "Health equipment",
+        "children": [
+          { "name": "First Aid Kits", "description": "Emergency medical kits" },
+          { "name": "Thermometers", "description": "Temperature monitors" },
+          { "name": "Blood Pressure Monitors", "description": "BP measuring devices" },
+          { "name": "Nebulizers", "description": "Respiratory therapy devices" },
+          { "name": "Wheelchairs & Mobility", "description": "Mobility aids" }
+        ]
+      },
+      {
+        "name": "Sexual Wellness",
+        "description": "Adult wellness products",
+        "children": [
+          { "name": "Contraceptives", "description": "Birth control products" },
+          { "name": "Lubricants", "description": "Personal lubricants" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Jewelry & Accessories",
+    "description": "Jewelry and fashion accessories",
+    "children": [
+      {
+        "name": "Jewelry",
+        "description": "Fine and fashion jewelry",
+        "children": [
+          { "name": "Necklaces", "description": "Chains and pendants" },
+          { "name": "Earrings", "description": "Studs, hoops, and drops" },
+          { "name": "Bracelets", "description": "Wrist jewelry" },
+          { "name": "Rings", "description": "Finger rings" },
+          { "name": "Anklets", "description": "Ankle jewelry" },
+          { "name": "Brooches & Pins", "description": "Decorative pins" }
+        ]
+      },
+      {
+        "name": "Fashion Accessories",
+        "description": "Style accessories",
+        "children": [
+          { "name": "Sunglasses", "description": "Eye protection and fashion" },
+          { "name": "Hats & Caps", "description": "Headwear" },
+          { "name": "Scarves", "description": "Neck accessories" },
+          { "name": "Gloves", "description": "Hand coverings" },
+          { "name": "Belts", "description": "Waist accessories" },
+          { "name": "Ties & Bow Ties", "description": "Neckwear" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Arts & Crafts",
+    "description": "Art supplies and craft materials",
+    "children": [
+      {
+        "name": "Painting Supplies",
+        "description": "Painting materials",
+        "children": [
+          { "name": "Paints", "description": "Acrylic, oil, and watercolor" },
+          { "name": "Brushes", "description": "Painting brushes" },
+          { "name": "Canvas", "description": "Painting surfaces" },
+          { "name": "Easels", "description": "Canvas holders" }
+        ]
+      },
+      {
+        "name": "Drawing Supplies",
+        "description": "Drawing materials",
+        "children": [
+          { "name": "Pencils", "description": "Graphite and colored pencils" },
+          { "name": "Markers", "description": "Art markers" },
+          { "name": "Sketchbooks", "description": "Drawing pads" },
+          { "name": "Charcoal", "description": "Drawing charcoal" }
+        ]
+      },
+      {
+        "name": "Craft Supplies",
+        "description": "Crafting materials",
+        "children": [
+          { "name": "Beads & Jewelry Making", "description": "Jewelry craft supplies" },
+          { "name": "Fabrics & Sewing", "description": "Textile crafts" },
+          { "name": "Paper Crafts", "description": "Paper and cardstock" },
+          { "name": "Glue & Adhesives", "description": "Craft adhesives" }
+        ]
+      },
+      {
+        "name": "African Art",
+        "description": "Traditional African crafts",
+        "children": [
+          { "name": "Masks", "description": "African decorative masks" },
+          { "name": "Sculptures", "description": "African sculptures" },
+          { "name": "Paintings", "description": "African art paintings" },
+          { "name": "Beadwork", "description": "Traditional beaded items" },
+          { "name": "Baskets", "description": "Woven baskets" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Office & Stationery",
+    "description": "Office supplies and stationery",
+    "children": [
+      {
+        "name": "Writing Instruments",
+        "description": "Pens and pencils",
+        "children": [
+          { "name": "Pens", "description": "Ballpoint and gel pens" },
+          { "name": "Pencils", "description": "Writing pencils" },
+          { "name": "Markers & Highlighters", "description": "Highlighting tools" }
+        ]
+      },
+      {
+        "name": "Paper Products",
+        "description": "Paper and notebooks",
+        "children": [
+          { "name": "Notebooks", "description": "Writing notebooks" },
+          { "name": "Notepads", "description": "Scratch pads" },
+          { "name": "Printer Paper", "description": "Copy paper" },
+          { "name": "Sticky Notes", "description": "Adhesive notes" }
+        ]
+      },
+      {
+        "name": "Office Equipment",
+        "description": "Office machines",
+        "children": [
+          { "name": "Calculators", "description": "Computing devices" },
+          { "name": "Shredders", "description": "Paper shredders" },
+          { "name": "Laminators", "description": "Document laminators" },
+          { "name": "Label Makers", "description": "Labeling machines" }
+        ]
+      },
+      {
+        "name": "Desk Accessories",
+        "description": "Desk organization",
+        "children": [
+          { "name": "Desk Organizers", "description": "Storage solutions" },
+          { "name": "File Folders", "description": "Document folders" },
+          { "name": "Staplers", "description": "Stapling tools" },
+          { "name": "Tape & Dispensers", "description": "Adhesive tape" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Pet Supplies",
+    "description": "Products for pets",
+    "children": [
+      {
+        "name": "Dog Supplies",
+        "description": "Products for dogs",
+        "children": [
+          { "name": "Dog Food", "description": "Pet nutrition" },
+          { "name": "Dog Toys", "description": "Play items" },
+          { "name": "Dog Beds", "description": "Sleeping beds" },
+          { "name": "Dog Collars & Leashes", "description": "Walking accessories" },
+          { "name": "Dog Grooming", "description": "Grooming supplies" }
+        ]
+      },
+      {
+        "name": "Cat Supplies",
+        "description": "Products for cats",
+        "children": [
+          { "name": "Cat Food", "description": "Pet nutrition" },
+          { "name": "Cat Litter", "description": "Litter boxes and litter" },
+          { "name": "Cat Toys", "description": "Play items" },
+          { "name": "Cat Beds", "description": "Sleeping beds" },
+          { "name": "Cat Trees", "description": "Climbing structures" }
+        ]
+      },
+      {
+        "name": "Other Pets",
+        "description": "Supplies for other animals",
+        "children": [
+          { "name": "Bird Supplies", "description": "Cages and food" },
+          { "name": "Fish & Aquariums", "description": "Aquatic pet supplies" },
+          { "name": "Small Animal Supplies", "description": "Hamsters, rabbits, etc." }
+        ]
+      }
+    ]
+  }
 ]

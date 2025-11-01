@@ -2,7 +2,7 @@
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import type { Category } from '@/app/marketplace/page';
+import type { Category } from '@/lib/types';
 
 
 interface CategoryFilterProps {
@@ -85,9 +85,11 @@ export function CategoryFilter({
                   </Badge>
                 )}
               </div>
-              <span className="text-xs text-muted-foreground">
-                ({category.count.toLocaleString()})
-              </span>
+              {category.count !== undefined && (
+                <span className="text-xs text-muted-foreground">
+                  ({category.count.toLocaleString()})
+                </span>
+              )}
             </div>
           );
         })}

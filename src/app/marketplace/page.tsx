@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
+import type { Category } from '@/lib/types';
 import allProducts from '@/data/mock-products.json';
 import allCategories from '@/data/mock-categories.json';
 
@@ -64,12 +65,6 @@ export interface Product {
   sellerDetails: any; 
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  count: number;
-}
-
 
 export interface FilterState {
   searchQuery: string;
@@ -107,7 +102,28 @@ export default function MarketplacePage() {
     freeListingsOnly: false,
   });
 
-  const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string) => {
+  // Transform hierarchical categories to flat list with generated IDs
+  const flattenCategories = useCallback((cats: any[]): Category[] => {
+    const result: Category[] = [];
+    const flatten = (items: any[], parentPath = '') => {
+      items.forEach((item) => {
+        const id = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        result.push({
+          id,
+          name: item.name,
+          description: item.description,
+          count: 0,
+        });
+        if (item.children && item.children.length > 0) {
+          flatten(item.children, id);
+        }
+      });
+    };
+    flatten(cats);
+    return result;
+  }, []);
+
+  const fetchProducts = useCallback((currentFilters: FilterState, currentSortBy: string, categoryList: Category[]) => {
     setLoading(true);
     
     let filteredProducts: Product[] = [...allProducts] as unknown as Product[];
@@ -130,9 +146,10 @@ export default function MarketplacePage() {
 
     // Category
     if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-      const selectedCategoryName = allCategories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
-      if (selectedCategoryName) {
-        filteredProducts = filteredProducts.filter(p => p.category === selectedCategoryName);
+      const selectedCategoryId = currentFilters.selectedCategories[0];
+      const selectedCategory = categoryList.find((c: Category) => c.id === selectedCategoryId);
+      if (selectedCategory) {
+        filteredProducts = filteredProducts.filter(p => p.category === selectedCategory.name);
       }
     }
 
@@ -173,14 +190,21 @@ export default function MarketplacePage() {
     
     setProducts(filteredProducts);
     setTotalProducts(filteredProducts.length);
-    setCategories(allCategories as Category[]);
     setLoading(false);
 
   }, []);
   
+  // Initialize categories once
   useEffect(() => {
-    fetchProducts(filters, sortBy);
-  }, [fetchProducts, filters, sortBy]);
+    const categoryList = flattenCategories(allCategories);
+    setCategories(categoryList);
+  }, [flattenCategories]);
+  
+  useEffect(() => {
+    if (categories.length > 0) {
+      fetchProducts(filters, sortBy, categories);
+    }
+  }, [fetchProducts, filters, sortBy, categories]);
 
 
   const onNavigate = (page: string, productId?: string) => {
@@ -284,7 +308,7 @@ export default function MarketplacePage() {
             <SearchBar
               value={filters.searchQuery}
               onChange={(value) => handleSearch(value)}
-              onSearch={() => fetchProducts(filters, sortBy)}
+              onSearch={() => fetchProducts(filters, sortBy, categories)}
               placeholder="Search..."
               className="flex-grow"
             />

@@ -164,10 +164,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (e) {
             console.warn('createSession error', e);
           }
+          
+          // Check for redirect parameter in URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirectUrl = urlParams.get('redirect');
+          
+          // Skip onboarding redirect for admin routes
+          if (pathname.startsWith('/admin')) {
+            return;
+          }
+          
           if (!profileData.userProfile.onboarding_completed && !pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
           } else if (profileData.userProfile.onboarding_completed && (pathname.startsWith('/auth') || pathname.startsWith('/onboarding'))){
-            router.push('/');
+            // If there's a redirect URL, use it; otherwise go to home
+            router.push(redirectUrl || '/');
           }
         }
       }

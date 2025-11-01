@@ -24,10 +24,14 @@ import { useAuth } from '@/context/auth-context';
 export function SellerSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Determine if user is SME or basic Seller
+  const userRoles = (user as any)?.roles || [];
+  const isSME = userRoles.includes('sme');
 
   const navItems = [
     {
-      href: '/vendor/sales',
+      href: '/vendor/orders',
       label: 'Orders',
       icon: ShoppingCart,
     },
@@ -37,20 +41,28 @@ export function SellerSidebar() {
       icon: Package,
     },
     {
-      href: '/vendor/promotions',
-      label: 'Promotions',
-      icon: BadgePercent,
+      href: '/vendor/reputation',
+      label: 'Reviews',
+      icon: Users,
     },
-    {
-      href: '/vendor/advertise',
-      label: 'Advertising',
-      icon: Megaphone,
-    },
-     {
-      href: '/vendor/reports',
-      label: 'Reports',
-      icon: LineChart,
-    },
+    // SME-only features
+    ...(isSME ? [
+      {
+        href: '/vendor/promotions',
+        label: 'Promotions',
+        icon: BadgePercent,
+      },
+      {
+        href: '/vendor/advertise',
+        label: 'Advertising',
+        icon: Megaphone,
+      },
+      {
+        href: '/vendor/reports',
+        label: 'Analytics',
+        icon: LineChart,
+      },
+    ] : []),
   ];
 
   return (
@@ -81,15 +93,29 @@ export function SellerSidebar() {
               ))}
           </nav>
         </div>
-        <div className="mt-auto p-4 border-t space-y-4">
+        <div className="mt-auto p-4 border-t space-y-2">
+            <Link href="/vendor/kyc" className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                pathname === "/vendor/kyc" && 'bg-orange-100 text-orange-600'
+            )}>
+                <CreditCard className="h-4 w-4" />
+                KYC Verification
+            </Link>
+            <Link href="/vendor/payout-settings" className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                pathname === "/vendor/payout-settings" && 'bg-orange-100 text-orange-600'
+            )}>
+                <CreditCard className="h-4 w-4" />
+                Payout Settings
+            </Link>
             <Link href="/vendor/shop-settings" className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
                  pathname === "/vendor/shop-settings" && 'bg-orange-100 text-orange-600'
             )}>
-                <Store className="h-4 w-4" />
-                Shop Settings
+                <Settings className="h-4 w-4" />
+                Seller Settings
             </Link>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pt-2 border-t">
                 <div className="flex items-center gap-2">
                     <Avatar className="h-9 w-9">
                         <AvatarImage src={user?.avatarUrl ?? undefined} alt={user?.fullName ?? user?.email ?? undefined} />

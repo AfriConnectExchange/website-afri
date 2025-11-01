@@ -8,13 +8,8 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import type { FilterState } from '@/app/marketplace/page';
+import type { Category } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
-
-interface Category {
-  id: string;
-  name: string;
-  count: number;
-}
 
 interface PriceRange {
   min: number | null;

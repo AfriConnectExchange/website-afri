@@ -396,3 +396,17 @@ export type Database = {
     }
   }
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  slug?: string;
+  description?: string | null;
+  parent_id?: string | null;
+  children?: Category[];
+  is_active?: boolean;
+  order?: number;
+  count?: number; // Product count (optional, computed)
+  created_at?: any;
+  updated_at?: any;
+}

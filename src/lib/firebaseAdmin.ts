@@ -28,21 +28,16 @@ if (!admin.apps.length) {
         privateKey,
       }),
     });
-  }
-}
 
-// Enable ignoring undefined properties globally as a safety-net for Firestore writes
-try {
-  // Some environments may not allow settings to be changed after first access; wrap in try/catch
-  const firestore = admin.firestore();
-  firestore.settings({ ignoreUndefinedProperties: true });
-} catch (err) {
-  // Non-fatal: if settings can't be applied, we still sanitize at the write site
-  // (activity-logger already removes undefined values).
-  // Log at debug level to help during development.
-  // eslint-disable-next-line no-console
-  // Use a safe string conversion for the error to avoid TS complaints about unknown shape
-  console.warn('Could not apply Firestore settings ignoreUndefinedProperties:', (err as any)?.message ?? String(err));
+    // Apply settings only once, during initialization
+    try {
+      const firestore = admin.firestore();
+      firestore.settings({ ignoreUndefinedProperties: true });
+      console.log("Firestore settings applied.");
+    } catch (err) {
+      console.warn('Could not apply Firestore settings on initialization:', (err as any)?.message ?? String(err));
+    }
+  }
 }
 
 export default admin;
