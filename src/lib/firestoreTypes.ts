@@ -235,11 +235,12 @@ export interface KYCSubmissionDoc {
   user_id: string;
   
   // Documents
-  id_type: 'passport' | 'drivers_license' | 'national_id';
+  id_type: 'passport' | 'drivers_license';
   id_number: string;
   id_front_url: string;
   id_back_url?: string;
   selfie_url: string;
+  proof_of_address_url?: string;
   
   // Additional info
   date_of_birth?: string;

@@ -134,28 +134,28 @@ export default function AdminUsersPage() {
     <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">User Management</h1>
-        <p className="text-slate-400">View and manage all platform users</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">User Management</h1>
+        <p className="text-slate-600">View and manage all platform users</p>
       </div>
 
       {/* Filters */}
-      <Card className="bg-slate-800 border-slate-700 mb-6">
+      <Card className="bg-white mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
             <div className="md:col-span-2 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
               <Input
                 placeholder="Search by email, name, or UID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-slate-900 border-slate-600 text-white"
+                className="pl-10"
               />
             </div>
 
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-slate-900 border-slate-600 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -169,7 +169,7 @@ export default function AdminUsersPage() {
 
             {/* Role Filter */}
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="bg-slate-900 border-slate-600 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
@@ -183,53 +183,53 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Results count */}
-          <div className="mt-4 text-sm text-slate-400">
+          <div className="mt-4 text-sm text-slate-600">
             Showing {filteredUsers.length} of {users.length} users
           </div>
         </CardContent>
       </Card>
 
       {/* Users Table */}
-      <Card className="bg-slate-800 border-slate-700">
+      <Card className="bg-white">
         <CardHeader>
-          <CardTitle className="text-white">All Users</CardTitle>
+          <CardTitle className="text-slate-900">All Users</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
+              <Loader2 className="h-8 w-8 animate-spin text-sky-600" />
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
+            <div className="text-center py-12 text-slate-600">
               No users found
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-700 hover:bg-slate-800">
-                    <TableHead className="text-slate-300">Email</TableHead>
-                    <TableHead className="text-slate-300">Name</TableHead>
-                    <TableHead className="text-slate-300">Roles</TableHead>
-                    <TableHead className="text-slate-300">Status</TableHead>
-                    <TableHead className="text-slate-300">KYC</TableHead>
-                    <TableHead className="text-slate-300">Joined</TableHead>
-                    <TableHead className="text-slate-300">Actions</TableHead>
+                  <TableRow>
+                    <TableHead className="text-slate-700">Email</TableHead>
+                    <TableHead className="text-slate-700">Name</TableHead>
+                    <TableHead className="text-slate-700">Roles</TableHead>
+                    <TableHead className="text-slate-700">Status</TableHead>
+                    <TableHead className="text-slate-700">KYC</TableHead>
+                    <TableHead className="text-slate-700">Joined</TableHead>
+                    <TableHead className="text-slate-700">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user.uid} className="border-slate-700 hover:bg-slate-700/50">
-                      <TableCell className="text-white font-medium">
+                    <TableRow key={user.uid}>
+                      <TableCell className="text-slate-900 font-medium">
                         {user.email}
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-slate-700">
                         {user.display_name || "-"}
                       </TableCell>
                       <TableCell>{getRoleBadges(user.roles)}</TableCell>
                       <TableCell>{getStatusBadge(user.account_status)}</TableCell>
                       <TableCell>{getKYCBadge(user.kyc_status)}</TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-slate-700">
                         {user.created_at
                           ? new Date(user.created_at._seconds * 1000).toLocaleDateString()
                           : "-"}
@@ -239,7 +239,7 @@ export default function AdminUsersPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => router.push(`/admin/users/${user.uid}`)}
-                          className="text-sky-400 hover:text-sky-300 hover:bg-slate-700"
+                          className="text-sky-700 hover:text-sky-600 hover:bg-slate-100"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           View

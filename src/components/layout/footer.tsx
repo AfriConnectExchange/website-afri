@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Logo } from '@/components/logo';
+import { LogoCompact } from '@/components/logo';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import XIcon from '@mui/icons-material/X';
@@ -85,10 +85,10 @@ export default function Footer() {
                 <div className="text-[12px] mb-2" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Get it on</div>
                 <div className="flex gap-3 items-center">
                   <a href="#" aria-label="Get it on Google Play">
-                    <img src="/google-play.svg" alt="Google Play" className="h-9 md:h-10 w-auto" />
+                    <img src="/google-play.svg" alt="Google Play" className="h-14 md:h-16 w-auto" />
                   </a>
                   <a href="#" aria-label="Download on the App Store">
-                    <img src="/app-store.svg" alt="App Store" className="h-9 md:h-10 w-auto" />
+                    <img src="/app-store.svg" alt="App Store" className="h-14 md:h-16 w-auto" />
                   </a>
                 </div>
             </div>
@@ -115,8 +115,8 @@ export default function Footer() {
         <div className="border-t my-6" style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}></div>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-[12px]">
-        <div className="flex items-center gap-1">
-           <Logo withText={false} className="text-foreground" />
+        <div className="flex items-center gap-2">
+           <LogoCompact size={32} className="text-foreground" />
            <span className="font-semibold text-xs" style={{ fontFamily: 'Montserrat, Arial, sans-serif', color: 'var(--brand-neutral-white)' }}>
              AfriConnect Exchange
            </span>

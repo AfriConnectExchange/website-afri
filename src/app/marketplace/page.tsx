@@ -100,24 +100,20 @@ export default function MarketplacePage() {
     freeListingsOnly: false,
   });
 
-  // Transform hierarchical categories to flat list with generated IDs
+  // Transform hierarchical categories - only keep top-level (main) categories
   const flattenCategories = useCallback((cats: any[]): Category[] => {
     const result: Category[] = [];
-    const flatten = (items: any[], parentPath = '') => {
-      items.forEach((item) => {
-        const id = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        result.push({
-          id,
-          name: item.name,
-          description: item.description,
-          count: 0,
-        });
-        if (item.children && item.children.length > 0) {
-          flatten(item.children, id);
-        }
+    // Only take top-level categories (max 7-10 main categories)
+    cats.forEach((item) => {
+      const id = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      result.push({
+        id,
+        name: item.name,
+        description: item.description,
+        count: item.count || 0,
+        children: item.children || [], // Keep children for potential expansion
       });
-    };
-    flatten(cats);
+    });
     return result;
   }, []);
 
@@ -196,7 +192,7 @@ export default function MarketplacePage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/categories/list?includeCounts=true');
+        const response = await fetch('/api/categories/list?includeCounts=true&hierarchical=true');
         if (response.ok) {
           const data = await response.json();
           const categoryList = flattenCategories(data.categories || []);

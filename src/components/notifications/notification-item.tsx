@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 
 export interface Notification {
   id: string;
-  type: 'order' | 'delivery' | 'promotion' | 'system' | 'barter' | 'payment';
+  type: 'order' | 'delivery' | 'promotion' | 'system' | 'barter' | 'payment' | 'kyc';
   title: string;
   message: string;
   timestamp: string;
@@ -19,6 +19,7 @@ export interface Notification {
   link_url?: string;
   priority: 'high' | 'medium' | 'low';
 }
+import { Shield } from 'lucide-react';
 
 const icons = {
     order: Package,
@@ -27,7 +28,8 @@ const icons = {
     system: User,
     barter: Handshake,
     payment: CheckCircle,
-    default: AlertCircle
+  kyc: Shield,
+  default: AlertCircle
 }
 
 interface NotificationItemProps {
@@ -53,6 +55,7 @@ export function NotificationItem({
       case 'order': return { bg: 'bg-blue-100', text: 'text-blue-600' };
       case 'delivery': return { bg: 'bg-emerald-100', text: 'text-emerald-600' };
       case 'promotion': return { bg: 'bg-purple-100', text: 'text-purple-600' };
+        case 'kyc': return { bg: 'bg-amber-100', text: 'text-amber-700' };
       case 'barter': return { bg: 'bg-orange-100', text: 'text-orange-600' };
       case 'payment': return { bg: 'bg-green-100', text: 'text-green-600' };
       case 'system': return { bg: 'bg-gray-100', text: 'text-gray-600' };

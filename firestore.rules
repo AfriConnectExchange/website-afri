@@ -9,6 +9,74 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+
+    //
+    // Users
+    //
+    // Client can read and update ONLY their own user document with restrictions.
+    // Sensitive fields (roles, status, verification_status, id) are immutable from the client.
+    // Email/phone verification flags may flip to true only if the Firebase token indicates verification.
+    // Creates are allowed for the owner and must not elevate privileges (roles must be ['buyer']).
+    //
+    match /users/{userId} {
+      function isOwner() { return request.auth != null && request.auth.uid == userId; }
+      function unchanged(field) { return resource.data[field] == request.resource.data[field]; }
+
+      // Allow email_verified to go from false -> true if the ID token confirms email is verified
+      function emailVerifiedValid() {
+        return (!('email_verified' in request.resource.data)) ||
+               (resource.data.email_verified == request.resource.data.email_verified) ||
+               (!resource.data.email_verified && request.resource.data.email_verified == true && request.auth.token.email_verified == true);
+      }
+
+      // Allow phone_verified to go from false -> true if the ID token has a phone_number
+      function phoneVerifiedValid() {
+        return (!('phone_verified' in request.resource.data)) ||
+               (resource.data.phone_verified == request.resource.data.phone_verified) ||
+               (!resource.data.phone_verified && request.resource.data.phone_verified == true && request.auth.token.phone_number != null);
+      }
+
+      // Prevent client from changing sensitive fields
+      function noRestrictedChangesOnUpdate() {
+        return request.resource.data.id == resource.data.id &&
+               unchanged('roles') &&
+               unchanged('status') &&
+               unchanged('verification_status');
+      }
+
+      allow read: if isOwner();
+
+      // Create must be by the owner and cannot elevate roles or set verified directly
+      allow create: if isOwner() &&
+                    request.resource.data.id == userId &&
+                    (!('roles' in request.resource.data) || request.resource.data.roles == ['buyer']) &&
+                    (!('verification_status' in request.resource.data) || request.resource.data.verification_status != 'verified');
+
+      // Update only by the owner, with restricted fields unchanged and valid verification flips
+      allow update: if isOwner() && noRestrictedChangesOnUpdate() && emailVerifiedValid() && phoneVerifiedValid();
+    }
+
+    //
+    // Notifications
+    //
+    // Read: only the recipient can read their notifications.
+    // Writes are server-only (Admin SDK bypasses rules).
+    //
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow write: if false;
+    }
+
+    //
+    // KYC submissions
+    //
+    // Kept server-authoritative: clients can read their own status, but cannot write directly.
+    // Submissions and status updates are handled via server APIs using Admin SDK.
+    //
+    match /kyc_submissions/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
     //
     // Profiles
     //

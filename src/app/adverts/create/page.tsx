@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUpload } from '@/components/vendor/ImageUpload';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { auth } from '@/lib/firebaseClient';
 

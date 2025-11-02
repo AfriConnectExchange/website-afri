@@ -124,7 +124,12 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                 </div>
               )}
             </div>
-            <h3 className="font-semibold text-lg mb-1">{userName}</h3>
+            <h3 className="font-semibold text-lg mb-1 flex items-center justify-center gap-2">
+              {userName}
+              {user?.verification_status === 'verified' && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Verified</Badge>
+              )}
+            </h3>
             {/* Prefer showing 'seller' role if present in the user's roles array */}
             {(() => {
               const roles = user.roles || [];
@@ -161,6 +166,14 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                 </div>
               )}
             </div>
+
+            {user?.verification_status !== 'verified' && (
+              <div className="mt-2">
+                <Button size="sm" variant="outline" onClick={() => onNavigate('/kyc')}>
+                  Verify identity to unlock selling
+                </Button>
+              </div>
+            )}
 
             <VerifyEmailModal open={showVerifyEmail} onOpenChange={setShowVerifyEmail} email={user.email} />
             <VerifyPhoneModal open={showVerifyPhone} onOpenChange={setShowVerifyPhone} phone={user.phone} />

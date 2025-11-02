@@ -9,6 +9,7 @@ import { PaymentConfirmation } from '@/components/checkout/payments/PaymentConfi
 import type { CartItem } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
 import { PageLoader } from '@/components/ui/loader';
+import { fetchWithAuth } from '@/lib/api';
 
 
 function CheckoutPageContent() {
@@ -53,7 +54,7 @@ function CheckoutPageContent() {
     };
     
     try {
-      const response = await fetch('/api/orders/create', {
+      const response = await fetchWithAuth('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload),

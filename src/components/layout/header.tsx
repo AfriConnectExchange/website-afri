@@ -57,11 +57,10 @@ export function Header({ cartCount = 0 }: HeaderProps) {
     { id: '/adverts', label: 'My Adverts', icon: TrendingUp, href: '/adverts' },
   ];
 
-  const visibleNavigation = isSeller ? [...navigationItems, { id: '/vendor/dashboard', label: 'Seller Dashboard', href: '/vendor/dashboard' }] : navigationItems;
+  const visibleNavigation = isSeller ? [...navigationItems, { id: '/seller/products', label: 'Seller Dashboard', href: '/seller/products' }] : navigationItems;
   const sellerMenuItems = [
-    { id: '/vendor/dashboard', label: 'Dashboard', href: '/vendor/dashboard' },
-    { id: '/vendor/products', label: 'Products', href: '/vendor/products' },
-    { id: '/vendor/shop-settings', label: 'Shop Settings', href: '/vendor/shop-settings' },
+    { id: '/seller/products', label: 'Products', href: '/seller/products' },
+    { id: '/seller/create', label: 'List Product', href: '/seller/create' },
   ];
   const navItems = isSeller ? [...navigationItems, ...sellerMenuItems] : navigationItems;
 

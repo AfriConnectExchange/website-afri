@@ -1,0 +1,101 @@
+[
+  {
+    "name": "Electronics",
+    "image": "/images/categories/electronics.jpg",
+    "children": [
+      { "name": "Phones & Tablets" },
+      { "name": "Laptops & Computers" },
+      { "name": "TV & Home Theater" },
+      { "name": "Cameras & Photography" },
+      { "name": "Audio & Headphones" }
+    ]
+  },
+  {
+    "name": "Fashion",
+    "image": "/images/categories/fashion.jpg",
+    "children": [
+      { "name": "Men's Clothing" },
+      { "name": "Women's Clothing" },
+      { "name": "Shoes" },
+      { "name": "Bags & Accessories" },
+      { "name": "Jewelry & Watches" }
+    ]
+  },
+  {
+    "name": "Home & Garden",
+    "image": "/images/categories/home-garden.jpg",
+    "children": [
+      { "name": "Furniture" },
+      { "name": "Kitchen & Dining" },
+      { "name": "Home Decor" },
+      { "name": "Garden & Outdoor" }
+    ]
+  },
+  {
+    "name": "Groceries",
+    "image": "/images/categories/groceries.jpg",
+    "children": [
+      { "name": "Food Staples" },
+      { "name": "Beverages" },
+      { "name": "Snacks" },
+      { "name": "Fresh Produce" }
+    ]
+  },
+  {
+    "name": "Beauty & Health",
+    "image": "/images/categories/beauty-health.jpg",
+    "children": [
+      { "name": "Skincare" },
+      { "name": "Hair Care" },
+      { "name": "Makeup" },
+      { "name": "Vitamins & Supplements" }
+    ]
+  },
+  {
+    "name": "Sports & Outdoors",
+    "image": "/images/categories/sports-outdoors.jpg",
+    "children": [
+      { "name": "Fitness" },
+      { "name": "Cycling" },
+      { "name": "Camping & Hiking" },
+      { "name": "Team Sports" }
+    ]
+  },
+  {
+    "name": "Automobiles",
+    "image": "/images/categories/automobiles.jpg",
+    "children": [
+      { "name": "Cars" },
+      { "name": "Motorcycles" },
+      { "name": "Parts & Accessories" }
+    ]
+  },
+  {
+    "name": "Real Estate",
+    "image": "/images/categories/real-estate.jpg",
+    "children": [
+      { "name": "Rentals" },
+      { "name": "For Sale" },
+      { "name": "Commercial" }
+    ]
+  },
+  {
+    "name": "Services",
+    "image": "/images/categories/services.jpg",
+    "children": [
+      { "name": "Repairs" },
+      { "name": "Cleaning" },
+      { "name": "Moving & Logistics" },
+      { "name": "Professional Services" }
+    ]
+  },
+  {
+    "name": "Jobs",
+    "image": "/images/categories/jobs.jpg",
+    "children": [
+      { "name": "Full-time" },
+      { "name": "Part-time" },
+      { "name": "Contract" }
+    ]
+  }
+]

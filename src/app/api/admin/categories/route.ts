@@ -48,24 +48,25 @@ export async function POST(req: Request) {
     if (!allowed) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const { name, type, parent_id = null, description = null, is_active = true } = body || {};
+    const { name, description = null, is_active = true, image_url = null } = body || {};
 
-    if (!name || !type) return NextResponse.json({ ok: false, error: 'Missing required fields' }, { status: 400 });
+    if (!name) return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
 
     const now = admin.firestore.FieldValue.serverTimestamp();
     const docRef = await admin.firestore().collection('categories').add({
       name: String(name),
-      type: String(type),
-      parent_id: parent_id || null,
+      type: 'product',
+      parent_id: null,
       description: description || null,
       is_active: Boolean(is_active),
+      image_url: image_url || null,
       created_at: now,
       updated_at: now,
     });
 
-    return NextResponse.json({ ok: true, id: docRef.id });
+    return NextResponse.json({ success: true, id: docRef.id });
   } catch (err: any) {
     console.error('Failed to create category:', err);
-    return NextResponse.json({ ok: false, error: err?.message ?? String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: err?.message ?? String(err) }, { status: 500 });
   }
 }

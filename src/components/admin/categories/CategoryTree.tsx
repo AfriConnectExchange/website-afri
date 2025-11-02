@@ -51,7 +51,7 @@ const CategoryItem = ({ category, level, onEdit, onDeleteSuccess }: CategoryItem
 
   return (
     <div>
-      <div className="flex items-center justify-between p-2 rounded-md hover:bg-slate-800/50">
+      <div className="flex items-center justify-between p-2 rounded-md hover:bg-slate-100">
         <div className="flex items-center" style={{ paddingLeft: `${level * 24}px` }}>
           {hasChildren && (
             <button onClick={() => setIsExpanded(!isExpanded)} className="mr-2 p-1">
@@ -60,13 +60,13 @@ const CategoryItem = ({ category, level, onEdit, onDeleteSuccess }: CategoryItem
           )}
           {!hasChildren && <span className="w-8"></span>}
           <span className="font-medium">{category.name}</span>
-          <span className="ml-2 text-xs text-slate-500">({category.slug})</span>
+          {category.slug && <span className="ml-2 text-xs text-slate-500">({category.slug})</span>}
         </div>
         <div className="space-x-2">
           <Button variant="ghost" size="icon" onClick={() => onEdit(category)} className="h-8 w-8">
             <Edit size={16} />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setIsDeleteModalOpen(true)} className="h-8 w-8 hover:bg-red-500/10 hover:text-red-400">
+          <Button variant="ghost" size="icon" onClick={() => setIsDeleteModalOpen(true)} className="h-8 w-8 hover:bg-red-50 hover:text-red-600">
             <Trash size={16} />
           </Button>
         </div>
@@ -92,10 +92,10 @@ const CategoryItem = ({ category, level, onEdit, onDeleteSuccess }: CategoryItem
 
 export const CategoryTree = ({ categories, onEdit, onDeleteSuccess }: CategoryTreeProps) => {
   return (
-    <Card className="bg-slate-800 border-slate-700 text-white">
+    <Card className="bg-white">
       <CardContent className="p-4">
         {categories.length === 0 ? (
-          <p className="text-center text-slate-400 py-8">No categories found.</p>
+          <p className="text-center text-slate-600 py-8">No categories found.</p>
         ) : (
           categories.map(category => (
             <CategoryItem key={category.id} category={category} level={0} onEdit={onEdit} onDeleteSuccess={onDeleteSuccess} categories={[]} />

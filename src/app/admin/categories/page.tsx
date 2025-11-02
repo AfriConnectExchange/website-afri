@@ -76,7 +76,7 @@ export default function CategoriesPage() {
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center text-red-400">
+      <div className="flex h-full items-center justify-center text-red-600">
         <p>Error: {error}</p>
       </div>
     );
@@ -86,10 +86,10 @@ export default function CategoriesPage() {
     <div className="p-4 md:p-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Product Categories</h1>
-          <p className="text-slate-400">Manage your hierarchical product categories.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Product Categories</h1>
+          <p className="text-slate-600">Manage your product categories. Top-level only with images.</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="bg-sky-500 hover:bg-sky-600">
+        <Button onClick={() => handleOpenModal()} className="bg-sky-600 hover:bg-sky-700">
           <PlusCircle className="h-4 w-4 mr-2" />
           Add Category
         </Button>

@@ -40,7 +40,8 @@ export function CategoryFormModal({
   allCategories,
 }: CategoryFormModalProps) {
   const [name, setName] = useState(category?.name || "");
-  const [parentId, setParentId] = useState<string | null>(category?.parent_id || null);
+  const [description, setDescription] = useState<string>(category?.description || "");
+  const [imageUrl, setImageUrl] = useState<string | null>((category as any)?.image_url || null);
   const [isLoading, setIsLoading] = useState(false);
   const { getAdminToken } = useAdminAuth();
   const { toast } = useToast();
@@ -60,11 +61,11 @@ export function CategoryFormModal({
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name, parent_id: parentId }),
+        body: JSON.stringify({ name, description: description || null, image_url: imageUrl }),
       });
 
       const data = await response.json();
-      if (!data.success) throw new Error(data.error);
+      if (!data.success) throw new Error(data.error || 'Failed to save category');
 
       toast({
         title: "Success",
@@ -84,7 +85,7 @@ export function CategoryFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-slate-800 border-slate-700 text-white">
+      <DialogContent className="bg-white">
         <DialogHeader>
           <DialogTitle>{category ? "Edit" : "Create"} Category</DialogTitle>
           <DialogDescription>
@@ -103,31 +104,36 @@ export function CategoryFormModal({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="col-span-3 bg-slate-900 border-slate-600"
+              className="col-span-3"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="parent" className="text-right">
-              Parent
+            <Label htmlFor="description" className="text-right">
+              Description
             </Label>
-            <Select
-              value={parentId || "none"}
-              onValueChange={(value) => setParentId(value === "none" ? null : value)}
-            >
-              <SelectTrigger className="col-span-3 bg-slate-900 border-slate-600">
-                <SelectValue placeholder="Select a parent category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None (Top-level)</SelectItem>
-                {allCategories
-                  .filter(c => c.id !== category?.id) // Prevent self-parenting
-                  .map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label className="text-right mt-2">Image</Label>
+            <div className="col-span-3 space-y-3">
+              {imageUrl ? (
+                <div className="flex items-center gap-4">
+                  <img src={imageUrl} alt="Category" className="h-16 w-16 rounded object-cover border" />
+                  <Button variant="outline" type="button" onClick={() => setImageUrl(null)}>
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <CategoryImageUploader onUploaded={(url) => setImageUrl(url)} />
+              )}
+              <p className="text-xs text-slate-500">JPEG/PNG/WebP up to 5MB.</p>
+            </div>
           </div>
         </div>
 
@@ -142,5 +148,41 @@ export function CategoryFormModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CategoryImageUploader({ onUploaded }: { onUploaded: (url: string) => void }) {
+  const { getAdminToken } = useAdminAuth();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      const token = await getAdminToken();
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/admin/categories/upload-image', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Upload failed');
+      onUploaded(data.url);
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      try { (e.target as any).value = ''; } catch {}
+    }
+  };
+
+  return (
+    <div>
+      <input type="file" accept="image/*" onChange={onPick} disabled={busy} />
+    </div>
   );
 }

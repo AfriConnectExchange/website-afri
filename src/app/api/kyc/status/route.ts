@@ -1,60 +1,37 @@
-// API to check user's KYC status
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ status: 'unverified' });
     }
-
     const token = authHeader.split('Bearer ')[1];
-    let decodedToken;
-    
-    try {
-      decodedToken = await admin.auth().verifyIdToken(token);
-    } catch (err) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const decoded = await admin.auth().verifyIdToken(token);
+    const uid = decoded.uid;
+
+    const userDoc = await admin.firestore().collection('users').doc(uid).get();
+    const userData = userDoc.data() || {};
+
+    // If there is an explicit verification_status on user, use it.
+    let status: 'unverified' | 'pending' | 'verified' | 'rejected' = userData.verification_status || 'unverified';
+
+    // If pending or unverified, check submission doc to refine
+    const subDoc = await admin.firestore().collection('kyc_submissions').doc(uid).get();
+    let reason: string | undefined = undefined;
+    if (subDoc.exists) {
+      const s = subDoc.data()?.status;
+      if (s === 'approved') status = 'verified';
+      else if (s === 'rejected' || s === 'requires_resubmission') {
+        status = 'rejected';
+        reason = subDoc.data()?.rejection_reason || userData.kyc_rejection_reason;
+      }
+      else if (s === 'pending') status = 'pending';
     }
 
-    const userId = decodedToken.uid;
-    const db = admin.firestore();
-
-    // Check user doc for verification status
-    const userDoc = await db.collection('users').doc(userId).get();
-    const userData = userDoc.data();
-
-    if (!userData) {
-      return NextResponse.json({ 
-        success: true, 
-        status: 'unverified',
-        kyc_completed: false 
-      });
-    }
-
-    // Check if there's a pending or rejected submission
-    const submissionsQuery = await db.collection('kyc_submissions')
-      .where('user_id', '==', userId)
-      .orderBy('submitted_at', 'desc')
-      .limit(1)
-      .get();
-
-    let latestSubmission = null;
-    if (!submissionsQuery.empty) {
-      const doc = submissionsQuery.docs[0];
-      latestSubmission = { id: doc.id, ...doc.data() };
-    }
-
-    return NextResponse.json({
-      success: true,
-      status: userData.verification_status || 'unverified',
-      kyc_completed: userData.kyc_completed || false,
-      rejection_reason: latestSubmission?.rejection_reason || null,
-      submitted_at: latestSubmission?.submitted_at || null,
-    });
-  } catch (error: any) {
-    console.error('Error checking KYC status:', error);
-    return NextResponse.json({ error: error.message || 'Failed to check status' }, { status: 500 });
+    return NextResponse.json({ status, reason: reason || null });
+  } catch (err) {
+    return NextResponse.json({ status: 'unverified' });
   }
 }

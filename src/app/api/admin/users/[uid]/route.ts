@@ -3,10 +3,10 @@ import admin from '@/lib/firebaseAdmin';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { uid: string } }
+  { params }: { params: Promise<{ uid: string }> }
 ) {
   try {
-    const { uid } = params;
+    const { uid } = await params;
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -47,7 +47,7 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error(`Error fetching user ${params.uid}:`, error);
+    console.error(`Error fetching user in /api/admin/users/[uid]:`, error);
     return NextResponse.json(
       { success: false, error: error.message || 'Failed to fetch user data' },
       { status: 500 }

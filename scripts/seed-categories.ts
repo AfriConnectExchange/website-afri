@@ -23,6 +23,7 @@ const categoriesCollection = db.collection('categories');
 
 interface CategorySeed {
   name: string;
+  image?: string;
   children?: CategorySeed[];
 }
 
@@ -43,18 +44,20 @@ const seedCategories = async () => {
   await Promise.all(deletePromises);
   console.log('Existing categories deleted.');
 
-  // Read the mock data
-  const mockDataPath = path.join(__dirname, '../src/data/mock-categories.json');
-  const categoriesSeed: CategorySeed[] = JSON.parse(fs.readFileSync(mockDataPath, 'utf8'));
+  // Read the v2 seed data (top-level categories with nested subcategories)
+  const seedPath = path.join(__dirname, '../src/data/categories.v2.json');
+  const categoriesSeed: CategorySeed[] = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
 
   // Recursive function to add categories
   const addCategory = async (category: CategorySeed, parentId: string | null = null) => {
     const slug = createSlug(category.name);
     
-    const categoryData = {
+    const categoryData: any = {
       name: category.name,
       slug: slug,
       parent_id: parentId,
+      image: category.image || null,
+      is_active: true,
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       updated_at: admin.firestore.FieldValue.serverTimestamp(),
     };

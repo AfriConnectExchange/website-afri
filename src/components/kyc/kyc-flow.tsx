@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -12,6 +12,7 @@ import { ReviewStep } from './steps/review-step';
 import { CompletionStep } from './steps/completion-step';
 import { KycProgress } from './kyc-progress';
 import { useAuth } from '@/context/auth-context';
+import { fetchWithAuth } from '@/lib/api';
 
 interface KYCPageProps {
   onNavigate: (page: string) => void;
@@ -27,6 +28,7 @@ export interface DocumentUpload {
   required: boolean;
   uploaded: boolean;
   status: 'pending' | 'approved' | 'rejected';
+  url?: string; // download URL after upload
 }
 
 export interface KYCData {
@@ -91,18 +93,33 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   });
 
   const [documents, setDocuments] = useState<DocumentUpload[]>([
-    { id: 'government_id', name: 'Government ID', file: null, required: true, uploaded: false, status: 'pending' },
+    { id: 'id_document', name: 'Identity Document', file: null, required: true, uploaded: false, status: 'pending' },
     { id: 'proof_of_address', name: 'Proof of Address', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'business_registration', name: 'Business Registration', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'tax_certificate', name: 'Tax Certificate', file: null, required: false, uploaded: false, status: 'pending' },
-    { id: 'bank_statement', name: 'Bank Statement', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'business_license', name: 'Business License', file: null, required: false, uploaded: false, status: 'pending' },
   ]);
 
   const handleInputChange = (field: keyof KYCData, value: string) => {
     setKycData((prev) => ({ ...prev, [field]: value }));
     setError('');
   };
+
+  // On mount, check if there is an existing submission and reflect state
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetchWithAuth('/api/kyc/status');
+        const data = await res.json();
+        if (data?.status === 'pending') {
+          setVerificationStatus('pending');
+          setCurrentStep('complete');
+          setSuccess('Your KYC submission is pending review. We will notify you by email when it is approved.');
+        } else if (data?.status === 'verified') {
+          setVerificationStatus('approved');
+          setCurrentStep('complete');
+          setSuccess('Your KYC is verified. You can now upgrade your account to start selling.');
+        }
+      } catch {}
+    })();
+  }, []);
 
   const validateStep = (step: KYCStep) => {
     switch (step) {
@@ -123,7 +140,7 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
         }
         return true;
       case 'documents':
-        const requiredDocs = documents.filter(doc => doc.required && !doc.uploaded);
+        const requiredDocs = documents.filter(doc => doc.required && !doc.url);
         if (requiredDocs.length > 0) {
             setError(`Please upload all required documents: ${requiredDocs.map(doc => doc.name).join(', ')}`);
             return false;
@@ -162,13 +179,36 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
     setError('');
 
     try {
-      // Simulate API call and file upload
-      await new Promise(resolve => setTimeout(resolve, 2000)); 
-      
-      // Update user context to reflect KYC submission (in a real app, this state would come from the backend)
-      if (user) {
-  // updateUser currently has a narrow type; allow this during migration and cast to any
-  updateUser({ roles: [...(user.roles || []), 'seller'] } as any); // Add seller role
+      // Build payload for server submission
+      const idDoc = documents.find(d => d.id === 'id_document');
+      const poaDoc = documents.find(d => d.id === 'proof_of_address');
+      const payload = {
+        personal: {
+          fullName: kycData.fullName,
+          dateOfBirth: kycData.dateOfBirth,
+          nationality: kycData.nationality,
+          idType: kycData.idType,
+          idNumber: kycData.idNumber,
+          address: kycData.address,
+          city: kycData.city,
+          state: kycData.state,
+          postalCode: kycData.postalCode,
+          primaryPhone: kycData.primaryPhone,
+        },
+        documents: {
+          idDocumentUrl: idDoc?.url || null,
+          proofOfAddressUrl: poaDoc?.url || null,
+        }
+      };
+
+      const res = await fetchWithAuth('/api/kyc/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const msg = await res.json().catch(() => ({}));
+        throw new Error(msg?.error || 'Failed to submit KYC');
       }
 
       setVerificationStatus('pending');
@@ -189,7 +229,13 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
         case 'business':
             return <BusinessInfoStep kycData={kycData} onInputChange={handleInputChange} />;
         case 'documents':
-            return <DocumentUploadStep documents={documents} setDocuments={setDocuments} setError={setError} />;
+            // Show a clearer label for the required ID based on the user's chosen ID type
+            const displayDocs = documents.map(doc =>
+              doc.id === 'id_document'
+                ? { ...doc, name: kycData.idType === 'drivers_license' ? "Driver's License" : 'International Passport' }
+                : doc
+            );
+            return <DocumentUploadStep documents={displayDocs} setDocuments={setDocuments} setError={setError} />;
         case 'review':
             return <ReviewStep kycData={kycData} documents={documents} />;
         case 'complete':
@@ -200,52 +246,61 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => onNavigate('/profile')}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Profile
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold">KYC Verification</h1>
-          <p className="text-sm text-muted-foreground">
-            Complete your seller verification to start trading
-          </p>
+    <div className="container max-w-6xl mx-auto px-0 sm:px-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => onNavigate('/profile')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Profile
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">KYC Verification</h1>
+            <p className="text-sm text-muted-foreground">Complete verification to unlock selling</p>
+          </div>
         </div>
       </div>
 
-      <KycProgress currentStep={currentStep} />
-      
-      {error && (
-            <Alert className="mb-6" variant="destructive">
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left: Sticky Stepper */}
+        <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit">
+          <KycProgress currentStep={currentStep} />
+        </div>
+
+        {/* Right: Step content */}
+        <div className="lg:col-span-8 space-y-4">
+          {error && (
+            <Alert className="mb-2" variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-       )}
+          )}
 
-      {success && currentStep === 'complete' && (
-        <Alert className="mb-6">
-            <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
+          {success && currentStep === 'complete' && (
+            <Alert className="mb-2">
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
 
-      <div className="mb-6">{renderStepContent()}</div>
+          <div>{renderStepContent()}</div>
 
-      {currentStep !== 'complete' && (
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={previousStep}
-            disabled={currentStep === 'personal' || isLoading}
-          >
-            Previous
-          </Button>
-          <Button onClick={nextStep} disabled={isLoading}>
-            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {currentStep === 'review' ? 'Submit Application' : 'Next'}
-          </Button>
+          {currentStep !== 'complete' && (
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                onClick={previousStep}
+                disabled={currentStep === 'personal' || isLoading}
+              >
+                Previous
+              </Button>
+              <Button onClick={nextStep} disabled={isLoading}>
+                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {currentStep === 'review' ? 'Submit Application' : 'Next'}
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

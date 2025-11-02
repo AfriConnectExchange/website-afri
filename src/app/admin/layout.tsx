@@ -26,10 +26,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Show loading state
   if (isAdminLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mx-auto mb-4" />
-          <p className="text-slate-400">Loading admin portal...</p>
+          <p className="text-slate-600">Loading admin portal...</p>
         </div>
       </div>
     );
@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen bg-slate-900">
+    <div className="flex h-screen bg-white">
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto">
         {children}

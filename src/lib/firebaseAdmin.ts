@@ -1,9 +1,12 @@
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
+  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     // Let the SDK pick up the JSON file via GOOGLE_APPLICATION_CREDENTIALS
-    admin.initializeApp();
+    admin.initializeApp({
+      storageBucket: storageBucket,
+    });
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     // Accept a full service account JSON as an environment variable (use Secret Manager to set this safely)
     try {
@@ -14,6 +17,7 @@ if (!admin.apps.length) {
           clientEmail: svc.client_email,
           privateKey: svc.private_key,
         }),
+        storageBucket: storageBucket,
       });
     } catch (err) {
       console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON', err);
@@ -27,6 +31,7 @@ if (!admin.apps.length) {
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey,
       }),
+      storageBucket: storageBucket,
     });
 
     // Apply settings only once, during initialization

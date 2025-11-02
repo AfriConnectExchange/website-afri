@@ -404,6 +404,7 @@ export interface Category {
   description?: string | null;
   parent_id?: string | null;
   children?: Category[];
+  image?: string | null;
   is_active?: boolean;
   order?: number;
   count?: number; // Product count (optional, computed)

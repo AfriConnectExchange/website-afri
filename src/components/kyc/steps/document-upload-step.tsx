@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { DocumentUpload } from "../kyc-flow";
 import { useState } from 'react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '@/context/auth-context';
 
 interface DocumentUploadStepProps {
@@ -42,17 +43,19 @@ export function DocumentUploadStep({ documents, setDocuments, setError }: Docume
                 throw new Error("You must be logged in to upload documents.");
             }
             
-            // In a real app, this would upload to a storage service
-            // For now, we simulate success after a delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            setDocuments(prev => 
-                prev.map(doc => 
-                    doc.id === documentId 
-                    ? { ...doc, file, uploaded: true, status: 'pending' }
-                    : doc
-                )
-            );
+            // Upload to Firebase Storage
+            const storage = getStorage();
+            const ext = file.name.split('.').pop() || 'bin';
+            const path = `kyc/${user.uid}/${documentId}.${ext}`;
+            const storageRef = ref(storage, path);
+            const snapshot = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            setDocuments(prev => prev.map(doc => (
+                doc.id === documentId
+                  ? { ...doc, file, uploaded: true, status: 'pending', url: downloadURL }
+                  : doc
+            )));
 
         } catch(error: any) {
             setError(`Upload failed: ${error.message}`);

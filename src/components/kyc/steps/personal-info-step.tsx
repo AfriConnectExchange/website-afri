@@ -3,8 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CountrySelector } from "../CountrySelector";
 import type { KYCData } from "../kyc-flow";
 import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface PersonalInfoStepProps {
     kycData: KYCData;
@@ -47,20 +49,11 @@ export function PersonalInfoStep({ kycData, onInputChange }: PersonalInfoStepPro
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="nationality">Nationality *</Label>
-                <Select value={kycData.nationality} onValueChange={(value) => onInputChange('nationality', value)}>
-                <SelectTrigger>
-                    <SelectValue placeholder="Select nationality" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="gb">🇬🇧 British</SelectItem>
-                    <SelectItem value="ng">🇳🇬 Nigerian</SelectItem>
-                    <SelectItem value="gh">🇬🇭 Ghanaian</SelectItem>
-                    <SelectItem value="ke">🇰🇪 Kenyan</SelectItem>
-                    <SelectItem value="za">🇿🇦 South African</SelectItem>
-                    <SelectItem value="eg">🇪🇬 Egyptian</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-                </Select>
+                <CountrySelector
+                  value={kycData.nationality}
+                  onChange={(code) => onInputChange('nationality', code)}
+                  placeholder="Select nationality"
+                />
             </div>
             <div className="space-y-2">
                 <Label htmlFor="idType">ID Type *</Label>
@@ -69,9 +62,8 @@ export function PersonalInfoStep({ kycData, onInputChange }: PersonalInfoStepPro
                     <SelectValue placeholder="Select ID type" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="passport">Passport</SelectItem>
+                    <SelectItem value="passport">International Passport</SelectItem>
                     <SelectItem value="drivers_license">Driver's License</SelectItem>
-                    <SelectItem value="national_id">National ID</SelectItem>
                 </SelectContent>
                 </Select>
             </div>

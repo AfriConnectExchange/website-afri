@@ -3,6 +3,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { KYCData, DocumentUpload } from "../kyc-flow";
+import countries from 'i18n-iso-countries';
+import enLocale from 'i18n-iso-countries/langs/en.json';
+
+// Ensure English country names are available
+try { countries.registerLocale(enLocale as any); } catch {}
+
+const countryName = (codeOrName: string): string => {
+    if (!codeOrName) return '';
+    const code = codeOrName.toUpperCase();
+    // If code maps to a name, return it; otherwise assume it's already a name
+    const name = countries.getName(code as any, 'en');
+    return name || codeOrName;
+}
 
 interface ReviewStepProps {
     kycData: KYCData;
@@ -25,7 +38,7 @@ export function ReviewStep({ kycData, documents }: ReviewStepProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div><span className="text-muted-foreground">Name:</span> {kycData.fullName}</div>
                 <div><span className="text-muted-foreground">Date of Birth:</span> {kycData.dateOfBirth}</div>
-                <div><span className="text-muted-foreground">Nationality:</span> {kycData.nationality}</div>
+                <div><span className="text-muted-foreground">Nationality:</span> {countryName(kycData.nationality)}</div>
                 <div><span className="text-muted-foreground">ID Type:</span> {kycData.idType}</div>
                 <div><span className="text-muted-foreground">ID Number:</span> {kycData.idNumber}</div>
                 <div><span className="text-muted-foreground">Phone:</span> {kycData.primaryPhone}</div>
