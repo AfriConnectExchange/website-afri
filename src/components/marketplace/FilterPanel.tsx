@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { SearchBar } from './SearchBar';
 import { CategoryFilter } from './CategoryFilter';
 import { PriceFilter } from './PriceFilter';
@@ -7,6 +8,8 @@ import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import LocationFilter from './LocationFilter';
 import type { FilterState } from '@/app/marketplace/page';
 import type { Category } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
@@ -33,6 +36,8 @@ export function FilterPanel({
   currency = '£',
   isLoading = false,
 }: FilterPanelProps) {
+  const [locationExpanded, setLocationExpanded] = useState(false);
+  
   const handleCategoryChange = (categoryId: string, selected: boolean) => {
     let newCategories: string[];
 
@@ -218,6 +223,49 @@ export function FilterPanel({
           </div>
 
         </div>
+      </div>
+
+      <Separator />
+
+      {/* Location-Based Filtering (Optional) */}
+      <div className="space-y-3">
+        <Button
+          variant="ghost"
+          onClick={() => setLocationExpanded(!locationExpanded)}
+          className="w-full justify-between p-0 h-auto font-medium hover:bg-transparent"
+        >
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary" />
+            <span className="text-sm">Location-Based Discovery</span>
+          </div>
+          {locationExpanded ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </Button>
+
+        {locationExpanded && (
+          <div className="pt-2">
+            <LocationFilter
+              onLocationChange={(location) => {
+                onFiltersChange({
+                  userLocation: location ? {
+                    lat: location.latitude,
+                    lng: location.longitude,
+                    address: location.address
+                  } : null
+                });
+              }}
+              onRadiusChange={(radius) => {
+                onFiltersChange({ locationRadius: radius });
+              }}
+              onDeliveryOptionsChange={(options) => {
+                onFiltersChange({ deliveryOptions: options });
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

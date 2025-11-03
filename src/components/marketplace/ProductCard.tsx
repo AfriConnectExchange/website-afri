@@ -52,10 +52,10 @@ export function ProductCard({
   };
   
   // Extract image URL - handle both string and object formats
-  const imageSrc = product.image || 
-    (product.images && product.images.length > 0 
-      ? (typeof product.images[0] === 'string' ? product.images[0] : (product.images[0] as any)?.url || '')
-      : '');
+  const imageSrc = 
+    product.images && product.images.length > 0 
+      ? (typeof product.images[0] === 'string' ? product.images[0] : (product.images[0] as any)?.url || '/placeholder.svg')
+      : product.image || '/placeholder.svg';
   
   const locationText = product.location_text || product.sellerDetails?.location || '';
   
@@ -205,12 +205,20 @@ export function ProductCard({
                 <span className="font-semibold text-gray-700">{product.rating}</span>
                 <span className="text-gray-500">({product.review_count || product.reviews})</span>
               </div>
-              {locationText && (
+              {product.distance !== undefined && product.distance !== Infinity ? (
+                <div className="flex items-center gap-1 text-primary font-medium">
+                  <MapPin className="w-3 h-3" />
+                  <span>{product.distance < 1 
+                    ? `${Math.round(product.distance * 1000)}m` 
+                    : `${product.distance.toFixed(1)}km`} away
+                  </span>
+                </div>
+              ) : locationText ? (
                 <div className="flex items-center gap-1 text-gray-500">
                   <MapPin className="w-3 h-3" />
                   <span className="truncate max-w-[80px]">{locationText}</span>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Seller & Stock Row */}

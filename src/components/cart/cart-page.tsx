@@ -70,7 +70,10 @@ export function CartPageComponent({
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const formatPrice = (price: number) => `£${price.toFixed(2)}`;
+  const formatPrice = (price?: number) => {
+    if (typeof price !== 'number' || isNaN(price)) return '£0.00';
+    return `£${price.toFixed(2)}`;
+  };
 
   const handleRemoveItem = (itemId: string, itemName: string) => {
     setShowRemoveConfirm({ isOpen: true, itemId, itemName });
@@ -267,20 +270,33 @@ export function CartPageComponent({
                   </Button>
                 </CardHeader>
                 <CardContent className="divide-y">
-                  {cartItems.map((item) => {
-                    // Extract image URL - handle both string and object formats
-                    const imageSrc = item.image || 
-                      (item.images && item.images.length > 0 
-                        ? (typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url || '')
-                        : '');
+                  {cartItems.map((item, index) => {
+                    // Extract image URL - handle both string and object formats, prioritize images array
+                    const imageSrc = 
+                      item.images && item.images.length > 0 
+                        ? (typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url || '/placeholder.svg')
+                        : item.image || '/placeholder.svg';
+                    
+                    // Get product name/title
+                    const productName = item.title || item.name || 'Unnamed Product';
+                    
+                    // Get seller name
+                    const sellerName = item.seller || 
+                      item.sellerDetails?.name || 
+                      item.sellerDetails?.username || 
+                      'Unknown Seller';
+                    
+                    // Use a composite key for better uniqueness
+                    const itemKey = item.id ? `cart-item-${item.id}` : `cart-item-${index}`;
+                    
                     return (
-                    <div key={item.id} className="py-4">
+                    <div key={itemKey} className="py-4">
                       <div className="flex gap-4">
                         <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                           <ImageWithFallback
                             src={imageSrc}
                             fallbackSrc="/placeholder.svg"
-                            alt={item.name}
+                            alt={productName}
                             width={96}
                             height={96}
                             className="w-full h-full object-cover"
@@ -291,13 +307,13 @@ export function CartPageComponent({
                           <div>
                             <div className="flex justify-between items-start">
                               <h4 className="font-medium line-clamp-2 pr-2">
-                                {item.name}
+                                {productName}
                               </h4>
                               <div className="text-right">
                                 <div className="font-semibold">
                                   {formatPrice(item.price)}
                                 </div>
-                                {item.originalPrice && (
+                                {item.originalPrice && item.originalPrice > item.price && (
                                   <div className="text-xs text-muted-foreground line-through">
                                     {formatPrice(item.originalPrice)}
                                   </div>
@@ -305,7 +321,7 @@ export function CartPageComponent({
                               </div>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              Sold by {getSellerName(item.seller)}
+                              Sold by {sellerName}
                             </p>
                              {item.quantity > item.quantity_available ? (
                                 <p className="text-xs text-destructive font-semibold mt-1">
@@ -323,7 +339,7 @@ export function CartPageComponent({
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleRemoveItem(item.id, item.name)}
+                              onClick={() => handleRemoveItem(item.id, productName)}
                               className="text-muted-foreground hover:text-destructive h-7 w-7"
                             >
                               <Trash2 className="w-4 h-4" />

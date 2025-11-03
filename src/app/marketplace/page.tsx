@@ -37,7 +37,18 @@ export interface Product {
   listing_type: 'sale' | 'barter' | 'freebie';
   status: 'active' | 'sold' | 'delisted';
   images: string[];
-  location_text: string; 
+  location_text: string;
+  location?: {
+    address?: string;
+    city?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+    country?: string;
+    postal_code?: string;
+    region?: string;
+  };
   created_at: string;
   updated_at: string;
   quantity_available: number;
@@ -61,7 +72,8 @@ export interface Product {
   discount?: number;
   isFree?: boolean;
   stockCount: number;
-  sellerDetails: any; 
+  sellerDetails: any;
+  distance?: number; // Calculated distance from user location
 }
 
 
@@ -74,6 +86,34 @@ export interface FilterState {
   onSaleOnly: boolean;
   freeShippingOnly: boolean;
   freeListingsOnly: boolean;
+  // Location-based filtering (optional)
+  userLocation?: { lat: number; lng: number; address?: string } | null;
+  locationRadius?: number;
+  deliveryOptions?: {
+    localPickup: boolean;
+    shipping: boolean;
+    delivery: boolean;
+  };
+}
+
+// Haversine formula to calculate distance between two coordinates in kilometers
+function calculateDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 export default function MarketplacePage() {
@@ -99,6 +139,13 @@ export default function MarketplacePage() {
     onSaleOnly: false,
     freeShippingOnly: false,
     freeListingsOnly: false,
+    userLocation: null,
+    locationRadius: 25,
+    deliveryOptions: {
+      localPickup: false,
+      shipping: false,
+      delivery: false,
+    },
   });
 
   // Transform hierarchical categories - only keep top-level (main) categories
@@ -161,9 +208,29 @@ export default function MarketplacePage() {
         params.append('freeListingsOnly', 'true');
       }
       
+      // Location-based filtering (optional - uses different endpoint)
+      if (currentFilters.userLocation && 
+          typeof currentFilters.userLocation.lat === 'number' && 
+          typeof currentFilters.userLocation.lng === 'number') {
+        params.append('lat', currentFilters.userLocation.lat.toString());
+        params.append('lng', currentFilters.userLocation.lng.toString());
+        params.append('radius', (currentFilters.locationRadius || 25).toString());
+        
+        if (currentFilters.deliveryOptions?.localPickup) {
+          params.append('localPickup', 'true');
+        }
+        if (currentFilters.deliveryOptions?.shipping) {
+          params.append('shipping', 'true');
+        }
+        if (currentFilters.deliveryOptions?.delivery) {
+          params.append('delivery', 'true');
+        }
+      }
+      
       params.append('sortBy', currentSortBy);
       params.append('limit', '50');
       
+      // Always use regular endpoint - we'll filter by location client-side
       const response = await fetch(`/api/marketplace/products?${params.toString()}`);
       
       if (!response.ok) {
@@ -171,9 +238,61 @@ export default function MarketplacePage() {
       }
       
       const data = await response.json();
+      let productsData = data.products || [];
       
-      setProducts(data.products || []);
-      setTotalProducts(data.total || 0);
+      // Map Firestore product data to match Product interface
+      productsData = productsData.map((product: any) => ({
+        ...product,
+        // Ensure compatibility with both old and new interfaces
+        name: product.title || product.name || 'Unnamed Product',
+        title: product.title || product.name || 'Unnamed Product',
+        image: product.images?.[0] || product.image || '',
+        images: product.images || (product.image ? [product.image] : []),
+        category: product.category || 'Uncategorized',
+        seller: product.sellerDetails?.name || product.sellerDetails?.username || 'Unknown Seller',
+        sellerVerified: product.sellerDetails?.isVerified || false,
+        rating: product.average_rating || 0,
+        reviews: product.review_count || 0,
+        stockCount: product.quantity_available || 0,
+        isFree: product.listing_type === 'freebie' || product.price === 0,
+      }));
+      
+      // If user location is available, calculate distances and filter by radius
+      if (currentFilters.userLocation && 
+          typeof currentFilters.userLocation.lat === 'number' && 
+          typeof currentFilters.userLocation.lng === 'number') {
+        
+        const userLat = currentFilters.userLocation.lat;
+        const userLng = currentFilters.userLocation.lng;
+        const radius = currentFilters.locationRadius || 25;
+        
+        // Calculate distance for each product
+        productsData = productsData.map((product: Product) => {
+          if (product.location?.coordinates?.lat && product.location?.coordinates?.lng) {
+            const distance = calculateDistance(
+              userLat,
+              userLng,
+              product.location.coordinates.lat,
+              product.location.coordinates.lng
+            );
+            return { ...product, distance };
+          }
+          return { ...product, distance: Infinity }; // Products without location go to the end
+        });
+        
+        // Filter by radius
+        productsData = productsData.filter((product: Product) => 
+          product.distance !== undefined && product.distance <= radius
+        );
+        
+        // Sort by distance (nearest first) when location filter is active
+        productsData.sort((a: Product, b: Product) => 
+          (a.distance || Infinity) - (b.distance || Infinity)
+        );
+      }
+      
+      setProducts(productsData);
+      setTotalProducts(productsData.length);
       
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -188,6 +307,39 @@ export default function MarketplacePage() {
       setLoading(false);
     }
   }, [toast]);
+  
+  // Auto-detect user location on page load (optional, non-intrusive)
+  useEffect(() => {
+    const detectLocation = async () => {
+      if ('geolocation' in navigator) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 5000,
+              maximumAge: 300000, // Cache for 5 minutes
+            });
+          });
+          
+          // Silently update location without forcing filter to be active
+          // User can expand Location-Based Discovery to see/use it
+          const detectedLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          
+          // Don't automatically filter - just store the location
+          // User can manually enable location filtering via the panel
+          console.log('User location detected:', detectedLocation);
+          
+        } catch (error) {
+          // Silently fail - location is optional
+          console.log('Location detection skipped or denied');
+        }
+      }
+    };
+    
+    detectLocation();
+  }, []);
   
   // Initialize categories from API
   useEffect(() => {

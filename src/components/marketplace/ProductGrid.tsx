@@ -65,7 +65,7 @@ export function ProductGrid({
 
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center bg-background border border-border rounded-lg">
+      <div className="flex flex-col items-center justify-center py-16 text-center bg-background rounded-lg">
         <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
           {searchQuery ? (
             <AlertCircle className="w-8 h-8 text-muted-foreground" />
