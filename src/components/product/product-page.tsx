@@ -129,41 +129,47 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           Back to Marketplace
         </Button>
 
-        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 mb-6 md:mb-8">
-            <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-            >
-                <ProductImageGallery images={product.images} productName={product.name} />
-            </motion.div>
-            
-            <motion.div
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 transition={{ duration: 0.5, delay: 0.1 }}
-            >
-                <ProductPurchasePanel
-                    product={product}
-                    onAddToCart={onAddToCart}
-                />
-            </motion.div>
+        {/* Main 3-Column Grid Layout */}
+        <div className="grid lg:grid-cols-12 gap-6 lg:gap-8 mb-6 md:mb-8">
+          {/* Left: Product Image - 5 columns */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-5"
+          >
+            <ProductImageGallery images={product.images} productName={product.name} />
+          </motion.div>
+          
+          {/* Middle: Product Details & Purchase - 4 columns */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="lg:col-span-4"
+          >
+            <ProductPurchasePanel
+              product={product}
+              onAddToCart={onAddToCart}
+            />
+          </motion.div>
+
+          {/* Right: Seller Card - 3 columns, sticky */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="lg:col-span-3"
+          >
+            <div className="lg:sticky lg:top-24">
+              <SellerInfoCard sellerDetails={product.sellerDetails} />
+            </div>
+          </motion.div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          <div className="lg:col-span-2">
-            <ProductInfoTabs product={product} reviews={reviews} onReviewSubmit={fetchProductAndReviews} />
-          </div>
-
-          <div className="lg:sticky top-24 self-start">
-             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-             >
-                <SellerInfoCard sellerDetails={product.sellerDetails} />
-             </motion.div>
-          </div>
+        {/* Full Width: Product Info Tabs */}
+        <div className="mt-8 lg:mt-12">
+          <ProductInfoTabs product={product} reviews={reviews} onReviewSubmit={fetchProductAndReviews} />
         </div>
       </div>
     </>

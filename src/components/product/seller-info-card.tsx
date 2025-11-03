@@ -4,8 +4,8 @@
 import { Star, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import VerifiedIcon from '@mui/icons-material/Verified';
 
 interface SellerInfoCardProps {
   sellerDetails: {
@@ -21,7 +21,7 @@ interface SellerInfoCardProps {
 
 export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
   return (
-    <Card>
+    <Card className="shadow-2xl border-2 border-gray-100 dark:border-gray-800 transform hover:scale-[1.02] transition-all duration-300 bg-gradient-to-br from-white via-gray-50/50 to-white dark:from-gray-900 dark:via-gray-800/50 dark:to-gray-900">
       <CardHeader>
         <CardTitle className="text-base font-semibold">Seller Information</CardTitle>
       </CardHeader>
@@ -35,7 +35,10 @@ export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm">{sellerDetails.name}</span>
               {sellerDetails.verified && (
-                <Badge variant="secondary" className="text-[10px]">Verified</Badge>
+                <VerifiedIcon 
+                  className="text-blue-500" 
+                  style={{ fontSize: '18px' }}
+                />
               )}
             </div>
             <p className="text-xs text-muted-foreground">{sellerDetails.location}</p>

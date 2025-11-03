@@ -16,6 +16,7 @@ interface ProductPurchasePanelProps {
 
 export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePanelProps) {
   const [quantity, setQuantity] = useState(1);
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -29,14 +30,64 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
     router.push(`/barter/propose?productId=${product.id}`);
   };
 
+  const handleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+    toast({
+      title: isWishlisted ? "Removed from wishlist" : "Added to wishlist",
+      description: isWishlisted ? "Item removed from your wishlist" : "Item added to your wishlist",
+    });
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: `Check out ${product.name}`,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log('Share cancelled');
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link copied!",
+        description: "Product link copied to clipboard",
+      });
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Wishlist and Share buttons - Top Right */}
+      <div className="absolute top-0 right-0 flex items-center gap-1 z-10">
+        <Button 
+          size="icon" 
+          variant="ghost" 
+          className="rounded-full h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
+          onClick={handleWishlist}
+        >
+          <Heart 
+            className={`w-5 h-5 transition-colors ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
+          />
+        </Button>
+        <Button 
+          size="icon" 
+          variant="ghost" 
+          className="rounded-full h-9 w-9 hover:bg-gray-100 dark:hover:bg-gray-800"
+          onClick={handleShare}
+        >
+          <Share2 className="w-5 h-5 text-muted-foreground" />
+        </Button>
+      </div>
+
       <div>
         <div className="flex items-center gap-2 mb-2">
-          {product.featured && <Badge className="bg-primary text-[10px] sm:text-xs">Featured</Badge>}
-          {product.discount && <Badge variant="destructive" className="text-[10px] sm:text-xs">-{product.discount}%</Badge>}
+          {product.featured ? <Badge className="bg-primary text-[10px] sm:text-xs">Featured</Badge> : null}
+          {product.discount ? <Badge variant="destructive" className="text-[10px] sm:text-xs">-{product.discount}%</Badge> : null}
         </div>
-        <h1 className="mb-2 text-2xl md:text-3xl font-bold leading-tight">{product.name}</h1>
+        <h1 className="mb-2 text-2xl md:text-3xl font-bold leading-tight pr-20">{product.name}</h1>
         
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
           <div className="flex items-center gap-1">
@@ -91,25 +142,24 @@ export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePa
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-            <Button size="lg" className="w-full h-12" onClick={handleAddToCartClick}>
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              Add to Cart
-            </Button>
-            <div className="flex items-center justify-between gap-2">
-                <Button size="sm" variant="link" className="text-muted-foreground" onClick={handleProposeBarter}>
-                    <Handshake className="w-4 h-4 mr-2" />
-                    Propose a Barter
-                </Button>
-                <div className="flex items-center">
-                    <Button size="icon" variant="ghost" className="rounded-full">
-                    <Heart className="w-5 h-5 text-muted-foreground" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="rounded-full">
-                    <Share2 className="w-5 h-5 text-muted-foreground" />
-                    </Button>
-                </div>
-            </div>
+        <div className="flex flex-col gap-2.5">
+          <Button 
+            size="lg" 
+            className="w-full h-11 sm:h-12 font-semibold text-sm sm:text-base" 
+            onClick={handleAddToCartClick}
+          >
+            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            Add to Cart
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="w-full h-11 sm:h-12 font-semibold text-sm sm:text-base border-2 border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-600 dark:text-orange-500 dark:hover:bg-orange-950/20 dark:hover:text-orange-400" 
+            onClick={handleProposeBarter}
+          >
+            <Handshake className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+            Propose Barter
+          </Button>
         </div>
       </div>
     </div>

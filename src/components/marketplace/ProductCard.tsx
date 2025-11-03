@@ -1,6 +1,6 @@
 
 'use client';
-import { Star, Heart, ShoppingCart, Gift, MapPin } from 'lucide-react';
+import { Star, Heart, ShoppingCart, Gift, MapPin, Clock, Package, Eye, Share2 } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -27,6 +27,8 @@ export function ProductCard({
   animationDelay = 0,
   currency = '£',
 }: ProductCardProps) {
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   const formatPrice = (price: number) => `${currency}${price.toLocaleString()}`;
 
@@ -38,14 +40,46 @@ export function ProductCard({
     }
     onAddToCart(product);
   };
+
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsWishlisted(!isWishlisted);
+  };
+
+  const handleQuickView = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onNavigate('product', product.id);
+  };
   
   // Extract image URL - handle both string and object formats
   const imageSrc = product.image || 
     (product.images && product.images.length > 0 
       ? (typeof product.images[0] === 'string' ? product.images[0] : (product.images[0] as any)?.url || '')
       : '');
-  const locationText = (product as any).location_text || (product as any).sellerDetails?.location || '';
+  
+  const locationText = product.location_text || product.sellerDetails?.location || '';
+  
+  // Calculate time ago
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+    return `${Math.floor(diffInHours / 168)}w ago`;
+  };
 
+  // Stock status
+  const getStockStatus = () => {
+    const stock = product.quantity_available || product.stockCount || 0;
+    if (stock === 0) return { text: 'Out of stock', color: 'text-red-500' };
+    if (stock < 5) return { text: `Only ${stock} left`, color: 'text-orange-500' };
+    return { text: `${stock} available`, color: 'text-green-600' };
+  };
+
+  const stockStatus = getStockStatus();
+  const isNew = product.created_at && new Date(product.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   return (
     <motion.div
@@ -53,12 +87,15 @@ export function ProductCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: animationDelay }}
       className="h-full"
+      onMouseEnter={() => setShowQuickActions(true)}
+      onMouseLeave={() => setShowQuickActions(false)}
     >
-      <Card className="group border-border/60 hover:shadow-lg transition-all duration-300 h-full flex flex-col overflow-hidden rounded-2xl">
+      <Card className="group border-2 border-gray-100 hover:border-primary/20 hover:shadow-2xl transition-all duration-300 h-full flex flex-col overflow-hidden rounded-xl bg-gradient-to-br from-white to-gray-50/30">
         <CardContent className="p-0 flex-1 flex flex-col">
+          {/* Image Section with Enhanced Badges */}
           <div className="relative overflow-hidden">
             <div
-              className="aspect-[4/3] w-full cursor-pointer"
+              className="aspect-[5/4] w-full cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200"
               onClick={() => onNavigate('product', product.id)}
             >
               <ImageWithFallback
@@ -66,90 +103,180 @@ export function ProductCard({
                 fallbackSrc="/placeholder.svg"
                 alt={product.name}
                 width={400}
-                height={300}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                height={320}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
             </div>
 
-            <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {/* Top Left Badges */}
+            <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+              {product.category && (
+                <Badge className="bg-white/90 text-gray-700 text-[10px] px-2 py-0.5 font-medium shadow-sm">
+                  {product.category}
+                </Badge>
+              )}
+              {isNew && (
+                <Badge className="bg-green-500 text-white text-[10px] px-2 py-0.5 font-bold animate-pulse">
+                  NEW
+                </Badge>
+              )}
               {product.isFree && <FreeListingBadge variant="compact" />}
-              {product.featured && !product.isFree && (
-                <Badge className="bg-primary text-white text-[10px] h-5">
-                  Featured
+              {product.featured && !product.isFree ? (
+                <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] px-2 py-0.5 font-bold">
+                  ⭐ Featured
                 </Badge>
-              )}
-              {product.discount && !product.isFree && (
-                <Badge variant="destructive" className="text-[10px] h-5">
-                  -{product.discount}%
+              ) : null}
+              {product.discount && !product.isFree ? (
+                <Badge className="bg-red-500 text-white text-[10px] px-2 py-0.5 font-bold">
+                  -{product.discount}% OFF
                 </Badge>
-              )}
+              ) : null}
             </div>
+
+            {/* Top Right - Wishlist */}
+            <div className="absolute top-3 right-3">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleWishlist}
+                className="h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-lg backdrop-blur-sm"
+              >
+                <Heart 
+                  className={`w-4 h-4 transition-colors ${
+                    isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                  }`} 
+                />
+              </Button>
+            </div>
+
+            {/* Quick Actions on Hover */}
+            {showQuickActions && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute bottom-3 left-3 right-3 flex gap-2"
+              >
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleQuickView}
+                  className="flex-1 bg-white/95 hover:bg-white text-gray-700 shadow-lg backdrop-blur-sm font-medium"
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  Quick View
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="bg-white/95 hover:bg-white shadow-lg backdrop-blur-sm"
+                >
+                  <Share2 className="w-4 h-4 text-gray-600" />
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Listing Type Badge */}
+            {product.listing_type !== 'sale' && (
+              <div className="absolute bottom-3 right-3">
+                <Badge className={cn(
+                  "text-[10px] px-2 py-1 font-bold shadow-md",
+                  product.listing_type === 'barter' ? "bg-blue-500 text-white" : "bg-purple-500 text-white"
+                )}>
+                  {product.listing_type === 'barter' ? '🤝 Barter' : '🎁 Free'}
+                </Badge>
+              </div>
+            )}
           </div>
 
-          <div className="p-3 flex-1 flex flex-col">
+          {/* Content Section */}
+          <div className="p-4 flex-1 flex flex-col space-y-2">
+            {/* Title */}
             <h3
-              className="mb-1.5 line-clamp-2 cursor-pointer text-xs sm:text-sm font-semibold leading-tight h-[32px] sm:h-[40px]"
+              className="line-clamp-2 cursor-pointer text-sm font-bold leading-tight h-[40px] text-gray-900 hover:text-primary transition-colors"
               onClick={() => onNavigate('product', product.id)}
             >
               {product.name}
             </h3>
 
-            <div className="mb-2 text-xs text-muted-foreground">
+            {/* Rating & Location Row */}
+            <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1">
-                <span className="text-[11px] sm:text-xs">{product.seller}</span>
-                {product.sellerVerified && (
-                  <span className="flex items-center" title="Verified seller" aria-label="Verified seller">
-                    <VerifiedIcon className="text-primary w-3.5 h-3.5" />
-                  </span>
-                )}
+                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                <span className="font-semibold text-gray-700">{product.rating}</span>
+                <span className="text-gray-500">({product.review_count || product.reviews})</span>
               </div>
-
               {locationText && (
-                <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground mt-1">
-                  <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="truncate max-w-[12rem]">{locationText}</span>
+                <div className="flex items-center gap-1 text-gray-500">
+                  <MapPin className="w-3 h-3" />
+                  <span className="truncate max-w-[80px]">{locationText}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-1 mb-3">
-              <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-yellow-400 text-yellow-400" />
-              <span className="text-[11px] sm:text-xs font-medium text-foreground">
-                {product.rating}
-              </span>
-              <span className="text-[11px] sm:text-xs text-muted-foreground">
-                ({product.reviews})
-              </span>
+            {/* Seller & Stock Row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-gray-700">{product.seller}</span>
+                {product.sellerVerified && (
+                  <VerifiedIcon className="text-blue-500 w-4 h-4" />
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <Package className="w-3 h-3 text-gray-400" />
+                <span className={cn("text-xs font-medium", stockStatus.color)}>
+                  {stockStatus.text}
+                </span>
+              </div>
             </div>
 
-            <div className="flex justify-between items-center mt-auto pt-2">
+            {/* Time & Shipping Info */}
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                <span>{getTimeAgo(product.created_at)}</span>
+              </div>
+              {product.is_local_pickup_only && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                  Pickup Only
+                </Badge>
+              )}
+            </div>
+
+            {/* Price & Action Row */}
+            <div className="flex justify-between items-end mt-auto pt-3">
               <div>
                 {product.isFree ? (
-                  <span className="text-base sm:text-lg font-bold text-green-600">Free</span>
+                  <span className="text-lg font-bold text-green-600">FREE</span>
                 ) : (
-                  <div className="flex items-baseline gap-1 sm:gap-2">
-                    <span className="text-base sm:text-lg font-bold text-primary">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-bold text-gray-900">
                       {formatPrice(product.price)}
                     </span>
                     {product.originalPrice && (
-                      <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
+                      <span className="text-xs text-gray-500 line-through">
                         {formatPrice(product.originalPrice)}
                       </span>
                     )}
                   </div>
                 )}
               </div>
+              
               <motion.div whileTap={{ scale: 0.9 }}>
                 <Button
                   size="icon"
                   onClick={handleAddToCart}
-                  variant={product.isFree ? 'outline' : 'default'}
-                  className="rounded-full h-7 w-7 sm:h-8 sm:w-8"
+                  disabled={stockStatus.text === 'Out of stock'}
+                  className={cn(
+                    "rounded-full h-9 w-9 shadow-lg",
+                    product.isFree 
+                      ? "bg-green-500 hover:bg-green-600 text-white" 
+                      : "bg-primary hover:bg-primary/90"
+                  )}
                 >
                   {product.isFree ? (
-                    <Gift className="w-3.5 h-3.5" />
+                    <Gift className="w-4 h-4" />
                   ) : (
-                    <ShoppingCart className="w-3.5 h-3.5" />
+                    <ShoppingCart className="w-4 h-4" />
                   )}
                 </Button>
               </motion.div>

@@ -106,6 +106,20 @@ export async function GET(req: Request) {
         }
       }
 
+      // Fetch category name if category_id exists
+      let categoryName = '';
+      if (data.category_id) {
+        try {
+          const categoryDoc = await db.collection('categories').doc(data.category_id).get();
+          if (categoryDoc.exists) {
+            const categoryData = categoryDoc.data();
+            categoryName = categoryData?.name || '';
+          }
+        } catch (err) {
+          console.error('Error fetching category:', err);
+        }
+      }
+
       return {
         id: doc.id,
         seller_id: data.seller_id,
@@ -134,8 +148,9 @@ export async function GET(req: Request) {
         reviews: data.review_count || 0,
         seller: sellerDetails?.name || 'Anonymous',
         sellerVerified: sellerDetails?.verified || false,
-        image: data.images?.[0] || '',
-        category: data.category_name || '',
+        // Extract URL from image object: {url, alt, order, is_primary}
+        image: data.images?.[0]?.url || (typeof data.images?.[0] === 'string' ? data.images[0] : '') || '',
+        category: categoryName || '',
         featured: data.featured || false,
         discount: data.discount || 0,
         isFree: data.listing_type === 'freebie',
