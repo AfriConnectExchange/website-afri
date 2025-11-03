@@ -7,7 +7,7 @@ import { PageLoader } from '@/components/ui/loader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2, Package } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Package, X } from 'lucide-react';
 import { auth } from '@/lib/firebaseClient';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +16,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const [kycStatus, setKycStatus] = useState<'loading' | 'unverified' | 'pending' | 'verified' | 'rejected'>('loading');
   const [profileComplete, setProfileComplete] = useState(false);
   const [hasSellerRole, setHasSellerRole] = useState(false);
+  const [showVerifiedAlert, setShowVerifiedAlert] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -41,11 +42,8 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         });
 
         const data = await res.json();
-        if (data.success) {
-          setKycStatus(data.status || 'unverified');
-        } else {
-          setKycStatus('unverified');
-        }
+        // API returns { status: 'verified' | 'pending' | 'unverified' | 'rejected' }
+        setKycStatus(data.status || 'unverified');
       }
 
       // Only check profile completion AFTER KYC is verified
@@ -204,13 +202,22 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   // 5) All checks passed - show seller interface
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
-        <Alert className="mb-6 border-green-200 bg-green-50">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            <strong>Verified Seller</strong> - Your account is verified and ready to sell
-          </AlertDescription>
-        </Alert>
+      <div className="container mx-auto py-4 sm:py-6 lg:py-8">
+        {showVerifiedAlert && (
+          <Alert className="mb-4 sm:mb-6 mx-4 sm:mx-0 border-green-200 bg-green-50 relative">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-xs sm:text-sm text-green-800 pr-8">
+              <strong>Verified Seller</strong> - Your account is verified and ready to sell
+            </AlertDescription>
+            <button
+              onClick={() => setShowVerifiedAlert(false)}
+              className="absolute top-2 sm:top-3 right-2 sm:right-3 text-green-600 hover:text-green-800 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Alert>
+        )}
         {children}
       </div>
     </div>

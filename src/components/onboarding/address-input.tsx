@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
+import { loadGoogleMaps, isGoogleMapsLoaded } from '@/lib/google-maps-loader';
 
 declare global {
   interface Window { google: any; }
@@ -23,30 +24,6 @@ interface AddressInputProps {
   placeholder?: string;
 }
 
-function loadGoogleMaps(apiKey: string | undefined) {
-  if (!apiKey) return Promise.reject(new Error('Missing Google Maps API key'));
-  if (typeof window === 'undefined') return Promise.reject(new Error('Window not available'));
-  if (window.google && window.google.maps && window.google.maps.places) return Promise.resolve();
-
-  return new Promise<void>((resolve, reject) => {
-    const existing = document.getElementById('google-maps-script');
-    if (existing) {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps script')));
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.addEventListener('load', () => resolve());
-    script.addEventListener('error', () => reject(new Error('Failed to load Google Maps script')));
-    document.head.appendChild(script);
-  });
-}
-
 export default function AddressInput({ value = '', onChange, onSelect, country, placeholder }: AddressInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const autocompleteRef = useRef<any>(null);
@@ -55,9 +32,11 @@ export default function AddressInput({ value = '', onChange, onSelect, country, 
   const [lng, setLng] = useState<number | null>(null);
 
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     setLoading(true);
-    loadGoogleMaps(apiKey).then(() => {
+    
+    // Use centralized loader
+    loadGoogleMaps({ libraries: ['places'], region: country || 'GB' })
+      .then(() => {
       if (!inputRef.current) return;
       try {
         const opts: any = { fields: ['formatted_address', 'address_components', 'geometry', 'place_id'] };

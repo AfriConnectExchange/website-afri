@@ -15,14 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, X, Upload, Loader2, AlertCircle, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import categoriesData from '@/data/mock-categories.json';
-
-// Extract top-level categories from the hierarchical data
-const CATEGORIES = categoriesData.map(cat => ({
-  id: cat.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-  name: cat.name,
-  description: cat.description,
-}));
+import { LocationAutocomplete } from '@/components/forms/location-autocomplete';
 
 const CONDITIONS = [
   { value: 'new', label: 'New' },
@@ -48,20 +41,181 @@ interface ProductFormData {
   accepts_barter: boolean;
   images: File[];
   imagePreviewUrls: string[];
+  specifications: Record<string, string>;
   location: {
-    address_line1: string;
-    address_line2: string;
+    address: string;
     city: string;
-    postcode: string;
+    region?: string;
     country: string;
+    postal_code: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+    formatted_address?: string;
   };
 }
+
+// Category-specific specification fields
+// Using flexible matching - checks if category name/ID contains these keywords
+const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; type?: string; required?: boolean }>> = {
+  'electronics': [
+    { key: 'brand', label: 'Brand', required: true },
+    { key: 'model', label: 'Model', required: true },
+    { key: 'processor', label: 'Processor' },
+    { key: 'ram', label: 'RAM' },
+    { key: 'storage', label: 'Storage' },
+    { key: 'screen_size', label: 'Screen Size' },
+    { key: 'battery_life', label: 'Battery Life' },
+    { key: 'color', label: 'Color' },
+    { key: 'warranty', label: 'Warranty Period' },
+  ],
+  'fashion': [
+    { key: 'brand', label: 'Brand' },
+    { key: 'size', label: 'Size', required: true },
+    { key: 'color', label: 'Color', required: true },
+    { key: 'material', label: 'Material' },
+    { key: 'style', label: 'Style' },
+    { key: 'gender', label: 'Gender' },
+    { key: 'season', label: 'Season' },
+  ],
+  'furniture': [
+    { key: 'material', label: 'Material', required: true },
+    { key: 'dimensions', label: 'Dimensions (L x W x H)', required: true },
+    { key: 'weight', label: 'Weight' },
+    { key: 'color', label: 'Color' },
+    { key: 'style', label: 'Style' },
+    { key: 'assembly_required', label: 'Assembly Required' },
+    { key: 'room', label: 'Room Type' },
+  ],
+  'home': [
+    { key: 'material', label: 'Material' },
+    { key: 'dimensions', label: 'Dimensions' },
+    { key: 'weight', label: 'Weight' },
+    { key: 'color', label: 'Color' },
+    { key: 'room', label: 'Room Type' },
+    { key: 'style', label: 'Style' },
+  ],
+  'garden': [
+    { key: 'material', label: 'Material' },
+    { key: 'dimensions', label: 'Dimensions' },
+    { key: 'weight', label: 'Weight' },
+    { key: 'suitable_for', label: 'Suitable For' },
+    { key: 'care_instructions', label: 'Care Instructions' },
+  ],
+  'groceries': [
+    { key: 'brand', label: 'Brand' },
+    { key: 'weight', label: 'Weight/Volume', required: true },
+    { key: 'ingredients', label: 'Ingredients' },
+    { key: 'nutritional_info', label: 'Nutritional Information' },
+    { key: 'allergens', label: 'Allergens' },
+    { key: 'expiry_date', label: 'Expiry/Best Before Date', required: true },
+    { key: 'origin', label: 'Country of Origin' },
+    { key: 'storage_instructions', label: 'Storage Instructions' },
+  ],
+  'food': [
+    { key: 'brand', label: 'Brand' },
+    { key: 'weight', label: 'Weight/Volume', required: true },
+    { key: 'ingredients', label: 'Ingredients' },
+    { key: 'nutritional_info', label: 'Nutritional Information' },
+    { key: 'allergens', label: 'Allergens' },
+    { key: 'expiry_date', label: 'Expiry/Best Before Date', required: true },
+    { key: 'origin', label: 'Country of Origin' },
+    { key: 'storage_instructions', label: 'Storage Instructions' },
+  ],
+  'beauty': [
+    { key: 'brand', label: 'Brand' },
+    { key: 'size', label: 'Size/Volume' },
+    { key: 'ingredients', label: 'Key Ingredients' },
+    { key: 'skin_type', label: 'Skin Type' },
+    { key: 'scent', label: 'Scent' },
+    { key: 'expiry_date', label: 'Expiry Date' },
+  ],
+  'health': [
+    { key: 'brand', label: 'Brand' },
+    { key: 'type', label: 'Product Type' },
+    { key: 'ingredients', label: 'Active Ingredients' },
+    { key: 'dosage', label: 'Dosage' },
+    { key: 'expiry_date', label: 'Expiry Date', required: true },
+  ],
+  'sports': [
+    { key: 'brand', label: 'Brand' },
+    { key: 'size', label: 'Size' },
+    { key: 'color', label: 'Color' },
+    { key: 'material', label: 'Material' },
+    { key: 'weight', label: 'Weight' },
+    { key: 'suitable_for', label: 'Suitable For' },
+  ],
+  'automobiles': [
+    { key: 'make', label: 'Make', required: true },
+    { key: 'model', label: 'Model', required: true },
+    { key: 'year', label: 'Year', type: 'number', required: true },
+    { key: 'mileage', label: 'Mileage', type: 'number' },
+    { key: 'fuel_type', label: 'Fuel Type' },
+    { key: 'transmission', label: 'Transmission' },
+    { key: 'engine_size', label: 'Engine Size' },
+    { key: 'body_type', label: 'Body Type' },
+    { key: 'color', label: 'Color' },
+    { key: 'doors', label: 'Number of Doors', type: 'number' },
+    { key: 'seats', label: 'Number of Seats', type: 'number' },
+  ],
+  'vehicles': [
+    { key: 'make', label: 'Make', required: true },
+    { key: 'model', label: 'Model', required: true },
+    { key: 'year', label: 'Year', type: 'number', required: true },
+    { key: 'mileage', label: 'Mileage', type: 'number' },
+    { key: 'fuel_type', label: 'Fuel Type' },
+    { key: 'transmission', label: 'Transmission' },
+    { key: 'engine_size', label: 'Engine Size' },
+    { key: 'color', label: 'Color' },
+  ],
+  'real-estate': [
+    { key: 'property_type', label: 'Property Type', required: true },
+    { key: 'bedrooms', label: 'Bedrooms', type: 'number' },
+    { key: 'bathrooms', label: 'Bathrooms', type: 'number' },
+    { key: 'area', label: 'Area (sq ft)', type: 'number' },
+    { key: 'furnished', label: 'Furnished Status' },
+    { key: 'year_built', label: 'Year Built', type: 'number' },
+    { key: 'parking', label: 'Parking Spaces', type: 'number' },
+  ],
+  'services': [
+    { key: 'service_type', label: 'Service Type', required: true },
+    { key: 'duration', label: 'Estimated Duration' },
+    { key: 'availability', label: 'Availability' },
+    { key: 'experience', label: 'Years of Experience' },
+    { key: 'certifications', label: 'Certifications' },
+  ],
+  'books': [
+    { key: 'author', label: 'Author', required: true },
+    { key: 'publisher', label: 'Publisher' },
+    { key: 'isbn', label: 'ISBN' },
+    { key: 'publication_year', label: 'Publication Year', type: 'number' },
+    { key: 'language', label: 'Language' },
+    { key: 'pages', label: 'Number of Pages', type: 'number' },
+    { key: 'format', label: 'Format (Hardcover/Paperback)' },
+  ],
+};
+
+// Helper function to match category to specification fields
+const getCategorySpecFields = (categoryId: string, categoryName: string): Array<{ key: string; label: string; type?: string; required?: boolean }> => {
+  const searchText = `${categoryId} ${categoryName}`.toLowerCase();
+  
+  for (const [key, fields] of Object.entries(SPECIFICATION_FIELDS)) {
+    if (searchText.includes(key)) {
+      return fields;
+    }
+  }
+  
+  return []; // No specific fields, allow freeform
+};
 
 export default function CreateProductPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; description?: string }>>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [formData, setFormData] = useState<ProductFormData>({
     title: '',
     description: '',
@@ -79,18 +233,61 @@ export default function CreateProductPage() {
     accepts_barter: false,
     images: [],
     imagePreviewUrls: [],
+    specifications: {},
     location: {
-      address_line1: '',
-      address_line2: '',
+      address: '',
       city: '',
-      postcode: '',
+      region: '',
       country: 'United Kingdom',
+      postal_code: '',
+      coordinates: undefined,
+      formatted_address: '',
     },
   });
+
+  // Fetch categories from the database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories/list');
+        const data = await response.json();
+        if (data.categories) {
+          setCategories(data.categories);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to load categories. Please refresh the page.',
+        });
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, [toast]);
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const handleSpecificationChange = (key: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      specifications: {
+        ...prev.specifications,
+        [key]: value,
+      },
+    }));
+  };
+
+  // Get specification fields for current category
+  const selectedCategory = categories.find(c => c.id === formData.category);
+  const currentSpecFields = selectedCategory 
+    ? getCategorySpecFields(formData.category, selectedCategory.name) 
+    : [];
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -190,29 +387,29 @@ export default function CreateProductPage() {
       return false;
     }
 
-    if (!formData.location.address_line1) {
+    if (!formData.location.address || !formData.location.city) {
       toast({
         variant: 'destructive',
         title: 'Validation Error',
-        description: 'Please enter an address',
+        description: 'Please select your product location using the address search.',
       });
       return false;
     }
 
-    if (!formData.location.city) {
+    if (!formData.location.coordinates) {
       toast({
         variant: 'destructive',
         title: 'Validation Error',
-        description: 'Please enter a city',
+        description: 'Location coordinates missing. Please re-select your address from the suggestions.',
       });
       return false;
     }
 
-    if (!formData.location.postcode) {
+    if (!formData.location.postal_code) {
       toast({
         variant: 'destructive',
         title: 'Validation Error',
-        description: 'Please enter a postcode',
+        description: 'Please enter a valid postcode.',
       });
       return false;
     }
@@ -250,34 +447,59 @@ export default function CreateProductPage() {
       }
 
       const payload = {
+        // Required fields
         title: formData.title,
         description: formData.description,
+        category_id: formData.category, // API expects category_id, not category
+        
+        // Product details
+        product_type: 'physical',
+        listing_type: 'sale',
         price: parseFloat(formData.price),
-        category: formData.category,
-        stock_quantity: parseInt(formData.stock_quantity),
+        currency: 'GBP',
+        quantity_available: parseInt(formData.stock_quantity),
         condition: formData.condition,
+        
+        // Location with coordinates
         location: {
-          address_line1: formData.location.address_line1,
-          address_line2: formData.location.address_line2 || null,
+          address: formData.location.address,
           city: formData.location.city,
-          postcode: formData.location.postcode,
+          region: formData.location.region,
           country: formData.location.country,
+          postal_code: formData.location.postal_code,
+          coordinates: formData.location.coordinates, // lat/lng automatically included!
         },
-        shipping: {
+        
+        // Shipping
+        shipping_policy: {
           weight: formData.shipping_weight ? parseFloat(formData.shipping_weight) : null,
-          dimensions: {
+          dimensions: formData.shipping_length || formData.shipping_width || formData.shipping_height ? {
             length: formData.shipping_length ? parseFloat(formData.shipping_length) : null,
             width: formData.shipping_width ? parseFloat(formData.shipping_width) : null,
             height: formData.shipping_height ? parseFloat(formData.shipping_height) : null,
-          },
+          } : null,
         },
+        
+        is_local_pickup_only: !formData.accepts_online,
+        
+        // Payment methods
         payment_methods: {
           cash_on_delivery: formData.accepts_cash,
           online_payment: formData.accepts_online,
           escrow: formData.accepts_escrow,
           barter: formData.accepts_barter,
         },
+        
+        // Barter preferences if barter is enabled
+        barter_preferences: formData.accepts_barter ? formData.description : null,
+        
+        // Media
         images: imageUrls,
+        
+        // Additional fields
+        tags: [],
+        specifications: formData.specifications,
+        status: 'active', // Publish immediately
       };
 
       const currentUser = auth.currentUser;
@@ -320,20 +542,20 @@ export default function CreateProductPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">List a New Product</h1>
-        <p className="text-muted-foreground">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">List a New Product</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Fill in the details below to list your product on the marketplace
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Basic Information */}
         <Card>
           <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>Essential details about your product</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Basic Information</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Essential details about your product</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -368,12 +590,16 @@ export default function CreateProductPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="category">Category *</Label>
-                <Select value={formData.category} onValueChange={(val) => handleInputChange('category', val)}>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(val) => handleInputChange('category', val)}
+                  disabled={isLoadingCategories}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select category"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(cat => (
+                    {categories.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -400,11 +626,11 @@ export default function CreateProductPage() {
         {/* Pricing & Inventory */}
         <Card>
           <CardHeader>
-            <CardTitle>Pricing & Inventory</CardTitle>
-            <CardDescription>Set your price and stock levels</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Pricing & Inventory</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Set your price and stock levels</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="price">Price (£) *</Label>
                 <Input
@@ -433,16 +659,47 @@ export default function CreateProductPage() {
           </CardContent>
         </Card>
 
+        {/* Product Specifications - Dynamic based on category */}
+        {currentSpecFields.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Product Specifications</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Provide specific details about your {categories.find(c => c.id === formData.category)?.name || 'product'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {currentSpecFields.map((field) => (
+                  <div key={field.key}>
+                    <Label htmlFor={field.key}>
+                      {field.label} {field.required && '*'}
+                    </Label>
+                    <Input
+                      id={field.key}
+                      type={field.type || 'text'}
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      value={formData.specifications[field.key] || ''}
+                      onChange={(e) => handleSpecificationChange(field.key, e.target.value)}
+                      required={field.required}
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Images */}
         <Card>
           <CardHeader>
-            <CardTitle>Product Images *</CardTitle>
-            <CardDescription>Upload up to 4 images (max 2MB each, JPEG/PNG)</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Product Images *</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Upload up to 4 images (max 2MB each, JPEG/PNG)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {formData.imagePreviewUrls.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                   {formData.imagePreviewUrls.map((url, index) => (
                     <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
                       <Image
@@ -454,9 +711,9 @@ export default function CreateProductPage() {
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                        className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3 h-3 sm:w-4 sm:h-4" />
                       </button>
                     </div>
                   ))}
@@ -466,8 +723,8 @@ export default function CreateProductPage() {
               {formData.images.length < 4 && (
                 <div>
                   <Label htmlFor="images" className="cursor-pointer">
-                    <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary transition-colors">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <div className="border-2 border-dashed rounded-lg p-6 sm:p-8 text-center hover:border-primary transition-colors">
+                      <Upload className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 text-muted-foreground" />
                       <p className="text-sm font-medium">Click to upload images</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formData.images.length}/4 images uploaded
@@ -491,11 +748,11 @@ export default function CreateProductPage() {
         {/* Shipping (Optional) */}
         <Card>
           <CardHeader>
-            <CardTitle>Shipping Information (Optional)</CardTitle>
-            <CardDescription>Add shipping details for better delivery estimates</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Shipping Information (Optional)</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Add shipping details for better delivery estimates</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div>
                 <Label htmlFor="weight">Weight (kg)</Label>
                 <Input
@@ -554,68 +811,48 @@ export default function CreateProductPage() {
         {/* Location */}
         <Card>
           <CardHeader>
-            <CardTitle>Product Location *</CardTitle>
-            <CardDescription>Where is this product located? This helps buyers find nearby items.</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Product Location *</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Where is this product located? This helps buyers find nearby items.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="address_line1">Address Line 1 *</Label>
-              <Input
-                id="address_line1"
-                placeholder="Street address, P.O. box"
-                value={formData.location.address_line1}
-                onChange={(e) => handleInputChange('location', { ...formData.location, address_line1: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="address_line2">Address Line 2</Label>
-              <Input
-                id="address_line2"
-                placeholder="Apartment, suite, unit, building, floor, etc."
-                value={formData.location.address_line2}
-                onChange={(e) => handleInputChange('location', { ...formData.location, address_line2: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="city">City *</Label>
-                <Input
-                  id="city"
-                  placeholder="City"
-                  value={formData.location.city}
-                  onChange={(e) => handleInputChange('location', { ...formData.location, city: e.target.value })}
-                />
+          <CardContent>
+            <LocationAutocomplete
+              onLocationSelect={(locationData) => {
+                setFormData(prev => ({
+                  ...prev,
+                  location: {
+                    address: locationData.address,
+                    city: locationData.city,
+                    region: locationData.region,
+                    country: locationData.country,
+                    postal_code: locationData.postal_code,
+                    coordinates: locationData.coordinates,
+                    formatted_address: locationData.formatted_address,
+                  }
+                }));
+              }}
+              defaultValue={formData.location.formatted_address || ''}
+              placeholder="Start typing your address..."
+              label="Product Location"
+            />
+            
+            {formData.location.coordinates && (
+              <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                  ✓ Location Set: {formData.location.city}, {formData.location.postal_code}
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  Coordinates: {formData.location.coordinates.lat.toFixed(4)}, {formData.location.coordinates.lng.toFixed(4)}
+                </p>
               </div>
-
-              <div>
-                <Label htmlFor="postcode">Postcode *</Label>
-                <Input
-                  id="postcode"
-                  placeholder="Postcode"
-                  value={formData.location.postcode}
-                  onChange={(e) => handleInputChange('location', { ...formData.location, postcode: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="country">Country *</Label>
-                <Input
-                  id="country"
-                  value={formData.location.country}
-                  onChange={(e) => handleInputChange('location', { ...formData.location, country: e.target.value })}
-                />
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Payment Methods */}
         <Card>
           <CardHeader>
-            <CardTitle>Accepted Payment Methods *</CardTitle>
-            <CardDescription>Select which payment methods you accept</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Accepted Payment Methods *</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Select which payment methods you accept</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
@@ -625,7 +862,7 @@ export default function CreateProductPage() {
                   checked={formData.accepts_cash}
                   onCheckedChange={(checked) => handleInputChange('accepts_cash', checked)}
                 />
-                <Label htmlFor="cash" className="cursor-pointer">
+                <Label htmlFor="cash" className="cursor-pointer text-sm">
                   Cash on Delivery
                 </Label>
               </div>
@@ -636,7 +873,7 @@ export default function CreateProductPage() {
                   checked={formData.accepts_online}
                   onCheckedChange={(checked) => handleInputChange('accepts_online', checked)}
                 />
-                <Label htmlFor="online" className="cursor-pointer">
+                <Label htmlFor="online" className="cursor-pointer text-sm">
                   Online Payment (Card/Wallet)
                 </Label>
               </div>
@@ -647,7 +884,7 @@ export default function CreateProductPage() {
                   checked={formData.accepts_escrow}
                   onCheckedChange={(checked) => handleInputChange('accepts_escrow', checked)}
                 />
-                <Label htmlFor="escrow" className="cursor-pointer">
+                <Label htmlFor="escrow" className="cursor-pointer text-sm">
                   Escrow (Secure Payment)
                 </Label>
               </div>
@@ -658,7 +895,7 @@ export default function CreateProductPage() {
                   checked={formData.accepts_barter}
                   onCheckedChange={(checked) => handleInputChange('accepts_barter', checked)}
                 />
-                <Label htmlFor="barter" className="cursor-pointer">
+                <Label htmlFor="barter" className="cursor-pointer text-sm">
                   Barter (Trade)
                 </Label>
               </div>
@@ -666,7 +903,7 @@ export default function CreateProductPage() {
 
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
+              <AlertDescription className="text-xs sm:text-sm">
                 You must select at least one payment method to list your product.
               </AlertDescription>
             </Alert>
@@ -674,20 +911,20 @@ export default function CreateProductPage() {
         </Card>
 
         {/* Submit Buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pb-6">
           <Button
             type="button"
             variant="outline"
             onClick={() => router.back()}
             disabled={isSubmitting}
-            className="flex-1"
+            className="w-full sm:flex-1"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="flex-1"
+            className="w-full sm:flex-1"
           >
             {isSubmitting ? (
               <>

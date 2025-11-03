@@ -29,10 +29,6 @@ export async function POST(req: Request) {
 
     const db = admin.firestore();
 
-    // Get seller info from users collection
-    const sellerDoc = await db.collection('users').doc(sellerId).get();
-    const sellerData = sellerDoc.data();
-
     // Generate slug from title
     const slug = body.title
       .toLowerCase()
@@ -41,8 +37,9 @@ export async function POST(req: Request) {
       .replace(/-+/g, '-')
       .trim();
 
-    // Create product object
+    // Create product object - NO DENORMALIZED SELLER DATA
     const product: Omit<Product, 'id'> = {
+      // Identity & Relations (ONLY IDs - no denormalized seller info)
       seller_id: sellerId,
       
       // Basic info
@@ -54,10 +51,14 @@ export async function POST(req: Request) {
       category_id: body.category_id,
       tags: body.tags || [],
       
-      // Listing & pricing
+      // Listing & pricing (prices in pence)
       listing_type: body.listing_type,
       price: body.listing_type === 'freebie' ? 0 : body.price,
       currency: body.currency || 'GBP',
+      original_price: body.original_price,
+      
+      // Barter
+      accepts_barter: body.accepts_barter || body.listing_type === 'barter',
       barter_preferences: body.barter_preferences,
       
       // Inventory
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
       sku: body.sku,
       condition: body.condition,
       
-      // Media
+      // Media - proper format with objects
       images: Array.isArray(body.images) ? body.images.map((img: any, index: number) => ({
         url: typeof img === 'string' ? img : img.url,
         alt: body.title,
@@ -74,31 +75,30 @@ export async function POST(req: Request) {
       })) : [],
       video_url: body.video_url,
       
-      // Specifications
+      // Specifications (flexible based on category)
       specifications: body.specifications,
       
       // Location
       location: body.location,
       location_text: `${body.location.city || ''}${body.location.city && body.location.country ? ', ' : ''}${body.location.country}`,
       
-      // Shipping
-      shipping_policy: body.shipping_policy,
+      // Shipping - proper UK-focused structure
+      shipping_options: body.shipping_options || [],
+      free_shipping_threshold: body.free_shipping_threshold,
       is_local_pickup_only: body.is_local_pickup_only || false,
+      shipping_policy: body.shipping_policy, // Legacy support
       
       // Status
       status: body.status || 'draft',
-      
-      // Seller info (denormalized)
-      seller_name: sellerData?.full_name || sellerData?.email || 'Unknown',
-      seller_avatar: sellerData?.profile_picture_url,
-      seller_verified: sellerData?.verification_status === 'verified',
+      featured: false,
       
       // Engagement
       view_count: 0,
       favorite_count: 0,
+      click_count: 0,
       review_count: 0,
       
-      // Timestamps
+      // Timestamps (store as ISO strings for consistency)
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       published_at: body.status === 'active' ? new Date().toISOString() : undefined,
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
       slug: slug,
       search_keywords: [
         ...body.title.toLowerCase().split(' '),
-        ...body.tags.map(t => t.toLowerCase()),
+        ...(body.tags || []).map(t => t.toLowerCase()),
         body.category_id,
       ],
     };

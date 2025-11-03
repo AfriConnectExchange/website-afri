@@ -1,6 +1,7 @@
 // Public API to fetch marketplace products (no auth required)
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
+import { getUserAvatarUrl } from '@/lib/avatar-utils';
 
 export async function GET(req: Request) {
   try {
@@ -79,11 +80,25 @@ export async function GET(req: Request) {
           const sellerDoc = await db.collection('users').doc(data.seller_id).get();
           if (sellerDoc.exists) {
             const sellerData = sellerDoc.data();
+            const sellerName = sellerData?.full_name || sellerData?.display_name || sellerData?.email || 'Anonymous';
+            
             sellerDetails = {
               id: sellerDoc.id,
-              name: sellerData?.display_name || sellerData?.email || 'Anonymous',
-              verified: sellerData?.kyc_verified === true,
+              name: sellerName,
+              // Read profile_picture_url directly from users collection
+              avatar: getUserAvatarUrl(
+                sellerDoc.id,
+                sellerData?.profile_picture_url || sellerData?.avatar_url,
+                sellerName
+              ),
+              location: `${sellerData?.city || ''}, ${sellerData?.country || ''}`.replace(/^, |, $/g, ''),
+              verified: sellerData?.verification_status === 'verified' || sellerData?.kyc_verified === true,
               rating: sellerData?.seller_rating || 0,
+              totalSales: sellerData?.seller_stats?.total_sales || 0,
+              memberSince: sellerData?.created_at?.toDate?.()?.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short' 
+              }) || 'Recently',
             };
           }
         } catch (err) {

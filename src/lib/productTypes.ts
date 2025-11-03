@@ -5,6 +5,16 @@ export type ProductType = 'product' | 'service';
 export type ProductStatus = 'draft' | 'active' | 'sold' | 'delisted' | 'pending_review';
 export type ConditionType = 'new' | 'like_new' | 'used_good' | 'used_fair' | 'refurbished';
 
+export interface ShippingOption {
+  id: string;
+  method_name: string;        // "Royal Mail 1st Class", "DPD Next Day", "Local Pickup"
+  type: 'standard' | 'express' | 'pickup' | 'international';
+  price: number;              // In pence (100 = £1.00)
+  estimated_days_min?: number;
+  estimated_days_max?: number;
+  regions?: string[];         // ['UK', 'EU', 'Worldwide'] or specific UK regions
+}
+
 export interface ShippingPolicy {
   domestic_shipping_cost: number;
   international_shipping_cost: number;
@@ -18,14 +28,59 @@ export interface ShippingPolicy {
   shipping_regions?: string[]; // Regions where seller ships
 }
 
+// Category-specific specification types
+export interface ElectronicsSpecifications {
+  brand?: string;
+  model?: string;
+  processor?: string;
+  ram?: string;
+  storage?: string;
+  screen_size?: string;
+  battery_life?: string;
+  color?: string;
+  warranty?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface FashionSpecifications {
+  brand?: string;
+  size?: string;
+  color?: string;
+  material?: string;
+  style?: string;
+  season?: string;
+  gender?: 'male' | 'female' | 'unisex';
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface VehicleSpecifications {
+  make?: string;
+  model?: string;
+  year?: number;
+  mileage?: number;
+  fuel_type?: string;
+  transmission?: string;
+  engine_size?: string;
+  body_type?: string;
+  color?: string;
+  doors?: number;
+  seats?: number;
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface HomeGardenSpecifications {
+  material?: string;
+  dimensions?: string;
+  weight?: string;
+  color?: string;
+  room?: string;
+  style?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+// Generic specification type (fallback for any category)
 export interface ProductSpecifications {
   [key: string]: string | number | boolean;
-  // Examples:
-  // material?: string;
-  // dimensions?: string;
-  // weight?: string;
-  // color?: string;
-  // size?: string;
 }
 
 export interface ProductImage {
@@ -60,9 +115,9 @@ export interface BarterPreferences {
 }
 
 export interface Product {
-  // Identity
+  // Identity & Relations
   id: string;
-  seller_id: string;
+  seller_id: string;          // REFERENCE - fetch seller from users/{seller_id}
   
   // Basic Information
   title: string;
@@ -70,14 +125,19 @@ export interface Product {
   product_type: ProductType; // 'product' or 'service'
   
   // Category & Classification
-  category_id: string;
+  category_id: string;        // REFERENCE - fetch category from categories/{category_id}
   tags: string[];
   
   // Listing Type & Pricing
   listing_type: ListingType; // 'sale', 'barter', or 'freebie'
-  price: number; // 0 for freebie
-  currency: string; // 'GBP', 'USD', etc.
-  barter_preferences?: BarterPreferences; // Only if listing_type is 'barter'
+  price: number; // In pence (100 = £1.00), 0 for freebie
+  currency: string; // 'GBP'
+  original_price?: number; // For discount display
+  discount?: number; // Percentage
+  
+  // Barter System
+  accepts_barter?: boolean;
+  barter_preferences?: BarterPreferences; // Only if accepts_barter is true
   
   // Inventory & Condition
   quantity_available: number;
@@ -88,31 +148,30 @@ export interface Product {
   images: ProductImage[];
   video_url?: string; // Optional product video
   
-  // Specifications & Details
-  specifications?: ProductSpecifications;
+  // Specifications & Details (flexible based on category)
+  specifications?: ProductSpecifications | ElectronicsSpecifications | FashionSpecifications | VehicleSpecifications | HomeGardenSpecifications;
   
   // Location
   location: ProductLocation;
   location_text: string; // Display string like "London, UK"
   
-  // Shipping (only for physical products)
-  shipping_policy?: ShippingPolicy;
+  // Shipping (UK-focused with proper options)
+  shipping_options?: ShippingOption[];
+  free_shipping_threshold?: number; // In pence
   is_local_pickup_only?: boolean;
+  shipping_policy?: ShippingPolicy; // Legacy support
   
   // Status & Moderation
   status: ProductStatus;
+  featured?: boolean;
   rejection_reason?: string; // If status is rejected
-  
-  // Seller Information (denormalized for quick access)
-  seller_name?: string;
-  seller_avatar?: string;
-  seller_verified?: boolean;
   
   // Engagement
   view_count: number;
   favorite_count: number;
+  click_count?: number;
   
-  // Reviews & Ratings
+  // Reviews & Ratings (aggregated from reviews collection)
   average_rating?: number;
   review_count: number;
   
@@ -125,6 +184,22 @@ export interface Product {
   // SEO & Search
   slug?: string; // URL-friendly version of title
   search_keywords?: string[]; // Generated from title, description, tags
+  
+  // MAPPED FIELDS (added by API for UI compatibility - NOT in database)
+  name?: string; // Mapped from title
+  seller?: string; // Mapped from seller user doc
+  sellerVerified?: boolean; // Mapped from seller user doc
+  image?: string; // First image URL extracted
+  sellerDetails?: {
+    id: string;
+    name: string;
+    avatar: string;
+    location: string;
+    verified: boolean;
+    rating: number;
+    totalSales: number;
+    memberSince: string;
+  };
 }
 
 // Form data types for creating/editing products
@@ -138,15 +213,17 @@ export interface CreateProductFormData {
   
   // Step 2: Pricing & Listing Type
   listing_type: ListingType;
-  price: number;
-  currency: string;
+  price: number; // In pence
+  currency: string; // 'GBP'
+  original_price?: number; // For discount display
+  accepts_barter?: boolean;
   barter_preferences?: BarterPreferences;
   
   // Step 3: Inventory & Details
   quantity_available: number;
   sku?: string;
   condition?: ConditionType;
-  specifications?: ProductSpecifications;
+  specifications?: ProductSpecifications | ElectronicsSpecifications | FashionSpecifications | VehicleSpecifications | HomeGardenSpecifications;
   
   // Step 4: Images & Media
   images: File[] | ProductImage[]; // Files when uploading, URLs when editing
@@ -154,8 +231,10 @@ export interface CreateProductFormData {
   
   // Step 5: Shipping & Location
   location: ProductLocation;
-  shipping_policy?: ShippingPolicy;
+  shipping_options?: ShippingOption[]; // Proper UK shipping options
+  free_shipping_threshold?: number;
   is_local_pickup_only?: boolean;
+  shipping_policy?: ShippingPolicy; // Legacy support
   
   // Status
   status: 'draft' | 'active'; // User can save as draft or publish

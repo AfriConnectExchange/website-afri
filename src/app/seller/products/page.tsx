@@ -37,7 +37,7 @@ interface Product {
   stock_quantity: number;
   condition: string;
   status: 'active' | 'inactive' | 'out_of_stock';
-  images: string[];
+  images: Array<{ url: string; alt?: string; order?: number; is_primary?: boolean }> | string[];
   created_at: any;
   views?: number;
 }
@@ -153,6 +153,25 @@ export default function SellerProductsPage() {
     return <Badge variant="secondary">Inactive</Badge>;
   };
 
+  // Helper to safely get image URL from product images
+  const getProductImageUrl = (images: Product['images']): string | null => {
+    if (!images || images.length === 0) return null;
+    
+    const firstImage = images[0];
+    
+    // Handle object format { url: string }
+    if (typeof firstImage === 'object' && firstImage !== null && 'url' in firstImage) {
+      return firstImage.url || null;
+    }
+    
+    // Handle string format
+    if (typeof firstImage === 'string' && firstImage.trim() !== '') {
+      return firstImage;
+    }
+    
+    return null;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -162,15 +181,16 @@ export default function SellerProductsPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="px-4 sm:px-6 lg:px-8">
+      {/* Header - Mobile First */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">My Products</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">My Products</h1>
+          <p className="text-sm text-muted-foreground">
             Manage your product listings
           </p>
         </div>
-        <Button onClick={() => router.push('/seller/create')}>
+        <Button onClick={() => router.push('/seller/create')} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           List New Product
         </Button>
@@ -178,7 +198,7 @@ export default function SellerProductsPage() {
 
       {/* Search */}
       <div className="mb-6">
-        <div className="relative max-w-md">
+        <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
@@ -189,34 +209,34 @@ export default function SellerProductsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* Stats Cards - Mobile First Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Total Products</CardDescription>
-            <CardTitle className="text-3xl">{products.length}</CardTitle>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardDescription className="text-xs sm:text-sm">Total Products</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl">{products.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Active</CardDescription>
-            <CardTitle className="text-3xl text-green-600">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardDescription className="text-xs sm:text-sm">Active</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl text-green-600">
               {products.filter(p => p.status === 'active' && p.stock_quantity > 0).length}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Out of Stock</CardDescription>
-            <CardTitle className="text-3xl text-orange-600">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardDescription className="text-xs sm:text-sm">Out of Stock</CardDescription>
+            <CardTitle className="text-2xl sm:text-3xl text-orange-600">
               {products.filter(p => p.stock_quantity === 0).length}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="pb-3">
-            <CardDescription>Total Value</CardDescription>
-            <CardTitle className="text-3xl">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardDescription className="text-xs sm:text-sm">Total Value</CardDescription>
+            <CardTitle className="text-xl sm:text-3xl">
               £{products.reduce((sum, p) => sum + (p.price * p.stock_quantity), 0).toFixed(2)}
             </CardTitle>
           </CardHeader>
@@ -246,20 +266,23 @@ export default function SellerProductsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {filteredProducts.map((product) => {
+            const imageUrl = getProductImageUrl(product.images);
+            
+            return (
             <Card key={product.id} className="overflow-hidden">
               <div className="relative aspect-square bg-muted">
-                {product.images && product.images.length > 0 ? (
+                {imageUrl ? (
                   <Image
-                    src={product.images[0]}
+                    src={imageUrl}
                     alt={product.title}
                     fill
                     className="object-cover"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
-                    <Package className="w-16 h-16 text-muted-foreground" />
+                    <Package className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground" />
                   </div>
                 )}
                 <div className="absolute top-2 right-2">
@@ -289,17 +312,17 @@ export default function SellerProductsPage() {
                   </DropdownMenu>
                 </div>
               </div>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold line-clamp-1">{product.title}</h3>
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-semibold text-sm sm:text-base line-clamp-1 flex-1">{product.title}</h3>
                   {getStatusBadge(product.status, product.stock_quantity)}
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-3">
                   {product.description}
                 </p>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-2xl font-bold">£{product.price.toFixed(2)}</p>
+                    <p className="text-xl sm:text-2xl font-bold">£{product.price.toFixed(2)}</p>
                     <p className="text-xs text-muted-foreground">
                       Stock: {product.stock_quantity}
                     </p>
@@ -313,24 +336,25 @@ export default function SellerProductsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, productId: null })}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Product</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this product? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteDialog.productId && handleDelete(deleteDialog.productId)}
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90 w-full sm:w-auto"
             >
               Delete
             </AlertDialogAction>

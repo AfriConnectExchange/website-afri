@@ -15,6 +15,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import type { AppUser } from '@/lib/types';
+import VerifiedIcon from '@mui/icons-material/Verified';
 
 interface ProfileSummaryCardProps {
   user: AppUser;
@@ -127,7 +128,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
             <h3 className="font-semibold text-lg mb-1 flex items-center justify-center gap-2">
               {userName}
               {user?.verification_status === 'verified' && (
-                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Verified</Badge>
+                <VerifiedIcon className="text-green-600 dark:text-green-400" fontSize="small" />
               )}
             </h3>
             {/* Prefer showing 'seller' role if present in the user's roles array */}

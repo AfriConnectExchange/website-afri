@@ -43,6 +43,7 @@ export interface Product {
   quantity_available: number;
   specifications?: any;
   shipping_policy?: any;
+  is_local_pickup_only?: boolean;
   average_rating: number;
   review_count: number;
   tags?: string[];

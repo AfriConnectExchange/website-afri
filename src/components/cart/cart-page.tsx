@@ -268,7 +268,11 @@ export function CartPageComponent({
                 </CardHeader>
                 <CardContent className="divide-y">
                   {cartItems.map((item) => {
-                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : '';
+                    // Extract image URL - handle both string and object formats
+                    const imageSrc = item.image || 
+                      (item.images && item.images.length > 0 
+                        ? (typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url || '')
+                        : '');
                     return (
                     <div key={item.id} className="py-4">
                       <div className="flex gap-4">

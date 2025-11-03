@@ -52,6 +52,15 @@ export interface UserDoc {
   // Seller specific
   business_name?: string | null;
   seller_bio?: string | null;
+  seller_rating?: number; // Average rating from reviews
+  seller_stats?: {
+    total_sales?: number;
+    total_products?: number;
+    total_reviews?: number;
+    response_rate?: number; // Percentage
+    response_time_hours?: number; // Average response time
+  };
+  location_text?: string; // For seller profile display
   
   // Payment methods (how seller ACCEPTS payments from buyers)
   payment_methods?: {
@@ -96,20 +105,113 @@ export interface OnboardingProgress {
 }
 
 /**
- * products collection
+ * products collection: products/{productId}
+ * - Stores ONLY product data
+ * - NO denormalized seller info (always fetch from users collection using seller_id)
+ * - Uses relational references for data integrity
+ * 
+ * Indexes needed:
+ * - seller_id (single-field)
+ * - category_id (single-field)
+ * - status (single-field)
+ * - Composite: (status, created_at), (category_id, status), (seller_id, status)
  */
 export interface ProductDoc {
+  // Identity & Relations
   id?: string;
-  seller_id: string; // uid
-  category_id?: string | null;
+  seller_id: string;          // REFERENCE to users/{seller_id} - fetch seller data separately
+  category_id: string;        // REFERENCE to categories/{category_id}
+  
+  // Core Product Info
   title: string;
-  slug?: string;
-  description?: string;
-  price?: number;
-  currency?: string;
-  is_active?: boolean;
+  slug?: string;              // URL-friendly title
+  description: string;
+  product_type: 'product' | 'service';
+  
+  // Listing & Pricing
+  listing_type: 'sale' | 'barter' | 'freebie';
+  price: number;              // In pence (UK): £10.50 = 1050
+  currency: string;           // 'GBP'
+  original_price?: number;    // For discount display
+  discount?: number;          // Percentage discount
+  
+  // Barter System
+  accepts_barter?: boolean;
+  barter_preferences?: {
+    looking_for?: string[];   // Category IDs or item descriptions
+    notes?: string;
+  };
+  
+  // Inventory
+  quantity_available: number;
+  sku?: string;
+  condition?: 'new' | 'like_new' | 'used_good' | 'used_fair' | 'refurbished';
+  
+  // Media
+  images: Array<{
+    url: string;
+    alt?: string;
+    order: number;
+    is_primary?: boolean;
+  }>;
+  video_url?: string;
+  
+  // Specifications (flexible - varies by category)
+  specifications?: Record<string, string | number | boolean>;
+  
+  // Location (of the product/seller for pickup/shipping origin)
+  location: {
+    address?: string;
+    city?: string;
+    region?: string;          // County/Region
+    country: string;          // 'United Kingdom'
+    postal_code?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  location_text?: string;     // Display string: "London, UK"
+  
+  // Shipping Options (UK-focused with Royal Mail, DPD, etc.)
+  shipping_options?: Array<{
+    id: string;
+    method_name: string;      // "Royal Mail 1st Class", "DPD Next Day"
+    type: 'standard' | 'express' | 'pickup' | 'international';
+    price: number;            // In pence
+    estimated_days_min?: number;
+    estimated_days_max?: number;
+    regions?: string[];       // UK regions where available, or ['UK', 'EU', 'Worldwide']
+  }>;
+  free_shipping_threshold?: number; // Free shipping if order total exceeds this (in pence)
+  is_local_pickup_only?: boolean;
+  
+  // Status & Moderation
+  status: 'draft' | 'active' | 'sold' | 'inactive' | 'pending_review' | 'rejected';
+  featured?: boolean;         // Featured products
+  rejection_reason?: string;
+  
+  // Engagement & Analytics
+  view_count?: number;
+  favorite_count?: number;
+  click_count?: number;
+  
+  // Reviews & Ratings (aggregated)
+  average_rating?: number;
+  review_count?: number;
+  
+  // Search & Discovery
   tags?: string[];
+  search_keywords?: string[];
+  
+  // Timestamps
   created_at?: FirebaseFirestore.Timestamp | null;
+  updated_at?: FirebaseFirestore.Timestamp | null;
+  published_at?: FirebaseFirestore.Timestamp | null;
+  sold_at?: FirebaseFirestore.Timestamp | null;
+  
+  is_active?: boolean;        // Legacy support
+  [key: string]: any;
 }
 
 /**

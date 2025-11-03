@@ -25,12 +25,20 @@ export async function GET(req: NextRequest) {
       .orderBy('created_at', 'desc')
       .get();
 
-    const products = productsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      created_at: doc.data().created_at?.toMillis() || null,
-      updated_at: doc.data().updated_at?.toMillis() || null,
-    }));
+    const products = productsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Handle both Firestore Timestamp and ISO string formats
+        created_at: data.created_at?.toMillis 
+          ? data.created_at.toMillis() 
+          : (data.created_at ? new Date(data.created_at).getTime() : null),
+        updated_at: data.updated_at?.toMillis 
+          ? data.updated_at.toMillis() 
+          : (data.updated_at ? new Date(data.updated_at).getTime() : null),
+      };
+    });
 
     return NextResponse.json({
       success: true,

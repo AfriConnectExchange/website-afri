@@ -61,7 +61,8 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   const [currentStep, setCurrentStep] = useState<KYCStep>('personal');
   const [verificationStatus, setVerificationStatus] =
     useState<VerificationStatus>('incomplete');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
+  const [isSubmitting, setIsSubmitting] = useState(false); // Separate state for submission
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { user, updateUser } = useAuth();
@@ -104,9 +105,31 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
 
   // On mount, check if there is an existing submission and reflect state
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    // Safety timeout - if loading takes more than 5 seconds, show the form
+    timeoutId = setTimeout(() => {
+      console.warn('KYC status check timed out');
+      setIsLoading(false);
+    }, 5000);
+
+    // First check user context directly
+    if (user?.verification_status === 'verified') {
+      setVerificationStatus('approved');
+      setCurrentStep('complete');
+      setSuccess('Your KYC is verified. You can now upgrade your account to start selling.');
+      setIsLoading(false);
+      clearTimeout(timeoutId);
+      return;
+    }
+
+    // Then make API call for more detailed status
     (async () => {
       try {
         const res = await fetchWithAuth('/api/kyc/status');
+        if (!res.ok) {
+          throw new Error('Failed to fetch KYC status');
+        }
         const data = await res.json();
         if (data?.status === 'pending') {
           setVerificationStatus('pending');
@@ -117,9 +140,17 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
           setCurrentStep('complete');
           setSuccess('Your KYC is verified. You can now upgrade your account to start selling.');
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to check KYC status:', err);
+        // On error, allow user to proceed with form
+      } finally {
+        clearTimeout(timeoutId);
+        setIsLoading(false); // Stop loading after check
+      }
     })();
-  }, []);
+
+    return () => clearTimeout(timeoutId);
+  }, [user?.verification_status]);
 
   const validateStep = (step: KYCStep) => {
     switch (step) {
@@ -175,7 +206,7 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   };
   
   const submitKYC = async () => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError('');
 
     try {
@@ -217,7 +248,7 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
     } catch (err: any) {
       setError('Failed to submit KYC application. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -247,60 +278,75 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
 
   return (
     <div className="container max-w-6xl mx-auto px-0 sm:px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => onNavigate('/profile')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Profile
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold">KYC Verification</h1>
-            <p className="text-sm text-muted-foreground">Complete verification to unlock selling</p>
+      {/* Show loader while checking KYC status */}
+      {isLoading && (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Checking verification status...</p>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left: Sticky Stepper */}
-        <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit">
-          <KycProgress currentStep={currentStep} />
-        </div>
-
-        {/* Right: Step content */}
-        <div className="lg:col-span-8 space-y-4">
-          {error && (
-            <Alert className="mb-2" variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && currentStep === 'complete' && (
-            <Alert className="mb-2">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
-          <div>{renderStepContent()}</div>
-
-          {currentStep !== 'complete' && (
-            <div className="flex justify-between">
-              <Button
-                variant="outline"
-                onClick={previousStep}
-                disabled={currentStep === 'personal' || isLoading}
-              >
-                Previous
+      {/* Show KYC content once loaded */}
+      {!isLoading && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => onNavigate('/profile')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Profile
               </Button>
-              <Button onClick={nextStep} disabled={isLoading}>
-                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {currentStep === 'review' ? 'Submit Application' : 'Next'}
-              </Button>
+              <div>
+                <h1 className="text-xl font-bold">KYC Verification</h1>
+                <p className="text-sm text-muted-foreground">Complete verification to unlock selling</p>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* Left: Sticky Stepper */}
+            <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit">
+              <KycProgress currentStep={currentStep} />
+            </div>
+
+            {/* Right: Step content */}
+            <div className="lg:col-span-8 space-y-4">
+              {error && (
+                <Alert className="mb-2" variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {success && currentStep === 'complete' && (
+                <Alert className="mb-2">
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+
+              <div>{renderStepContent()}</div>
+
+              {currentStep !== 'complete' && (
+                <div className="flex justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={previousStep}
+                    disabled={currentStep === 'personal' || isSubmitting}
+                  >
+                    Previous
+                  </Button>
+                  <Button onClick={nextStep} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {currentStep === 'review' ? 'Submit Application' : 'Next'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

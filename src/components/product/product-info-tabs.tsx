@@ -67,32 +67,34 @@ export function ProductInfoTabs({ product, reviews, onReviewSubmit }: ProductInf
         <TabsContent value="shipping" className="space-y-4 pt-6">
            <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Shipping Options</CardTitle>
+              <CardTitle className="text-lg">Shipping Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                  <div className="space-y-3 text-sm">
-                    {product.shipping_policy.package_weight && (
+                    {product.shipping_policy.weight && (
                          <div className="flex justify-between items-center py-2 border-b">
                             <span className="font-medium text-foreground/80">Package Weight</span>
-                            <span className="text-muted-foreground">{product.shipping_policy.package_weight} kg</span>
+                            <span className="text-muted-foreground">{product.shipping_policy.weight} kg</span>
                         </div>
                     )}
-                     {product.shipping_policy.package_length && product.shipping_policy.package_width && product.shipping_policy.package_height && (
+                     {product.shipping_policy.dimensions && (
                          <div className="flex justify-between items-center py-2 border-b">
                             <span className="font-medium text-foreground/80">Package Dimensions</span>
-                            <span className="text-muted-foreground">{product.shipping_policy.package_length} x {product.shipping_policy.package_width} x {product.shipping_policy.package_height} cm</span>
+                            <span className="text-muted-foreground">
+                              {product.shipping_policy.dimensions.length} x {product.shipping_policy.dimensions.width} x {product.shipping_policy.dimensions.height} cm
+                            </span>
                         </div>
                     )}
-                     {product.shipping_policy.domestic_shipping_cost !== undefined && (
-                         <div className="flex justify-between items-center py-2 border-b">
-                            <span className="font-medium text-foreground/80">Domestic Shipping</span>
-                            <span className="text-muted-foreground">£{product.shipping_policy.domestic_shipping_cost.toFixed(2)}</span>
+                     {product.is_local_pickup_only && (
+                         <div className="flex items-center py-2 border-b">
+                            <span className="font-medium text-foreground/80">Delivery Options</span>
+                            <span className="text-muted-foreground ml-auto">Local Pickup Only</span>
                         </div>
                     )}
-                     {product.shipping_policy.international_shipping_cost !== undefined && (
-                         <div className="flex justify-between items-center py-2">
-                            <span className="font-medium text-foreground/80">International Shipping</span>
-                            <span className="text-muted-foreground">£{product.shipping_policy.international_shipping_cost.toFixed(2)}</span>
+                     {!product.is_local_pickup_only && (
+                         <div className="flex items-center py-2">
+                            <span className="font-medium text-foreground/80">Delivery Options</span>
+                            <span className="text-muted-foreground ml-auto">Shipping Available</span>
                         </div>
                     )}
                 </div>

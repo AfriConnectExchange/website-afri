@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from 'react';
+import { loadGoogleMaps, isGoogleMapsLoaded } from '@/lib/google-maps-loader';
 
 declare global { interface Window { google: any; } }
 
@@ -11,38 +12,17 @@ interface MapMarkerProps {
   height?: string;
 }
 
-function loadGoogleMaps(apiKey: string | undefined) {
-  if (!apiKey) return Promise.reject(new Error('Missing Google Maps API key'));
-  if (typeof window === 'undefined') return Promise.reject(new Error('Window not available'));
-  if (window.google && window.google.maps) return Promise.resolve();
-
-  return new Promise<void>((resolve, reject) => {
-    const existing = document.getElementById('google-maps-script');
-    if (existing) {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps script')));
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.async = true;
-    script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.addEventListener('load', () => resolve());
-    script.addEventListener('error', () => reject(new Error('Failed to load Google Maps script')));
-    document.head.appendChild(script);
-  });
-}
-
 export default function MapMarker({ lat, lng, onChange, zoom = 15, height = '200px' }: MapMarkerProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markerRef = useRef<any>(null);
 
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     let mounted = true;
-    loadGoogleMaps(apiKey).then(() => {
+    
+    // Use centralized loader
+    loadGoogleMaps({ libraries: ['places'], region: 'GB' })
+      .then(() => {
       if (!mounted) return;
       if (!mapRef.current) return;
       try {

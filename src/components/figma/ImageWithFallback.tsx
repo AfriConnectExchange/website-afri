@@ -13,7 +13,16 @@ export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({ src, fallb
     setError(true);
   };
 
-  const imageSrc = error && fallbackSrc ? fallbackSrc : src;
+  // Validate that src is a valid string
+  const isValidSrc = typeof src === 'string' && src.trim() !== '';
+  
+  // Use fallback if src is invalid or if there was an error
+  const imageSrc = (!isValidSrc || error) && fallbackSrc ? fallbackSrc : src;
+  
+  // Don't render if we don't have a valid source
+  if (!isValidSrc && !fallbackSrc) {
+    return null;
+  }
 
   return (
     <Image

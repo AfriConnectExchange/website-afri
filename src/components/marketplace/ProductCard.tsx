@@ -39,7 +39,11 @@ export function ProductCard({
     onAddToCart(product);
   };
   
-  const imageSrc = product.images && product.images.length > 0 ? product.images[0] : '';
+  // Extract image URL - handle both string and object formats
+  const imageSrc = product.image || 
+    (product.images && product.images.length > 0 
+      ? (typeof product.images[0] === 'string' ? product.images[0] : (product.images[0] as any)?.url || '')
+      : '');
   const locationText = (product as any).location_text || (product as any).sellerDetails?.location || '';
 
 
