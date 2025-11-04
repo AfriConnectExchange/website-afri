@@ -2,7 +2,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import { Button3D } from '@/components/ui/button-3d';
+import { Card3D } from '@/components/ui/card-3d';
 import {
   Form,
   FormControl,
@@ -12,15 +13,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { fetchWithAuth } from '@/lib/api';
-import { Textarea } from '../ui/textarea';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { useAuth } from '@/context/auth-context';
-import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   fullName: z.string(),
@@ -104,42 +102,47 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
   
   if (isLoading) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>Update your personal details and contact information.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-40">
-                <Loader2 className="w-6 h-6 animate-spin" />
-            </CardContent>
-        </Card>
-    )
+      <Card3D>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-1">Personal Information</h3>
+          <p className="text-sm text-muted-foreground mb-6">Update your personal details and contact information.</p>
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        </div>
+      </Card3D>
+    );
   }
 
   return (
-    <Card>
+    <Card3D>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-           <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>
+          <div className="p-6">
+            <h3 className="text-lg font-semibold mb-1">Personal Information</h3>
+            <p className="text-sm text-muted-foreground mb-6">
               Update your personal details and contact information. Your name cannot be changed.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            </p>
+            
+            <div className="space-y-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="John Doe" {...field} readOnly className="bg-muted/50 cursor-not-allowed"/>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
+                  control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="John Doe" 
+                          {...field} 
+                          readOnly 
+                          className="bg-muted/50 cursor-not-allowed"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <FormField
                   control={form.control}
@@ -149,27 +152,32 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
                       <FormLabel>Phone Number</FormLabel>
                       <FormControl>
                         <PhoneInput
-                            id="phone"
-                            placeholder="Enter phone number"
-                            international
-                            defaultCountry="GB"
-                            {...field}
-                          />
+                          id="phone"
+                          placeholder="Enter phone number"
+                          international
+                          defaultCountry="GB"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-             </div>
-          </CardContent>
-          <CardFooter>
-         <Button type="submit" disabled={isSaving || !form.formState.isDirty || isChecking}>
-           {(isSaving || isChecking) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button3D 
+                type="submit" 
+                disabled={isSaving || !form.formState.isDirty || isChecking}
+              >
+                {(isSaving || isChecking) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
-              </Button>
-          </CardFooter>
+              </Button3D>
+            </div>
+          </div>
         </form>
       </Form>
-    </Card>
+    </Card3D>
   );
 }

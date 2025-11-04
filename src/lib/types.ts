@@ -404,7 +404,8 @@ export interface Category {
   description?: string | null;
   parent_id?: string | null;
   children?: Category[];
-  image?: string | null;
+  image?: string | null; // Legacy field - deprecated
+  image_url?: string | null; // Firebase Storage URL - preferred
   is_active?: boolean;
   order?: number;
   count?: number; // Product count (optional, computed)

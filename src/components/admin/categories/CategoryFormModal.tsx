@@ -155,10 +155,32 @@ function CategoryImageUploader({ onUploaded }: { onUploaded: (url: string) => vo
   const { getAdminToken } = useAdminAuth();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFile = async (file: File) => {
     if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a JPEG, PNG, WebP, or GIF image.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Maximum file size is 5MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setBusy(true);
     try {
       const token = await getAdminToken();
@@ -172,17 +194,96 @@ function CategoryImageUploader({ onUploaded }: { onUploaded: (url: string) => vo
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Upload failed');
       onUploaded(data.url);
+      toast({
+        title: 'Success',
+        description: 'Image uploaded successfully!',
+      });
     } catch (err: any) {
       toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
     } finally {
       setBusy(false);
-      try { (e.target as any).value = ''; } catch {}
     }
   };
 
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await handleFile(file);
+    try {
+      (e.target as any).value = '';
+    } catch {}
+  };
+
+  const onDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) await handleFile(file);
+  };
+
   return (
-    <div>
-      <input type="file" accept="image/*" onChange={onPick} disabled={busy} />
+    <div
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        dragActive ? 'border-sky-500 bg-sky-50' : 'border-slate-300 bg-slate-50'
+      } ${busy ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-sky-400'}`}
+      onDragEnter={onDrag}
+      onDragLeave={onDrag}
+      onDragOver={onDrag}
+      onDrop={onDrop}
+    >
+      <input
+        type="file"
+        accept="image/*"
+        onChange={onPick}
+        disabled={busy}
+        className="hidden"
+        id="category-image-upload"
+      />
+      <label htmlFor="category-image-upload" className="cursor-pointer">
+        {busy ? (
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+            <p className="text-sm text-slate-600">Uploading...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-12 w-12 rounded-full bg-sky-100 flex items-center justify-center">
+              <svg
+                className="h-6 w-6 text-sky-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-700">
+                Click to upload or drag and drop
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                JPEG, PNG, WebP, or GIF (max 5MB)
+              </p>
+            </div>
+          </div>
+        )}
+      </label>
     </div>
   );
 }

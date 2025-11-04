@@ -75,7 +75,7 @@ export default function HeaderNotifications() {
 
     {/* Increased width and allow scrolling for long notification lists/content so
       the header dropdown displays nicely in previews. */}
-    <DropdownMenuContent className="w-96 max-h-80 overflow-y-auto" align="end" forceMount>
+    <DropdownMenuContent className="w-96 max-h-80 overflow-y-auto" align="end" side="bottom" sideOffset={8} forceMount>
         <DropdownMenuLabel className="font-medium">Notifications</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.length === 0 ? (
@@ -83,9 +83,9 @@ export default function HeaderNotifications() {
         ) : (
           items.map(item => (
             <Link key={item.id} href={item.link || '/notifications'} className="block">
-              <DropdownMenuItem className="flex flex-col text-sm py-2 px-3 gap-1">
-                <span className="font-medium leading-snug break-words">{item.title}</span>
-                {item.body && <span className="text-xs text-muted-foreground break-words">{item.body}</span>}
+              <DropdownMenuItem className="flex flex-col items-start justify-center text-sm py-3 px-4 gap-1.5 min-h-[60px]">
+                <span className="font-medium leading-normal break-words w-full">{item.title}</span>
+                {item.body && <span className="text-xs text-muted-foreground leading-relaxed break-words w-full">{item.body}</span>}
               </DropdownMenuItem>
             </Link>
           ))

@@ -4,6 +4,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProfileSummaryCard } from './profile-summary-card';
+import { ProfileCompletionCard } from './profile-completion-card';
 import { PersonalInfoForm } from './personal-info-form';
 import { AccountRoleForm } from './account-role-form';
 import { PreferencesForm } from './preferences-form';
@@ -70,16 +71,29 @@ export function ProfilePage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-          <div className="lg:col-span-1 lg:sticky top-24">
-             <ProfileSummaryCard 
+          <div className="lg:col-span-1 space-y-6">
+            {/* Profile Summary - Sticky on Desktop */}
+            <div className="lg:sticky top-24">
+              <ProfileSummaryCard 
                 user={user} 
                 onNavigate={router.push} 
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
-             />
+              />
+            </div>
+
+            {/* Completion Card - Gamification */}
+            <div className="hidden lg:block">
+              <ProfileCompletionCard user={user} onNavigate={router.push} />
+            </div>
           </div>
 
           <div className="lg:col-span-3">
+            {/* Mobile Completion Card - Above Tabs */}
+            <div className="lg:hidden mb-6">
+              <ProfileCompletionCard user={user} onNavigate={router.push} />
+            </div>
+
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="lg:hidden">
                 <TabsList className="grid w-full grid-cols-3 max-w-lg mb-6">

@@ -134,7 +134,7 @@ export function FilterPanel({
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-5 bg-gradient-to-br from-white to-gray-50/30 rounded-2xl border-2 border-gray-100 shadow-[0_6px_0_0_rgba(0,0,0,0.03),0_8px_16px_-4px_rgba(0,0,0,0.08)]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Filters</h2>
@@ -251,9 +251,9 @@ export function FilterPanel({
               onLocationChange={(location) => {
                 onFiltersChange({
                   userLocation: location ? {
-                    lat: location.latitude,
-                    lng: location.longitude,
-                    address: location.address
+                    lat: location.lat,
+                    lng: location.lng,
+                    address: location.formattedAddress
                   } : null
                 });
               }}
@@ -261,7 +261,13 @@ export function FilterPanel({
                 onFiltersChange({ locationRadius: radius });
               }}
               onDeliveryOptionsChange={(options) => {
-                onFiltersChange({ deliveryOptions: options });
+                onFiltersChange({ 
+                  deliveryOptions: {
+                    localPickup: options.pickupOnly,
+                    shipping: !options.pickupOnly && !options.deliveryOnly,
+                    delivery: options.deliveryOnly
+                  }
+                });
               }}
             />
           </div>

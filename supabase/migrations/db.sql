@@ -1,1294 +1,739 @@
--- ============================================================================
--- AfriConnect Exchange - Clean Supabase Database Schema
--- Version: 2.0 (Simplified)
--- ============================================================================
--- 
--- WHAT SUPABASE HANDLES (DON'T DUPLICATE):
--- - User authentication (email, phone, password, OAuth)
--- - Session management (tokens, refresh, expiry)
--- - Email/phone verification
--- - Password reset flows
--- - Rate limiting on auth endpoints
--- 
--- WHAT THIS SCHEMA HANDLES:
--- - User profiles and business data
--- - Marketplace (products, services, orders)
--- - Payments and transactions
--- - Reviews and ratings
--- - Support system
--- - Analytics
--- ============================================================================
+-- AfriConnect Exchange – PostgreSQL Marketplace Schema
+-- Generated from Firebase/Firestore domain model (November 2025)
 
--- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+-- Extensions -----------------------------------------------------------------
+-- pg_trgm is not available on the hosted cPanel instance, so skip optional extensions.
 
--- ============================================================================
--- ENUM TYPES
--- ============================================================================
+-- Enum Types ------------------------------------------------------------------
+CREATE TYPE user_role AS ENUM ('buyer','seller','sme','admin');
+CREATE TYPE user_status AS ENUM ('pending','active','suspended','deactivated','deleted');
+CREATE TYPE seller_type AS ENUM ('seller','sme');
+CREATE TYPE verification_status AS ENUM ('unverified','pending','verified','rejected');
+CREATE TYPE payout_method AS ENUM ('bank_transfer','paypal');
 
-CREATE TYPE user_role AS ENUM ('buyer', 'seller', 'sme', 'admin');
-CREATE TYPE user_status AS ENUM ('pending', 'active', 'suspended', 'deleted');
-CREATE TYPE verification_status AS ENUM ('unverified', 'pending', 'verified', 'rejected');
-CREATE TYPE payment_method AS ENUM ('cash', 'card', 'wallet', 'paypal', 'escrow');
-CREATE TYPE payment_status AS ENUM ('pending', 'processing', 'completed', 'failed', 'refunded');
-CREATE TYPE transaction_type AS ENUM ('purchase', 'barter', 'escrow', 'refund');
-CREATE TYPE escrow_status AS ENUM ('held', 'released', 'disputed', 'refunded');
-CREATE TYPE barter_status AS ENUM ('proposed', 'counter_offered', 'accepted', 'rejected', 'cancelled', 'completed');
-CREATE TYPE order_status AS ENUM ('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'disputed');
-CREATE TYPE notification_type AS ENUM ('order', 'delivery', 'promotional', 'system', 'security');
-CREATE TYPE advert_status AS ENUM ('draft', 'active', 'expired', 'deleted');
-CREATE TYPE dispute_status AS ENUM ('open', 'investigating', 'resolved', 'closed');
-CREATE TYPE support_ticket_status AS ENUM ('open', 'in_progress', 'resolved', 'closed');
-CREATE TYPE review_status AS ENUM ('pending', 'approved', 'rejected', 'flagged');
+CREATE TYPE product_type AS ENUM ('product','service');
+CREATE TYPE listing_type AS ENUM ('sale','barter','freebie');
+CREATE TYPE product_status AS ENUM ('draft','active','sold','delisted','pending_review','rejected');
+CREATE TYPE product_condition AS ENUM ('new','like_new','good','fair','used_good','used_fair','refurbished');
 
--- ============================================================================
--- CORE TABLES - User Management
--- ============================================================================
+CREATE TYPE shipping_type AS ENUM ('standard','express','pickup','international');
 
+CREATE TYPE order_status AS ENUM ('pending','confirmed','processing','shipped','delivered','cancelled','disputed');
+CREATE TYPE payment_method AS ENUM ('card','bank_transfer','cash_on_delivery','mobile_money','paypal','wallet');
+CREATE TYPE payment_status AS ENUM ('pending','paid','refunded','failed');
+CREATE TYPE escrow_status AS ENUM ('held','released','refunded','disputed');
+CREATE TYPE transaction_type AS ENUM ('purchase','barter','escrow','payout','refund');
+
+CREATE TYPE barter_status AS ENUM ('pending','counter','accepted','rejected','cancelled','completed');
+CREATE TYPE support_ticket_status AS ENUM ('open','in_progress','resolved','closed');
+CREATE TYPE dispute_status AS ENUM ('open','investigating','resolved','closed');
+CREATE TYPE notification_type AS ENUM ('order','delivery','system','security','promotional');
+CREATE TYPE review_status AS ENUM ('pending','approved','rejected','flagged');
+
+-- Utility Functions -----------------------------------------------------------
+CREATE OR REPLACE FUNCTION gen_uuid_v4()
+RETURNS UUID AS $$
+DECLARE
+  v_bytes BYTEA := decode(md5(random()::text || clock_timestamp()::text), 'hex');
+BEGIN
+  -- Set the version (0100) and variant (10xx) bits to comply with RFC 4122.
+  v_bytes := set_byte(v_bytes, 6, (get_byte(v_bytes, 6) & 15) | 64);
+  v_bytes := set_byte(v_bytes, 8, (get_byte(v_bytes, 8) & 63) | 128);
+  RETURN encode(v_bytes, 'hex')::uuid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Shared sequences for reference numbers
+CREATE SEQUENCE IF NOT EXISTS order_number_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS transaction_ref_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS ticket_number_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS dispute_ref_seq START 1;
+
+CREATE OR REPLACE FUNCTION assign_order_number()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.order_number := 'ORD-' || TO_CHAR(NOW(),'YYYYMMDD') || '-' || LPAD(nextval('order_number_seq')::TEXT,6,'0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION assign_transaction_ref()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.reference := 'TXN-' || TO_CHAR(NOW(),'YYYYMMDD') || '-' || LPAD(nextval('transaction_ref_seq')::TEXT,8,'0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION set_transaction_net_amount()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.net_amount_pence := NEW.amount_pence - COALESCE(NEW.fee_pence, 0);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION assign_ticket_number()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.ticket_number := 'TKT-' || TO_CHAR(NOW(),'YYYYMMDD') || '-' || LPAD(nextval('ticket_number_seq')::TEXT,5,'0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION assign_dispute_ref()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.dispute_ref := 'DSP-' || TO_CHAR(NOW(),'YYYYMMDD') || '-' || LPAD(nextval('dispute_ref_seq')::TEXT,5,'0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Identity & Profiles ---------------------------------------------------------
 CREATE TABLE users (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20),
-    full_name VARCHAR(255),
-    profile_picture_url TEXT,
-    bio TEXT,
-    address TEXT,
-    city VARCHAR(100),
-    country VARCHAR(100) DEFAULT 'United Kingdom',
-    postcode VARCHAR(20),
-    roles user_role[] DEFAULT ARRAY['buyer']::user_role[],
-    status user_status DEFAULT 'pending',
-    verification_status verification_status DEFAULT 'unverified',
-    free_access_expires_at TIMESTAMP WITH TIME ZONE,
-    language VARCHAR(10) DEFAULT 'en',
-    timezone VARCHAR(50) DEFAULT 'Europe/London',
-    
-    -- KYC fields (only set when user submits verification)
-    kyc_documents JSONB,
-    kyc_submitted_at TIMESTAMP WITH TIME ZONE,
-    kyc_verified_at TIMESTAMP WITH TIME ZONE,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id               UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  firebase_uid     VARCHAR(128) UNIQUE NOT NULL,
+  email            VARCHAR(255),
+  email_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+  phone            VARCHAR(32),
+  phone_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+  full_name        VARCHAR(255),
+  profile_picture  TEXT,
+  seller_bio       TEXT,
+  roles            user_role[] NOT NULL DEFAULT ARRAY['buyer']::user_role[],
+  seller_type      seller_type,
+  verification_status verification_status NOT NULL DEFAULT 'unverified',
+  onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  profile_completed   BOOLEAN NOT NULL DEFAULT FALSE,
+  kyc_completed       BOOLEAN NOT NULL DEFAULT FALSE,
+  kyc_submitted_at    TIMESTAMPTZ,
+  kyc_verified_at     TIMESTAMPTZ,
+  kyc_documents       JSONB,
+  address_line1    VARCHAR(255),
+  address_line2    VARCHAR(255),
+  city             VARCHAR(120),
+  region           VARCHAR(120),
+  country          VARCHAR(120) DEFAULT 'United Kingdom',
+  postal_code      VARCHAR(20),
+  latitude         DOUBLE PRECISION,
+  longitude        DOUBLE PRECISION,
+  location_text    VARCHAR(255),
+  payment_accepts_cash   BOOLEAN DEFAULT FALSE,
+  payment_accepts_card   BOOLEAN DEFAULT FALSE,
+  payment_accepts_bank   BOOLEAN DEFAULT FALSE,
+  payment_accepts_mobile BOOLEAN DEFAULT FALSE,
+  payout_method     payout_method,
+  paypal_email      VARCHAR(255),
+  status            user_status NOT NULL DEFAULT 'pending',
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE users IS 'User profiles linked to Supabase Auth. Auth handles passwords/sessions.';
-COMMENT ON COLUMN users.id IS 'References auth.users(id) - managed by Supabase Auth';
+CREATE TRIGGER trg_users_updated
+BEFORE UPDATE ON users FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
--- User preferences (separated for clarity)
+CREATE TABLE seller_bank_accounts (
+  id                     UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  user_id                UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_holder_name    VARCHAR(255),
+  bank_name              VARCHAR(255),
+  account_number         VARCHAR(50),
+  sort_code              VARCHAR(20),
+  iban                   VARCHAR(50),
+  last_validated_at      TIMESTAMPTZ,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id)
+);
+
+CREATE TRIGGER trg_bank_accounts_updated
+BEFORE UPDATE ON seller_bank_accounts FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
 CREATE TABLE user_preferences (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    notifications_enabled BOOLEAN DEFAULT TRUE,
-    marketing_emails BOOLEAN DEFAULT FALSE,
-    privacy_settings JSONB DEFAULT '{}'::jsonb,
-    display_preferences JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  user_id            UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  marketing_emails      BOOLEAN NOT NULL DEFAULT FALSE,
+  privacy_preferences   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  display_preferences   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ============================================================================
--- Marketplace - Categories
--- ============================================================================
+CREATE TRIGGER trg_user_preferences_updated
+BEFORE UPDATE ON user_preferences FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
+CREATE TABLE user_onboarding_progress (
+  user_id            UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  walkthrough_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_steps    JSONB NOT NULL DEFAULT '[]'::jsonb,
+  skipped            BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_at       TIMESTAMPTZ,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER trg_onboarding_updated
+BEFORE UPDATE ON user_onboarding_progress FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
+CREATE TABLE user_sessions (
+  id             UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_id      VARCHAR(128),
+  user_agent     TEXT,
+  ip_address     INET,
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, device_id, created_at)
+);
+
+CREATE INDEX idx_user_sessions_user ON user_sessions(user_id);
+CREATE INDEX idx_user_sessions_active ON user_sessions(is_active);
+
+-- Taxonomy --------------------------------------------------------------------
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT,
-    parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    icon_url TEXT,
-    display_order INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id           UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  name         VARCHAR(255) NOT NULL,
+  slug         VARCHAR(255) NOT NULL UNIQUE,
+  description  TEXT,
+  icon_url     TEXT,
+  parent_id    UUID REFERENCES categories(id) ON DELETE SET NULL,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TRIGGER trg_categories_updated
+BEFORE UPDATE ON categories FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
 CREATE INDEX idx_categories_parent ON categories(parent_id);
-CREATE INDEX idx_categories_slug ON categories(slug);
+CREATE INDEX idx_categories_active ON categories(is_active);
 
--- ============================================================================
--- Marketplace - Products
--- ============================================================================
-
+-- Marketplace Listings --------------------------------------------------------
 CREATE TABLE products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    seller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    
-    -- Basic info
-    title VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT NOT NULL,
-    
-    -- Pricing
-    price DECIMAL(10, 2),
-    is_free BOOLEAN DEFAULT FALSE,
-    currency VARCHAR(3) DEFAULT 'GBP',
-    
-    -- Inventory
-    quantity_available INTEGER DEFAULT 1,
-    condition VARCHAR(50), -- new, used, refurbished
-    
-    -- Media & metadata
-    images JSONB DEFAULT '[]'::jsonb, -- [{url: string, alt: string}]
-    tags TEXT[],
-    
-    -- Location (optional for local pickup)
-    location VARCHAR(255),
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
-    
-    -- Status & stats
-    is_active BOOLEAN DEFAULT TRUE,
-    view_count INTEGER DEFAULT 0,
-    inquiry_count INTEGER DEFAULT 0,
-    purchase_count INTEGER DEFAULT 0,
-    average_rating DECIMAL(3, 2) DEFAULT 0.00,
-    review_count INTEGER DEFAULT 0,
-    
-    -- Search
-    search_vector tsvector,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    published_at TIMESTAMP WITH TIME ZONE
+  id                UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  seller_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category_id       UUID REFERENCES categories(id) ON DELETE SET NULL,
+  title             VARCHAR(255) NOT NULL,
+  slug              VARCHAR(255) NOT NULL UNIQUE,
+  description       TEXT NOT NULL,
+  product_type      product_type NOT NULL,
+  listing_type      listing_type NOT NULL DEFAULT 'sale',
+  price_pence       INTEGER NOT NULL DEFAULT 0 CHECK (price_pence >= 0),
+  original_price_pence INTEGER,
+  currency          CHAR(3) NOT NULL DEFAULT 'GBP',
+  quantity_available INTEGER NOT NULL DEFAULT 0,
+  sku               VARCHAR(64),
+  condition         product_condition,
+  accepts_barter    BOOLEAN NOT NULL DEFAULT FALSE,
+  barter_preferences JSONB,
+  status            product_status NOT NULL DEFAULT 'draft',
+  rejection_reason  TEXT,
+  featured          BOOLEAN NOT NULL DEFAULT FALSE,
+  tags              TEXT[],
+  search_keywords   TEXT[],
+  location_address  TEXT,
+  location_city     VARCHAR(120),
+  location_region   VARCHAR(120),
+  location_country  VARCHAR(120) DEFAULT 'United Kingdom',
+  location_postal_code VARCHAR(20),
+  location_latitude DOUBLE PRECISION,
+  location_longitude DOUBLE PRECISION,
+  location_formatted TEXT,
+  is_local_pickup_only BOOLEAN NOT NULL DEFAULT FALSE,
+  shipping_policy   JSONB,
+  free_shipping_threshold_pence INTEGER,
+  view_count        INTEGER NOT NULL DEFAULT 0,
+  favorite_count    INTEGER NOT NULL DEFAULT 0,
+  click_count       INTEGER NOT NULL DEFAULT 0,
+  average_rating    NUMERIC(3,2) NOT NULL DEFAULT 0,
+  review_count      INTEGER NOT NULL DEFAULT 0,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  published_at      TIMESTAMPTZ
 );
 
-CREATE INDEX idx_products_seller_id ON products(seller_id);
-CREATE INDEX idx_products_category_id ON products(category_id);
-CREATE INDEX idx_products_is_active ON products(is_active);
-CREATE INDEX idx_products_price ON products(price);
-CREATE INDEX idx_products_search_vector ON products USING GIN(search_vector);
-CREATE INDEX idx_products_tags ON products USING GIN(tags);
+CREATE TRIGGER trg_products_updated
+BEFORE UPDATE ON products FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
--- ============================================================================
--- Marketplace - Services
--- ============================================================================
+CREATE INDEX idx_products_seller ON products(seller_id);
+CREATE INDEX idx_products_category ON products(category_id);
+CREATE INDEX idx_products_status ON products(status);
+CREATE INDEX idx_products_listing_type ON products(listing_type);
+CREATE INDEX idx_products_price ON products(price_pence);
+CREATE INDEX idx_products_search_keywords ON products USING GIN (search_keywords);
+CREATE INDEX idx_products_tags ON products USING GIN (tags);
+CREATE INDEX idx_products_location ON products(location_country, location_city);
 
-CREATE TABLE services (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    
-    -- Basic info
-    title VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT NOT NULL,
-    
-    -- Pricing (services can have ranges)
-    price_from DECIMAL(10, 2),
-    price_to DECIMAL(10, 2),
-    currency VARCHAR(3) DEFAULT 'GBP',
-    pricing_model VARCHAR(50), -- hourly, fixed, per_day
-    duration_minutes INTEGER,
-    
-    -- Media & metadata
-    images JSONB DEFAULT '[]'::jsonb,
-    tags TEXT[],
-    
-    -- Location
-    location VARCHAR(255),
-    is_remote BOOLEAN DEFAULT FALSE,
-    
-    -- Status & stats
-    is_active BOOLEAN DEFAULT TRUE,
-    view_count INTEGER DEFAULT 0,
-    inquiry_count INTEGER DEFAULT 0,
-    booking_count INTEGER DEFAULT 0,
-    average_rating DECIMAL(3, 2) DEFAULT 0.00,
-    review_count INTEGER DEFAULT 0,
-    
-    -- Search
-    search_vector tsvector,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+CREATE TABLE product_images (
+  id           UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  product_id   UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  url          TEXT NOT NULL,
+  alt          TEXT,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  is_primary   BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_services_provider_id ON services(provider_id);
-CREATE INDEX idx_services_category_id ON services(category_id);
-CREATE INDEX idx_services_is_active ON services(is_active);
-CREATE INDEX idx_services_search_vector ON services USING GIN(search_vector);
+CREATE INDEX idx_product_images_product ON product_images(product_id);
 
--- ============================================================================
--- Payments & Transactions
--- ============================================================================
+CREATE TABLE product_specifications (
+  id           UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  product_id   UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  spec_key     VARCHAR(120) NOT NULL,
+  spec_value   TEXT,
+  position     INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (product_id, spec_key)
+);
 
-CREATE SEQUENCE transaction_ref_seq START 1;
+CREATE INDEX idx_product_specs_product ON product_specifications(product_id);
 
+CREATE TABLE product_options (
+  id           UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  product_id   UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  option_key   VARCHAR(64) NOT NULL,
+  name         VARCHAR(120) NOT NULL,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (product_id, option_key)
+);
+
+CREATE TABLE product_option_values (
+  id            UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  option_id     UUID NOT NULL REFERENCES product_options(id) ON DELETE CASCADE,
+  value         VARCHAR(120) NOT NULL,
+  display_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (option_id, value)
+);
+
+CREATE TABLE product_variants (
+  id              UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  product_id      UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  variant_key     VARCHAR(64),
+  option_values   JSONB NOT NULL DEFAULT '{}'::jsonb,
+  price_pence     INTEGER CHECK (price_pence >= 0),
+  quantity        INTEGER NOT NULL DEFAULT 0,
+  sku             VARCHAR(64),
+  is_primary      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (product_id, variant_key)
+);
+
+CREATE TRIGGER trg_product_variants_updated
+BEFORE UPDATE ON product_variants FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
+CREATE TABLE product_shipping_options (
+  id                   UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  product_id           UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  option_name          VARCHAR(255) NOT NULL,
+  shipping_type        shipping_type NOT NULL,
+  price_pence          INTEGER NOT NULL DEFAULT 0 CHECK (price_pence >= 0),
+  estimated_days_min   INTEGER,
+  estimated_days_max   INTEGER,
+  regions              TEXT[],
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_product_shipping_product ON product_shipping_options(product_id);
+
+CREATE TABLE wishlists (
+  id         UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  added_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, product_id)
+);
+
+-- Orders & Fulfilment --------------------------------------------------------
+CREATE TABLE orders (
+  id                UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  order_number      VARCHAR(40) NOT NULL UNIQUE,
+  buyer_id          UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  seller_id         UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  status            order_status NOT NULL DEFAULT 'pending',
+  payment_method    payment_method,
+  payment_status    payment_status DEFAULT 'pending',
+  escrow_status     escrow_status,
+  currency          CHAR(3) NOT NULL DEFAULT 'GBP',
+  subtotal_pence    INTEGER NOT NULL DEFAULT 0 CHECK (subtotal_pence >= 0),
+  shipping_pence    INTEGER NOT NULL DEFAULT 0 CHECK (shipping_pence >= 0),
+  total_pence       INTEGER NOT NULL DEFAULT 0 CHECK (total_pence >= 0),
+  delivery_address  JSONB,
+  delivery_notes    TEXT,
+  tracking_number   VARCHAR(255),
+  courier_name      VARCHAR(120),
+  placed_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  confirmed_at      TIMESTAMPTZ,
+  shipped_at        TIMESTAMPTZ,
+  delivered_at      TIMESTAMPTZ,
+  cancelled_at      TIMESTAMPTZ,
+  cancellation_reason TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TRIGGER trg_orders_assign_number
+BEFORE INSERT ON orders FOR EACH ROW
+EXECUTE PROCEDURE assign_order_number();
+
+CREATE TRIGGER trg_orders_updated
+BEFORE UPDATE ON orders FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
+CREATE INDEX idx_orders_buyer ON orders(buyer_id);
+CREATE INDEX idx_orders_seller ON orders(seller_id);
+CREATE INDEX idx_orders_status ON orders(status);
+
+CREATE TABLE order_items (
+  id             UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  order_id       UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id     UUID NOT NULL REFERENCES products(id) ON DELETE SET NULL,
+  variant_id     UUID REFERENCES product_variants(id) ON DELETE SET NULL,
+  title          VARCHAR(255) NOT NULL,
+  quantity       INTEGER NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  unit_price_pence INTEGER NOT NULL DEFAULT 0 CHECK (unit_price_pence >= 0),
+  total_price_pence INTEGER NOT NULL DEFAULT 0 CHECK (total_price_pence >= 0),
+  metadata       JSONB
+);
+
+CREATE INDEX idx_order_items_order ON order_items(order_id);
+
+CREATE UNIQUE INDEX idx_order_items_unique
+  ON order_items (order_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::UUID));
+CREATE TABLE delivery_tracking (
+  id                UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  order_id          UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  tracking_number   VARCHAR(255) NOT NULL,
+  courier_name      VARCHAR(120) NOT NULL,
+  current_status    VARCHAR(120) NOT NULL,
+  estimated_delivery TIMESTAMPTZ,
+  tracking_history  JSONB NOT NULL DEFAULT '[]'::jsonb,
+  last_updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_delivery_tracking_order ON delivery_tracking(order_id);
+
+-- Payments, Escrow & Transactions --------------------------------------------
 CREATE TABLE transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_ref VARCHAR(100) UNIQUE NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    
-    type transaction_type NOT NULL,
-    payment_method payment_method NOT NULL,
-    status payment_status DEFAULT 'pending',
-    
-    -- Amounts
-    amount DECIMAL(10, 2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'GBP',
-    fee DECIMAL(10, 2) DEFAULT 0.00,
-    net_amount DECIMAL(10, 2),
-    
-    description TEXT,
-    metadata JSONB DEFAULT '{}'::jsonb,
-    
-    -- Payment provider info
-    payment_provider VARCHAR(50), -- stripe, paystack, flutterwave
-    provider_transaction_id VARCHAR(255),
-    provider_response JSONB,
-    
-    -- Timestamps
-    initiated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    completed_at TIMESTAMP WITH TIME ZONE,
-    failed_at TIMESTAMP WITH TIME ZONE,
-    failure_reason TEXT,
-    refunded_at TIMESTAMP WITH TIME ZONE,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  reference       VARCHAR(60) UNIQUE,
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  order_id        UUID REFERENCES orders(id) ON DELETE SET NULL,
+  type            transaction_type NOT NULL,
+  payment_method  payment_method,
+  status          payment_status NOT NULL DEFAULT 'pending',
+  amount_pence    INTEGER NOT NULL CHECK (amount_pence >= 0),
+  fee_pence       INTEGER DEFAULT 0 CHECK (fee_pence >= 0),
+  net_amount_pence INTEGER NOT NULL DEFAULT 0,
+  currency        CHAR(3) NOT NULL DEFAULT 'GBP',
+  description     TEXT,
+  metadata        JSONB,
+  provider_name   VARCHAR(120),
+  provider_transaction_id VARCHAR(255),
+  provider_response JSONB,
+  initiated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at    TIMESTAMPTZ,
+  failed_at       TIMESTAMPTZ,
+  failure_reason  TEXT,
+  refunded_at     TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_user_id ON transactions(user_id);
-CREATE INDEX idx_transactions_status ON transactions(status);
-CREATE INDEX idx_transactions_type ON transactions(type);
-CREATE INDEX idx_transactions_created_at ON transactions(created_at);
+CREATE TRIGGER trg_transactions_assign_ref
+BEFORE INSERT ON transactions FOR EACH ROW
+EXECUTE PROCEDURE assign_transaction_ref();
 
--- ============================================================================
--- Escrow System (Buyer Protection)
--- ============================================================================
+CREATE TRIGGER trg_transactions_net_amount
+BEFORE INSERT OR UPDATE ON transactions FOR EACH ROW
+EXECUTE PROCEDURE set_transaction_net_amount();
+
+CREATE TRIGGER trg_transactions_updated
+BEFORE UPDATE ON transactions FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
+CREATE INDEX idx_transactions_user ON transactions(user_id);
+CREATE INDEX idx_transactions_order ON transactions(order_id);
+CREATE INDEX idx_transactions_status ON transactions(status);
 
 CREATE TABLE escrow_transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_id UUID NOT NULL UNIQUE REFERENCES transactions(id) ON DELETE RESTRICT,
-    buyer_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    seller_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    order_id UUID, -- Will reference orders.id (FK added after orders table)
-    
-    amount DECIMAL(10, 2) NOT NULL,
-    status escrow_status DEFAULT 'held',
-    
-    held_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    auto_release_at TIMESTAMP WITH TIME ZONE, -- Auto-release after X days
-    released_at TIMESTAMP WITH TIME ZONE,
-    
-    -- Dispute handling
-    disputed_at TIMESTAMP WITH TIME ZONE,
-    dispute_reason TEXT,
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    resolution_notes TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  transaction_id  UUID NOT NULL UNIQUE REFERENCES transactions(id) ON DELETE CASCADE,
+  buyer_id        UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  seller_id       UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  order_id        UUID REFERENCES orders(id) ON DELETE SET NULL,
+  amount_pence    INTEGER NOT NULL CHECK (amount_pence >= 0),
+  status          escrow_status NOT NULL DEFAULT 'held',
+  held_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  auto_release_at TIMESTAMPTZ,
+  released_at     TIMESTAMPTZ,
+  disputed_at     TIMESTAMPTZ,
+  dispute_reason  TEXT,
+  resolved_at     TIMESTAMPTZ,
+  resolution_notes TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_escrow_buyer_id ON escrow_transactions(buyer_id);
-CREATE INDEX idx_escrow_seller_id ON escrow_transactions(seller_id);
+CREATE TRIGGER trg_escrow_updated
+BEFORE UPDATE ON escrow_transactions FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
+CREATE INDEX idx_escrow_buyer ON escrow_transactions(buyer_id);
+CREATE INDEX idx_escrow_seller ON escrow_transactions(seller_id);
 CREATE INDEX idx_escrow_status ON escrow_transactions(status);
 
--- ============================================================================
--- Barter System (Cashless Exchange)
--- ============================================================================
-
+-- Barter ----------------------------------------------------------------------
 CREATE TABLE barter_proposals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    proposer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    -- What proposer offers
-    offered_item_type VARCHAR(20) NOT NULL, -- 'product' or 'service'
-    offered_item_id UUID NOT NULL,
-    
-    -- What proposer wants
-    requested_item_type VARCHAR(20) NOT NULL, -- 'product' or 'service'
-    requested_item_id UUID NOT NULL,
-    
-    offer_description TEXT,
-    status barter_status DEFAULT 'proposed',
-    
-    -- Counter offers
-    counter_offer_description TEXT,
-    
-    -- Lifecycle
-    expires_at TIMESTAMP WITH TIME ZONE,
-    accepted_at TIMESTAMP WITH TIME ZONE,
-    rejected_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
-    cancelled_at TIMESTAMP WITH TIME ZONE,
-    cancellation_reason TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id                UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  proposer_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offered_product_id   UUID REFERENCES products(id) ON DELETE SET NULL,
+  offered_service_id   UUID,
+  requested_product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+  requested_service_id UUID,
+  offer_details     JSONB,
+  status            barter_status NOT NULL DEFAULT 'pending',
+  counter_offer     JSONB,
+  expires_at        TIMESTAMPTZ,
+  accepted_at       TIMESTAMPTZ,
+  rejected_at       TIMESTAMPTZ,
+  cancelled_at      TIMESTAMPTZ,
+  completed_at      TIMESTAMPTZ,
+  cancellation_reason TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TRIGGER trg_barter_updated
+BEFORE UPDATE ON barter_proposals FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
 CREATE INDEX idx_barter_proposer ON barter_proposals(proposer_id);
 CREATE INDEX idx_barter_recipient ON barter_proposals(recipient_id);
 CREATE INDEX idx_barter_status ON barter_proposals(status);
 
--- ============================================================================
--- Orders
--- ============================================================================
-
-CREATE SEQUENCE order_number_seq START 1;
-
-CREATE TABLE orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_number VARCHAR(50) UNIQUE NOT NULL,
-    buyer_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    seller_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
-    
-    -- What was ordered
-    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
-    service_id UUID REFERENCES services(id) ON DELETE SET NULL,
-    
-    status order_status DEFAULT 'pending',
-    
-    -- Pricing
-    quantity INTEGER DEFAULT 1,
-    unit_price DECIMAL(10, 2) NOT NULL,
-    total_amount DECIMAL(10, 2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'GBP',
-    
-    -- Delivery info
-    delivery_address TEXT,
-    delivery_notes TEXT,
-    tracking_number VARCHAR(255),
-    courier_name VARCHAR(100),
-    
-    -- Timestamps
-    shipped_at TIMESTAMP WITH TIME ZONE,
-    delivered_at TIMESTAMP WITH TIME ZONE,
-    confirmed_at TIMESTAMP WITH TIME ZONE,
-    cancelled_at TIMESTAMP WITH TIME ZONE,
-    cancellation_reason TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_orders_buyer_id ON orders(buyer_id);
-CREATE INDEX idx_orders_seller_id ON orders(seller_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_created_at ON orders(created_at);
-
--- Add FK to escrow_transactions now that orders exists
-ALTER TABLE escrow_transactions 
-ADD CONSTRAINT fk_escrow_order 
-FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL;
-
--- ============================================================================
--- Delivery Tracking
--- ============================================================================
-
-CREATE TABLE delivery_tracking (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    tracking_number VARCHAR(255) NOT NULL,
-    courier_name VARCHAR(100) NOT NULL,
-    current_status VARCHAR(100) NOT NULL,
-    estimated_delivery TIMESTAMP WITH TIME ZONE,
-    tracking_history JSONB DEFAULT '[]'::jsonb,
-    last_updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_delivery_order ON delivery_tracking(order_id);
-
--- ============================================================================
--- Adverts (SME Promotion)
--- ============================================================================
-
-CREATE TABLE adverts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    sme_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    images JSONB DEFAULT '[]'::jsonb,
-    target_url TEXT,
-    
-    -- Campaign duration
-    duration_days INTEGER DEFAULT 30,
-    status advert_status DEFAULT 'draft',
-    
-    -- Analytics
-    impressions INTEGER DEFAULT 0,
-    clicks INTEGER DEFAULT 0,
-    leads INTEGER DEFAULT 0,
-    
-    -- Lifecycle
-    start_date TIMESTAMP WITH TIME ZONE,
-    end_date TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    published_at TIMESTAMP WITH TIME ZONE,
-    expired_at TIMESTAMP WITH TIME ZONE
-);
-
-CREATE INDEX idx_adverts_sme ON adverts(sme_id);
-CREATE INDEX idx_adverts_status ON adverts(status);
-CREATE INDEX idx_adverts_dates ON adverts(start_date, end_date);
-
--- ============================================================================
--- Notifications
--- ============================================================================
-
-CREATE TABLE notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    type notification_type NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    data JSONB DEFAULT '{}'::jsonb, -- Additional context (order_id, etc.)
-    
-    read_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_read_at ON notifications(read_at);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at);
-
--- ============================================================================
--- Reviews & Ratings
--- ============================================================================
-
+-- Reviews ---------------------------------------------------------------------
 CREATE TABLE reviews (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    reviewer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    reviewee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    -- What's being reviewed
-    order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
-    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
-    service_id UUID REFERENCES services(id) ON DELETE SET NULL,
-    
-    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    review_text TEXT,
-    status review_status DEFAULT 'pending',
-    
-    is_verified_purchase BOOLEAN DEFAULT FALSE,
-    
-    -- Community feedback
-    helpful_count INTEGER DEFAULT 0,
-    unhelpful_count INTEGER DEFAULT 0,
-    flagged_count INTEGER DEFAULT 0,
-    
-    -- Seller response
-    seller_response TEXT,
-    seller_responded_at TIMESTAMP WITH TIME ZONE,
-    
-    -- Moderation
-    approved_at TIMESTAMP WITH TIME ZONE,
-    rejected_at TIMESTAMP WITH TIME ZONE,
-    rejection_reason TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  reviewer_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reviewee_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  order_id        UUID REFERENCES orders(id) ON DELETE SET NULL,
+  product_id      UUID REFERENCES products(id) ON DELETE SET NULL,
+  rating          INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  title           VARCHAR(255),
+  comment         TEXT,
+  status          review_status NOT NULL DEFAULT 'pending',
+  is_verified_purchase BOOLEAN NOT NULL DEFAULT FALSE,
+  helpful_count   INTEGER NOT NULL DEFAULT 0,
+  unhelpful_count INTEGER NOT NULL DEFAULT 0,
+  flagged_count   INTEGER NOT NULL DEFAULT 0,
+  seller_reply    TEXT,
+  seller_replied_at TIMESTAMPTZ,
+  approved_at     TIMESTAMPTZ,
+  rejected_at     TIMESTAMPTZ,
+  rejection_reason TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_reviews_reviewer ON reviews(reviewer_id);
+CREATE TRIGGER trg_reviews_updated
+BEFORE UPDATE ON reviews FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
 CREATE INDEX idx_reviews_reviewee ON reviews(reviewee_id);
 CREATE INDEX idx_reviews_product ON reviews(product_id);
-CREATE INDEX idx_reviews_service ON reviews(service_id);
 CREATE INDEX idx_reviews_status ON reviews(status);
 
--- ============================================================================
--- Disputes
--- ============================================================================
-
-CREATE SEQUENCE dispute_ref_seq START 1;
-
-CREATE TABLE disputes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    dispute_ref VARCHAR(50) UNIQUE NOT NULL,
-    
-    -- Related entities
-    order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
-    escrow_id UUID REFERENCES escrow_transactions(id) ON DELETE SET NULL,
-    barter_id UUID REFERENCES barter_proposals(id) ON DELETE SET NULL,
-    
-    complainant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    respondent_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    status dispute_status DEFAULT 'open',
-    reason TEXT NOT NULL,
-    description TEXT NOT NULL,
-    evidence JSONB DEFAULT '[]'::jsonb, -- [{type: 'image'|'document', url: string}]
-    
-    -- Admin handling
-    assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
-    resolution TEXT,
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Notifications ---------------------------------------------------------------
+CREATE TABLE notifications (
+  id           UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type         notification_type NOT NULL,
+  title        VARCHAR(255) NOT NULL,
+  message      TEXT NOT NULL,
+  metadata     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  link_url     TEXT,
+  priority     VARCHAR(20),
+  read_at      TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_disputes_complainant ON disputes(complainant_id);
-CREATE INDEX idx_disputes_respondent ON disputes(respondent_id);
-CREATE INDEX idx_disputes_status ON disputes(status);
-CREATE INDEX idx_disputes_assigned ON disputes(assigned_to);
+CREATE INDEX idx_notifications_user ON notifications(user_id);
+CREATE INDEX idx_notifications_read ON notifications(read_at);
 
--- ============================================================================
--- Support System
--- ============================================================================
-
-CREATE SEQUENCE ticket_number_seq START 1;
-
+-- Support & Moderation --------------------------------------------------------
 CREATE TABLE support_tickets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ticket_number VARCHAR(50) UNIQUE NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    category VARCHAR(50) NOT NULL, -- 'payment', 'order', 'account', 'technical', 'other'
-    subject VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    
-    status support_ticket_status DEFAULT 'open',
-    priority VARCHAR(20) DEFAULT 'medium', -- low, medium, high, urgent
-    
-    -- Assignment
-    assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
-    assigned_at TIMESTAMP WITH TIME ZONE,
-    
-    -- Resolution
-    resolved_at TIMESTAMP WITH TIME ZONE,
-    closed_at TIMESTAMP WITH TIME ZONE,
-    resolution TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id             UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  ticket_number  VARCHAR(40) UNIQUE,
+  user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category       VARCHAR(60) NOT NULL,
+  subject        VARCHAR(255) NOT NULL,
+  description    TEXT NOT NULL,
+  status         support_ticket_status NOT NULL DEFAULT 'open',
+  priority       VARCHAR(20) NOT NULL DEFAULT 'medium',
+  assigned_to    UUID REFERENCES users(id) ON DELETE SET NULL,
+  assigned_at    TIMESTAMPTZ,
+  resolved_at    TIMESTAMPTZ,
+  closed_at      TIMESTAMPTZ,
+  resolution     TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tickets_user ON support_tickets(user_id);
-CREATE INDEX idx_tickets_status ON support_tickets(status);
-CREATE INDEX idx_tickets_assigned ON support_tickets(assigned_to);
+CREATE TRIGGER trg_support_assign_number
+BEFORE INSERT ON support_tickets FOR EACH ROW
+EXECUTE PROCEDURE assign_ticket_number();
+
+CREATE TRIGGER trg_support_updated
+BEFORE UPDATE ON support_tickets FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
 CREATE TABLE ticket_messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    ticket_id UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    message TEXT NOT NULL,
-    attachments JSONB DEFAULT '[]'::jsonb,
-    is_internal BOOLEAN DEFAULT FALSE, -- Admin notes
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id            UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  ticket_id     UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+  sender_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message       TEXT NOT NULL,
+  attachments   JSONB NOT NULL DEFAULT '[]'::jsonb,
+  is_internal   BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_ticket_messages_ticket ON ticket_messages(ticket_id);
 
--- ============================================================================
--- KYC Submissions
--- ============================================================================
+CREATE TABLE disputes (
+  id             UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  dispute_ref    VARCHAR(40) UNIQUE,
+  order_id       UUID REFERENCES orders(id) ON DELETE SET NULL,
+  escrow_id      UUID REFERENCES escrow_transactions(id) ON DELETE SET NULL,
+  barter_id      UUID REFERENCES barter_proposals(id) ON DELETE SET NULL,
+  complainant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  respondent_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status         dispute_status NOT NULL DEFAULT 'open',
+  reason         TEXT NOT NULL,
+  description    TEXT NOT NULL,
+  evidence       JSONB NOT NULL DEFAULT '[]'::jsonb,
+  assigned_to    UUID REFERENCES users(id) ON DELETE SET NULL,
+  resolution     TEXT,
+  resolved_at    TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+CREATE TRIGGER trg_disputes_assign_ref
+BEFORE INSERT ON disputes FOR EACH ROW
+EXECUTE PROCEDURE assign_dispute_ref();
+
+CREATE TRIGGER trg_disputes_updated
+BEFORE UPDATE ON disputes FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
+
+-- Compliance ------------------------------------------------------------------
 CREATE TABLE kyc_submissions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    document_type VARCHAR(50) NOT NULL, -- 'passport', 'drivers_license', 'national_id'
-    document_number VARCHAR(100),
-    document_url TEXT,
-    proof_of_address_url TEXT,
-    selfie_url TEXT,
-    
-    status verification_status DEFAULT 'pending',
-    
-    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    reviewed_at TIMESTAMP WITH TIME ZONE,
-    reviewer_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    rejection_reason TEXT,
-    verification_notes TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id              UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document_type   VARCHAR(40) NOT NULL,
+  document_number VARCHAR(120),
+  document_url    TEXT,
+  proof_of_address_url TEXT,
+  selfie_url      TEXT,
+  status          verification_status NOT NULL DEFAULT 'pending',
+  submitted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reviewed_at     TIMESTAMPTZ,
+  reviewer_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  rejection_reason TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_kyc_user ON kyc_submissions(user_id);
-CREATE INDEX idx_kyc_status ON kyc_submissions(status);
+CREATE TRIGGER trg_kyc_updated
+BEFORE UPDATE ON kyc_submissions FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
--- ============================================================================
--- Admin & Moderation
--- ============================================================================
-
-CREATE TABLE admin_actions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    admin_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    action_type VARCHAR(100) NOT NULL, -- 'suspend_user', 'approve_product', 'delete_review'
-    target_type VARCHAR(50) NOT NULL, -- 'user', 'product', 'review'
-    target_id UUID NOT NULL,
-    
-    reason TEXT,
-    details JSONB DEFAULT '{}'::jsonb,
-    ip_address INET,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Marketing & Analytics -------------------------------------------------------
+CREATE TABLE adverts (
+  id            UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  owner_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title         VARCHAR(255) NOT NULL,
+  description   TEXT NOT NULL,
+  category_id   UUID REFERENCES categories(id) ON DELETE SET NULL,
+  media         JSONB NOT NULL DEFAULT '[]'::jsonb,
+  target_url    TEXT,
+  status        VARCHAR(20) NOT NULL DEFAULT 'draft',
+  impressions   INTEGER NOT NULL DEFAULT 0,
+  clicks        INTEGER NOT NULL DEFAULT 0,
+  leads         INTEGER NOT NULL DEFAULT 0,
+  start_date    TIMESTAMPTZ,
+  end_date      TIMESTAMPTZ,
+  published_at  TIMESTAMPTZ,
+  expired_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_admin_actions_admin ON admin_actions(admin_id);
-CREATE INDEX idx_admin_actions_type ON admin_actions(action_type);
-CREATE INDEX idx_admin_actions_created ON admin_actions(created_at);
+CREATE TRIGGER trg_adverts_updated
+BEFORE UPDATE ON adverts FOR EACH ROW
+EXECUTE PROCEDURE set_updated_at();
 
-CREATE TABLE moderation_queue (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
-    content_type VARCHAR(50) NOT NULL, -- 'product', 'service', 'review', 'user'
-    content_id UUID NOT NULL,
-    
-    reported_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    reason VARCHAR(255) NOT NULL,
-    details TEXT,
-    
-    status VARCHAR(50) DEFAULT 'pending', -- pending, reviewing, resolved, dismissed
-    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    reviewed_at TIMESTAMP WITH TIME ZONE,
-    action_taken VARCHAR(100), -- 'approved', 'removed', 'edited', 'no_action'
-    notes TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_moderation_status ON moderation_queue(status);
-CREATE INDEX idx_moderation_content ON moderation_queue(content_type, content_id);
-
--- ============================================================================
--- Analytics (Simple Event Tracking)
--- ============================================================================
+CREATE INDEX idx_adverts_owner ON adverts(owner_id);
+CREATE INDEX idx_adverts_status ON adverts(status);
 
 CREATE TABLE analytics_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    
-    event_type VARCHAR(100) NOT NULL, -- 'page_view', 'product_view', 'search', 'purchase'
-    event_name VARCHAR(255) NOT NULL,
-    event_data JSONB DEFAULT '{}'::jsonb,
-    
-    page_url TEXT,
-    referrer_url TEXT,
-    ip_address INET,
-    user_agent TEXT,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id            UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  user_id       UUID REFERENCES users(id) ON DELETE SET NULL,
+  event_type    VARCHAR(120) NOT NULL,
+  event_name    VARCHAR(255) NOT NULL,
+  event_data    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  page_url      TEXT,
+  referrer_url  TEXT,
+  ip_address    INET,
+  user_agent    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_analytics_user ON analytics_events(user_id);
 CREATE INDEX idx_analytics_type ON analytics_events(event_type);
 CREATE INDEX idx_analytics_created ON analytics_events(created_at);
 
--- ============================================================================
--- Help & Onboarding
--- ============================================================================
-
-CREATE TABLE help_articles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    
-    category VARCHAR(100) NOT NULL, -- 'getting_started', 'payments', 'selling'
-    title VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    content TEXT NOT NULL,
-    tags TEXT[],
-    
-    view_count INTEGER DEFAULT 0,
-    helpful_count INTEGER DEFAULT 0,
-    unhelpful_count INTEGER DEFAULT 0,
-    
-    is_published BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+CREATE TABLE activity_logs (
+  id            UUID PRIMARY KEY DEFAULT gen_uuid_v4(),
+  actor_id      UUID REFERENCES users(id) ON DELETE SET NULL,
+  action        VARCHAR(120) NOT NULL,
+  entity_type   VARCHAR(60),
+  entity_id     UUID,
+  metadata      JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ip_address    INET,
+  user_agent    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_help_category ON help_articles(category);
-CREATE INDEX idx_help_slug ON help_articles(slug);
-
-CREATE TABLE user_onboarding_progress (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    
-    walkthrough_completed BOOLEAN DEFAULT FALSE,
-    completed_steps JSONB DEFAULT '[]'::jsonb, -- ['profile_setup', 'first_listing', ...]
-    skipped BOOLEAN DEFAULT FALSE,
-    
-    completed_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- ============================================================================
--- ESSENTIAL FUNCTIONS (Only What We Need)
--- ============================================================================
-
--- 1. Auto-update timestamps
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 2. Calculate transaction net amount
-CREATE OR REPLACE FUNCTION calculate_net_amount()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.net_amount = NEW.amount - COALESCE(NEW.fee, 0);
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 3. Update product search vector
-CREATE OR REPLACE FUNCTION update_product_search_vector()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.search_vector := 
-        setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-        setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
-        setweight(to_tsvector('english', COALESCE(array_to_string(NEW.tags, ' '), '')), 'C');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 4. Update service search vector
-CREATE OR REPLACE FUNCTION update_service_search_vector()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.search_vector := 
-        setweight(to_tsvector('english', COALESCE(NEW.title, '')), 'A') ||
-        setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
-        setweight(to_tsvector('english', COALESCE(array_to_string(NEW.tags, ' '), '')), 'C');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 5. Update product ratings
-CREATE OR REPLACE FUNCTION update_product_rating()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.product_id IS NOT NULL AND NEW.status = 'approved' THEN
-        UPDATE products
-        SET 
-            average_rating = (
-                SELECT COALESCE(AVG(rating), 0)
-                FROM reviews
-                WHERE product_id = NEW.product_id AND status = 'approved'
-            ),
-            review_count = (
-                SELECT COUNT(*)
-                FROM reviews
-                WHERE product_id = NEW.product_id AND status = 'approved'
-            )
-        WHERE id = NEW.product_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 6. Update service ratings
-CREATE OR REPLACE FUNCTION update_service_rating()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.service_id IS NOT NULL AND NEW.status = 'approved' THEN
-        UPDATE services
-        SET 
-            average_rating = (
-                SELECT COALESCE(AVG(rating), 0)
-                FROM reviews
-                WHERE service_id = NEW.service_id AND status = 'approved'
-            ),
-            review_count = (
-                SELECT COUNT(*)
-                FROM reviews
-                WHERE service_id = NEW.service_id AND status = 'approved'
-            )
-        WHERE id = NEW.service_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 7. Auto-generate reference numbers
-CREATE OR REPLACE FUNCTION generate_order_number()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.order_number := 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('order_number_seq')::TEXT, 6, '0');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION generate_transaction_ref()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.transaction_ref := 'TXN-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('transaction_ref_seq')::TEXT, 8, '0');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION generate_ticket_number()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.ticket_number := 'TKT-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('ticket_number_seq')::TEXT, 5, '0');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION generate_dispute_ref()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.dispute_ref := 'DSP-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('dispute_ref_seq')::TEXT, 5, '0');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 8. Set free access period (3 months for new users)
-CREATE OR REPLACE FUNCTION set_free_access_period()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.status = 'active' AND NEW.free_access_expires_at IS NULL THEN
-        NEW.free_access_expires_at := NOW() + INTERVAL '3 months';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- 9. Auto-expire adverts
-CREATE OR REPLACE FUNCTION auto_expire_adverts()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.status = 'active' AND NEW.end_date IS NOT NULL AND NEW.end_date < NOW() THEN
-        NEW.status := 'expired';
-        NEW.expired_at := NOW();
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================================================
--- TRIGGERS (Only Essential Ones)
--- ============================================================================
-
--- Auto-update timestamps
-CREATE TRIGGER trg_users_updated_at 
-    BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_products_updated_at 
-    BEFORE UPDATE ON products
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_services_updated_at 
-    BEFORE UPDATE ON services
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_orders_updated_at 
-    BEFORE UPDATE ON orders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_transactions_updated_at 
-    BEFORE UPDATE ON transactions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_reviews_updated_at 
-    BEFORE UPDATE ON reviews
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_adverts_updated_at 
-    BEFORE UPDATE ON adverts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_disputes_updated_at 
-    BEFORE UPDATE ON disputes
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER trg_tickets_updated_at 
-    BEFORE UPDATE ON support_tickets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Search vector updates
-CREATE TRIGGER trg_products_search_vector 
-    BEFORE INSERT OR UPDATE ON products
-    FOR EACH ROW EXECUTE FUNCTION update_product_search_vector();
-
-CREATE TRIGGER trg_services_search_vector 
-    BEFORE INSERT OR UPDATE ON services
-    FOR EACH ROW EXECUTE FUNCTION update_service_search_vector();
-
--- Rating updates
-CREATE TRIGGER trg_update_product_rating 
-    AFTER INSERT OR UPDATE ON reviews
-    FOR EACH ROW EXECUTE FUNCTION update_product_rating();
-
-CREATE TRIGGER trg_update_service_rating 
-    AFTER INSERT OR UPDATE ON reviews
-    FOR EACH ROW EXECUTE FUNCTION update_service_rating();
-
--- Auto-generate reference numbers
-CREATE TRIGGER trg_generate_order_number 
-    BEFORE INSERT ON orders
-    FOR EACH ROW EXECUTE FUNCTION generate_order_number();
-
-CREATE TRIGGER trg_generate_transaction_ref 
-    BEFORE INSERT ON transactions
-    FOR EACH ROW EXECUTE FUNCTION generate_transaction_ref();
-
-CREATE TRIGGER trg_generate_ticket_number 
-    BEFORE INSERT ON support_tickets
-    FOR EACH ROW EXECUTE FUNCTION generate_ticket_number();
-
-CREATE TRIGGER trg_generate_dispute_ref 
-    BEFORE INSERT ON disputes
-    FOR EACH ROW EXECUTE FUNCTION generate_dispute_ref();
-
--- Business logic triggers
-CREATE TRIGGER trg_calculate_net_amount 
-    BEFORE INSERT OR UPDATE ON transactions
-    FOR EACH ROW EXECUTE FUNCTION calculate_net_amount();
-
-CREATE TRIGGER trg_set_free_access_period 
-    BEFORE INSERT OR UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION set_free_access_period();
-
-CREATE TRIGGER trg_auto_expire_adverts 
-    BEFORE UPDATE ON adverts
-    FOR EACH ROW EXECUTE FUNCTION auto_expire_adverts();
-
--- ============================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
--- ============================================================================
-
--- Enable RLS on all tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE services ENABLE ROW LEVEL SECURITY;
-ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE escrow_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE barter_proposals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ticket_messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE kyc_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE disputes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE adverts ENABLE ROW LEVEL SECURITY;
-
--- Users table policies
-CREATE POLICY "Users can view own profile" ON users
-    FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can update own profile" ON users
-    FOR UPDATE USING (auth.uid() = id);
-
--- User preferences policies
-CREATE POLICY "Users can view own preferences" ON user_preferences
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own preferences" ON user_preferences
-    FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own preferences" ON user_preferences
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Products policies
-CREATE POLICY "Anyone can view active products" ON products
-    FOR SELECT USING (is_active = TRUE);
-
-CREATE POLICY "Sellers can insert own products" ON products
-    FOR INSERT WITH CHECK (auth.uid() = seller_id);
-
-CREATE POLICY "Sellers can update own products" ON products
-    FOR UPDATE USING (auth.uid() = seller_id);
-
-CREATE POLICY "Sellers can delete own products" ON products
-    FOR DELETE USING (auth.uid() = seller_id);
-
--- Services policies
-CREATE POLICY "Anyone can view active services" ON services
-    FOR SELECT USING (is_active = TRUE);
-
-CREATE POLICY "Providers can insert own services" ON services
-    FOR INSERT WITH CHECK (auth.uid() = provider_id);
-
-CREATE POLICY "Providers can update own services" ON services
-    FOR UPDATE USING (auth.uid() = provider_id);
-
-CREATE POLICY "Providers can delete own services" ON services
-    FOR DELETE USING (auth.uid() = provider_id);
-
--- Orders policies
-CREATE POLICY "Users can view their orders" ON orders
-    FOR SELECT USING (
-        auth.uid() = buyer_id OR auth.uid() = seller_id
-    );
-
-CREATE POLICY "Buyers can create orders" ON orders
-    FOR INSERT WITH CHECK (auth.uid() = buyer_id);
-
-CREATE POLICY "Involved users can update orders" ON orders
-    FOR UPDATE USING (
-        auth.uid() = buyer_id OR auth.uid() = seller_id
-    );
-
--- Transactions policies
-CREATE POLICY "Users can view own transactions" ON transactions
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create own transactions" ON transactions
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Escrow policies
-CREATE POLICY "Involved users can view escrow" ON escrow_transactions
-    FOR SELECT USING (
-        auth.uid() = buyer_id OR auth.uid() = seller_id
-    );
-
--- Barter policies
-CREATE POLICY "Involved users can view barter proposals" ON barter_proposals
-    FOR SELECT USING (
-        auth.uid() = proposer_id OR auth.uid() = recipient_id
-    );
-
-CREATE POLICY "Users can create barter proposals" ON barter_proposals
-    FOR INSERT WITH CHECK (auth.uid() = proposer_id);
-
-CREATE POLICY "Involved users can update barter proposals" ON barter_proposals
-    FOR UPDATE USING (
-        auth.uid() = proposer_id OR auth.uid() = recipient_id
-    );
-
--- Reviews policies
-CREATE POLICY "Anyone can view approved reviews" ON reviews
-    FOR SELECT USING (status = 'approved');
-
-CREATE POLICY "Users can create reviews" ON reviews
-    FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
-
-CREATE POLICY "Reviewers can update own reviews" ON reviews
-    FOR UPDATE USING (auth.uid() = reviewer_id);
-
--- Notifications policies
-CREATE POLICY "Users can view own notifications" ON notifications
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own notifications" ON notifications
-    FOR UPDATE USING (auth.uid() = user_id);
-
--- Support tickets policies
-CREATE POLICY "Users can view own tickets" ON support_tickets
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create tickets" ON support_tickets
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own tickets" ON support_tickets
-    FOR UPDATE USING (auth.uid() = user_id);
-
--- Ticket messages policies
-CREATE POLICY "Users can view messages for their tickets" ON ticket_messages
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM support_tickets
-            WHERE support_tickets.id = ticket_messages.ticket_id
-            AND support_tickets.user_id = auth.uid()
-        )
-    );
-
-CREATE POLICY "Users can create messages for their tickets" ON ticket_messages
-    FOR INSERT WITH CHECK (auth.uid() = sender_id);
-
--- KYC submissions policies
-CREATE POLICY "Users can view own KYC submissions" ON kyc_submissions
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create own KYC submissions" ON kyc_submissions
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Disputes policies
-CREATE POLICY "Involved users can view disputes" ON disputes
-    FOR SELECT USING (
-        auth.uid() = complainant_id OR auth.uid() = respondent_id
-    );
-
-CREATE POLICY "Users can create disputes" ON disputes
-    FOR INSERT WITH CHECK (auth.uid() = complainant_id);
-
--- Adverts policies
-CREATE POLICY "Anyone can view active adverts" ON adverts
-    FOR SELECT USING (status = 'active');
-
-CREATE POLICY "SMEs can manage own adverts" ON adverts
-    FOR ALL USING (auth.uid() = sme_id);
-
--- ============================================================================
--- USEFUL VIEWS
--- ============================================================================
-
--- Active products with seller info
-CREATE OR REPLACE VIEW v_active_products AS
-SELECT 
-    p.*,
-    u.full_name as seller_name,
-    u.profile_picture_url as seller_avatar,
-    u.verification_status as seller_verification,
-    c.name as category_name,
-    c.slug as category_slug
-FROM products p
-JOIN users u ON p.seller_id = u.id
-LEFT JOIN categories c ON p.category_id = c.id
-WHERE p.is_active = TRUE
-AND u.status = 'active';
-
--- Active services with provider info
-CREATE OR REPLACE VIEW v_active_services AS
-SELECT 
-    s.*,
-    u.full_name as provider_name,
-    u.profile_picture_url as provider_avatar,
-    u.verification_status as provider_verification,
-    c.name as category_name,
-    c.slug as category_slug
-FROM services s
-JOIN users u ON s.provider_id = u.id
-LEFT JOIN categories c ON s.category_id = c.id
-WHERE s.is_active = TRUE
-AND u.status = 'active';
-
--- User dashboard stats
-CREATE OR REPLACE VIEW v_user_stats AS
-SELECT 
-    u.id as user_id,
-    COUNT(DISTINCT CASE WHEN o.buyer_id = u.id THEN o.id END) as total_purchases,
-    COUNT(DISTINCT CASE WHEN o.seller_id = u.id THEN o.id END) as total_sales,
-    COALESCE(SUM(CASE WHEN o.buyer_id = u.id AND o.status = 'delivered' THEN o.total_amount ELSE 0 END), 0) as total_spent,
-    COALESCE(SUM(CASE WHEN o.seller_id = u.id AND o.status = 'delivered' THEN o.total_amount ELSE 0 END), 0) as total_earned,
-    COUNT(DISTINCT CASE WHEN r.reviewer_id = u.id THEN r.id END) as reviews_given,
-    COUNT(DISTINCT CASE WHEN r.reviewee_id = u.id AND r.status = 'approved' THEN r.id END) as reviews_received,
-    COALESCE(AVG(CASE WHEN r.reviewee_id = u.id AND r.status = 'approved' THEN r.rating END), 0) as average_rating
-FROM users u
-LEFT JOIN orders o ON u.id = o.buyer_id OR u.id = o.seller_id
-LEFT JOIN reviews r ON u.id = r.reviewer_id OR u.id = r.reviewee_id
-GROUP BY u.id;
-
--- ============================================================================
--- INITIAL DATA
--- ============================================================================
-
--- Insert default categories
-INSERT INTO categories (name, slug, description, display_order) VALUES
-('Electronics', 'electronics', 'Electronic devices and accessories', 1),
-('Fashion & Beauty', 'fashion-beauty', 'Clothing, shoes, and beauty products', 2),
-('Home & Garden', 'home-garden', 'Home decor and gardening supplies', 3),
-('Food & Beverages', 'food-beverages', 'African food products and beverages', 4),
-('Professional Services', 'professional-services', 'Business and professional services', 5),
-('Personal Services', 'personal-services', 'Personal care and lifestyle services', 6),
-('Arts & Crafts', 'arts-crafts', 'Handmade and artistic items', 7),
-('Health & Wellness', 'health-wellness', 'Health products and wellness services', 8),
-('Automotive', 'automotive', 'Vehicles, parts, and accessories', 9),
-('Sports & Fitness', 'sports-fitness', 'Sports equipment and fitness gear', 10)
+CREATE INDEX idx_activity_actor ON activity_logs(actor_id);
+CREATE INDEX idx_activity_entity ON activity_logs(entity_type, entity_id);
+
+-- Initial Data (optional category seeds) --------------------------------------
+INSERT INTO categories (id, name, slug, description, display_order)
+VALUES
+  (gen_uuid_v4(), 'Electronics', 'electronics', 'Devices, accessories, and components', 1),
+  (gen_uuid_v4(), 'Fashion & Beauty', 'fashion-beauty', 'Clothing, footwear, cosmetics', 2),
+  (gen_uuid_v4(), 'Home & Living', 'home-living', 'Furniture, decor, and appliances', 3),
+  (gen_uuid_v4(), 'Food & Groceries', 'food-groceries', 'African food, snacks, and essentials', 4),
+  (gen_uuid_v4(), 'Professional Services', 'professional-services', 'Business, consulting, and skilled services', 5)
 ON CONFLICT (slug) DO NOTHING;
-
--- ============================================================================
--- MAINTENANCE & UTILITIES
--- ============================================================================
-
--- Function to archive old analytics (run monthly)
-CREATE OR REPLACE FUNCTION archive_old_analytics()
-RETURNS INTEGER AS $$
-DECLARE
-    archived_count INTEGER;
-BEGIN
-    -- Archive analytics older than 90 days
-    DELETE FROM analytics_events WHERE created_at < NOW() - INTERVAL '90 days';
-    GET DIAGNOSTICS archived_count = ROW_COUNT;
-    
-    RETURN archived_count;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to get marketplace statistics
-CREATE OR REPLACE FUNCTION get_marketplace_stats()
-RETURNS TABLE (
-    total_users BIGINT,
-    active_users BIGINT,
-    total_products BIGINT,
-    active_products BIGINT,
-    total_orders BIGINT,
-    total_revenue NUMERIC,
-    pending_disputes BIGINT,
-    open_tickets BIGINT
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        (SELECT COUNT(*) FROM users) as total_users,
-        (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users,
-        (SELECT COUNT(*) FROM products) as total_products,
-        (SELECT COUNT(*) FROM products WHERE is_active = TRUE) as active_products,
-        (SELECT COUNT(*) FROM orders) as total_orders,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'delivered') as total_revenue,
-        (SELECT COUNT(*) FROM disputes WHERE status IN ('open', 'investigating')) as pending_disputes,
-    (SELECT COUNT(*) FROM support_tickets WHERE status IN ('open', 'in_progress')) as open_tickets;
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================================================
--- COMMENTS FOR DOCUMENTATION
--- ============================================================================
-
-COMMENT ON DATABASE postgres IS 'AfriConnect Exchange - Simplified marketplace platform';
-
-COMMENT ON TABLE users IS 'User profiles (auth handled by Supabase Auth)';
-COMMENT ON TABLE products IS 'Marketplace product listings';
-COMMENT ON TABLE services IS 'Service offerings from providers';
-COMMENT ON TABLE transactions IS 'All financial transactions';
-COMMENT ON TABLE escrow_transactions IS 'Escrow-held payments for buyer protection';
-COMMENT ON TABLE barter_proposals IS 'Cashless exchange proposals';
-COMMENT ON TABLE orders IS 'Purchase orders linking buyers and sellers';
-COMMENT ON TABLE reviews IS 'User reviews for products/services/sellers';
-COMMENT ON TABLE notifications IS 'In-app notifications';
-COMMENT ON TABLE support_tickets IS 'Customer support system';
-COMMENT ON TABLE disputes IS 'Dispute resolution system';
-COMMENT ON TABLE adverts IS 'SME promotional adverts';
-COMMENT ON TABLE analytics_events IS 'Simple event tracking for analytics';
-
--- ============================================================================
--- SCHEMA COMPLETE
--- ============================================================================
--- 
--- What's REMOVED from original:
--- ❌ user_sessions table (Supabase Auth handles this)
--- ❌ social_auth table (Supabase Auth handles OAuth)
--- ❌ password_hash column (Supabase Auth handles credentials)
--- ❌ email_verified/phone_verified (Supabase Auth handles verification)
--- ❌ login stats tracking (Supabase Auth provides this)
--- ❌ Universal activity_logs triggers (too complex, caused silent failures)
--- ❌ LMS tables (courses, enrollments, modules, lessons)
--- ❌ Remittance tables and features
--- ❌ Chatbot conversation tables
--- ❌ email_logs table (use external service like SendGrid/Resend)
--- ❌ system_logs table (use Supabase logs or external logging)
--- ❌ device_info table (Supabase Auth tracks this)
--- ❌ security_logs table (Supabase provides security monitoring)
--- 
--- What's KEPT and simplified:
--- ✅ Core marketplace (products, services, categories)
--- ✅ Orders and transactions
--- ✅ Escrow and barter systems
--- ✅ Reviews and ratings
--- ✅ Support tickets
--- ✅ Disputes
--- ✅ KYC submissions
--- ✅ Notifications
--- ✅ Adverts for SMEs
--- ✅ Basic analytics events
--- ✅ Only essential triggers (timestamps, search, ratings, auto-refs)
--- ✅ Clean RLS policies
--- ✅ Helpful views for common queries
--- 
--- ============================================================================

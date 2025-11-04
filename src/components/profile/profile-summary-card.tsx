@@ -1,11 +1,12 @@
 
 'use client';
 
-import { Mail, Phone, MapPin, User, Settings, Receipt, LogOut, ShoppingCart, Loader2, UploadCloud } from 'lucide-react';
+import { Mail, Phone, MapPin, User, Settings, Receipt, LogOut, ShoppingCart, Heart, Loader2, UploadCloud, Camera } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button3D } from '@/components/ui/button-3d';
+import { Card3D } from '@/components/ui/card-3d';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -50,6 +51,21 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   const [showVerifyPhone, setShowVerifyPhone] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
+  // Calculate profile completion
+  const getCompletionPercentage = () => {
+    const checks = [
+      user.email_verified,
+      user.phone,
+      (user as any).address,
+      user.avatarUrl || user.profile_picture_url,
+      user.verification_status === 'verified',
+    ];
+    const completed = checks.filter(Boolean).length;
+    return Math.round((completed / checks.length) * 100);
+  };
+
+  const completionPercentage = getCompletionPercentage();
+  
   const handleSignOut = async () => {
     await logout();
     setShowLogoutConfirm(false);
@@ -64,24 +80,58 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
   const menuItems = [
     { id: 'profile', label: 'My Account', icon: User },
     { id: 'account', label: 'Settings', icon: Settings },
+    { id: 'wishlist', label: 'Wishlist', icon: Heart },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
     { id: 'transactions', label: 'Transaction History', icon: Receipt },
   ];
 
   return (
     <>
-      <Card>
-        <CardContent className="pt-6">
+      <Card3D className="border-0 shadow-lg">
+        <div className="pt-6 pb-6 px-6">
           <div className="text-center">
-            <div className="relative inline-block">
-              <Avatar className="w-28 h-28 mx-auto mb-4 rounded-full ring-1 ring-primary/10">
+            {/* Avatar with Completion Ring */}
+            <div className="relative inline-block mb-4">
+              {/* Completion Ring */}
+              <svg className="absolute inset-0 w-32 h-32 -m-2" viewBox="0 0 100 100">
+                {/* Background circle */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="3"
+                />
+                {/* Progress circle */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="url(#gradient)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={`${completionPercentage * 2.827}, 282.7`}
+                  transform="rotate(-90 50 50)"
+                  className="transition-all duration-500"
+                />
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              <Avatar className="w-28 h-28 mx-auto rounded-full ring-4 ring-white shadow-lg">
                 <AvatarImage src={user.avatarUrl || user.profile_picture_url || undefined} alt={userName ?? undefined} />
-                <AvatarFallback className="text-3xl bg-muted rounded-full">
+                <AvatarFallback className="text-3xl bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 font-bold rounded-full">
                   {userName?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'A'}
                 </AvatarFallback>
               </Avatar>
 
-              {/* hidden file input for changing picture (triggered by the overlay button) */}
+              {/* Upload Button */}
               <input
                 id="profile-picture-upload"
                 type="file"
@@ -113,22 +163,35 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                 }}
               />
 
-              <label htmlFor="profile-picture-upload" className="absolute -right-2 -bottom-2 group">
-                <span className="inline-flex w-10 h-10 rounded-full bg-white border shadow items-center justify-center cursor-pointer transition-colors duration-150 ease-in-out group-hover:bg-primary/80 group-hover:text-white">
-                  <UploadCloud className="w-5 h-5" />
-                </span>
+              <label htmlFor="profile-picture-upload" className="absolute -right-2 -bottom-2 group cursor-pointer">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg flex items-center justify-center hover:scale-110 transition-transform">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
               </label>
 
+              {/* Completion Badge */}
+              <div className="absolute -top-1 -left-1 bg-white rounded-full p-1 shadow-md">
+                <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  completionPercentage === 100 ? 'bg-green-500 text-white' :
+                  completionPercentage >= 75 ? 'bg-blue-500 text-white' :
+                  'bg-gray-300 text-gray-700'
+                }`}>
+                  {completionPercentage}%
+                </div>
+              </div>
+
               {isUploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-full">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-full">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
               )}
             </div>
-            <h3 className="font-semibold text-lg mb-1 flex items-center justify-center gap-2">
+
+            {/* User Info */}
+            <h3 className="font-bold text-xl mb-1 flex items-center justify-center gap-2">
               {userName}
               {user?.verification_status === 'verified' && (
-                <VerifiedIcon className="text-green-600 dark:text-green-400" fontSize="small" />
+                <VerifiedIcon className="text-green-600 dark:text-green-400 animate-pulse" fontSize="small" />
               )}
             </h3>
             {/* Prefer showing 'seller' role if present in the user's roles array */}
@@ -136,75 +199,82 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
               const roles = user.roles || [];
               const primary = roles.includes('seller') ? 'seller' : (roles[0] || 'buyer');
               return (
-                <Badge className={cn('mb-3 transition-colors duration-150', getRoleColor(primary), 'hover:text-white')}>
+                <Badge className={cn(
+                  'mb-3 transition-all duration-200 hover:scale-110 shadow-md px-3 py-1',
+                  getRoleColor(primary)
+                )}>
                   {getRoleLabel(primary)}
                 </Badge>
               );
             })()}
-            <div className="text-sm text-muted-foreground space-y-1 my-4">
+
+            {/* Contact Info */}
+            <div className="text-sm text-gray-600 space-y-2 my-4 px-4">
               {user.email && (
-                <div className="flex items-center justify-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span className="truncate">{user.email}</span>
+                <div className="flex items-center justify-center gap-2 bg-gray-50 rounded-xl p-2.5">
+                  <Mail className="w-4 h-4 text-gray-500 shrink-0" />
+                  <span className="truncate flex-1 text-xs">{user.email}</span>
                 
                   {!user.email_verified && (
-                    <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setShowVerifyEmail(true)}>
+                    <Button3D size="sm" variant="outline" className="ml-2 h-7 text-xs" onClick={() => setShowVerifyEmail(true)}>
                       Verify
-                    </Button>
+                    </Button3D>
                   )}
                 </div>
               )}
               {user.phone && (
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  <Phone className="w-4 h-4" />
-                  <span className="truncate">{user.phone}</span>
+                <div className="flex items-center justify-center gap-2 bg-gray-50 rounded-xl p-2.5">
+                  <Phone className="w-4 h-4 text-gray-500 shrink-0" />
+                  <span className="truncate flex-1 text-xs">{user.phone}</span>
                   
                   {!user.phone_verified && (
-                    <Button size="sm" variant="outline" className="ml-2 h-7" onClick={() => setShowVerifyPhone(true)}>
+                    <Button3D size="sm" variant="outline" className="ml-2 h-7 text-xs" onClick={() => setShowVerifyPhone(true)}>
                       Verify
-                    </Button>
+                    </Button3D>
                   )}
                 </div>
               )}
             </div>
 
+            {/* KYC Call to Action */}
             {user?.verification_status !== 'verified' && (
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={() => onNavigate('/kyc')}>
-                  Verify identity to unlock selling
-                </Button>
+              <div className="mt-4 px-4">
+                <Button3D size="sm" variant="warning" className="w-full" onClick={() => onNavigate('/kyc')}>
+                  🎯 Verify Identity to Unlock Selling
+                </Button3D>
               </div>
             )}
 
             <VerifyEmailModal open={showVerifyEmail} onOpenChange={setShowVerifyEmail} email={user.email} />
             <VerifyPhoneModal open={showVerifyPhone} onOpenChange={setShowVerifyPhone} phone={user.phone} />
 
-            <div className="mt-6 space-y-2">
+            {/* Menu Items */}
+            <div className="mt-6 space-y-1.5 px-3">
               {menuItems.map(item => (
-                <Button
+                <Button3D
                   key={item.id}
                   variant={activeTab === item.id ? 'default' : 'ghost'}
                   size="sm"
                   className="w-full justify-start text-left"
-                  onClick={() => ['transactions', 'orders'].includes(item.id) ? onNavigate(`/${item.id}`) : setActiveTab(item.id)}
+                  onClick={() => ['transactions', 'orders', 'wishlist'].includes(item.id) ? onNavigate(`/${item.id}`) : setActiveTab(item.id)}
                 >
                   <item.icon className="w-4 h-4 mr-2" />
                   {item.label}
-                </Button>
+                </Button3D>
               ))}
-              <Button
+              <Button3D
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start text-left text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="w-full justify-start text-left text-destructive hover:bg-destructive/10"
                 onClick={() => setShowLogoutConfirm(true)}
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out
-              </Button>
+              </Button3D>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Card3D>
       <ConfirmationModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}

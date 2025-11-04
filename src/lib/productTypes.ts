@@ -90,6 +90,21 @@ export interface ProductImage {
   is_primary?: boolean;
 }
 
+export interface ProductOption {
+  id: string;
+  name: string;
+  values: string[];
+}
+
+export interface ProductVariant {
+  id: string;
+  option_values: Record<string, string>;
+  price: number; // In pence
+  quantity: number;
+  sku?: string;
+  is_primary?: boolean;
+}
+
 export interface ProductLocation {
   address?: string;            // Full street address
   city?: string;
@@ -150,6 +165,8 @@ export interface Product {
   
   // Specifications & Details (flexible based on category)
   specifications?: ProductSpecifications | ElectronicsSpecifications | FashionSpecifications | VehicleSpecifications | HomeGardenSpecifications;
+  options?: ProductOption[];
+  variants?: ProductVariant[];
   
   // Location
   location: ProductLocation;
@@ -224,6 +241,8 @@ export interface CreateProductFormData {
   sku?: string;
   condition?: ConditionType;
   specifications?: ProductSpecifications | ElectronicsSpecifications | FashionSpecifications | VehicleSpecifications | HomeGardenSpecifications;
+  options?: ProductOption[];
+  variants?: ProductVariant[];
   
   // Step 4: Images & Media
   images: File[] | ProductImage[]; // Files when uploading, URLs when editing

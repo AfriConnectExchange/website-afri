@@ -1,11 +1,13 @@
 
 'use client';
-import { Star, Heart, ShoppingCart, Gift, MapPin, Clock, Package, Eye, Share2 } from 'lucide-react';
+import { Star, ShoppingCart, Gift, MapPin, Clock, Package, Eye, Share2 } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Button3D } from '../ui/button-3d';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { FreeListingBadge } from './ListingBadges';
+import { WishlistButton } from '@/components/wishlist/wishlist-button';
 import { motion } from 'framer-motion';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import type { Product } from '@/app/marketplace/page';
@@ -27,7 +29,6 @@ export function ProductCard({
   animationDelay = 0,
   currency = '£',
 }: ProductCardProps) {
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
   const formatPrice = (price: number) => `${currency}${price.toLocaleString()}`;
@@ -39,11 +40,6 @@ export function ProductCard({
       return;
     }
     onAddToCart(product);
-  };
-
-  const handleWishlist = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
   };
 
   const handleQuickView = (e: React.MouseEvent) => {
@@ -90,12 +86,12 @@ export function ProductCard({
       onMouseEnter={() => setShowQuickActions(true)}
       onMouseLeave={() => setShowQuickActions(false)}
     >
-      <Card className="group border-2 border-gray-100 hover:border-primary/20 hover:shadow-2xl transition-all duration-300 h-full flex flex-col overflow-hidden rounded-xl bg-gradient-to-br from-white to-gray-50/30">
+      <Card className="group border-2 border-gray-100 hover:border-primary/20 hover:shadow-[0_12px_0_0_rgba(0,0,0,0.04),0_16px_32px_-8px_rgba(0,0,0,0.12)] transition-all duration-300 h-full flex flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-white to-gray-50/30 shadow-[0_6px_0_0_rgba(0,0,0,0.03),0_8px_16px_-4px_rgba(0,0,0,0.08)]">
         <CardContent className="p-0 flex-1 flex flex-col">
           {/* Image Section with Enhanced Badges */}
           <div className="relative overflow-hidden">
             <div
-              className="aspect-[5/4] w-full cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200"
+              className="aspect-[5/4] w-full cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200 rounded-t-2xl"
               onClick={() => onNavigate('product', product.id)}
             >
               <ImageWithFallback
@@ -135,18 +131,10 @@ export function ProductCard({
 
             {/* Top Right - Wishlist */}
             <div className="absolute top-3 right-3">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleWishlist}
-                className="h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-lg backdrop-blur-sm"
-              >
-                <Heart 
-                  className={`w-4 h-4 transition-colors ${
-                    isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'
-                  }`} 
-                />
-              </Button>
+              <WishlistButton 
+                productId={product.id} 
+                className="shadow-lg backdrop-blur-sm"
+              />
             </div>
 
             {/* Quick Actions on Hover */}
@@ -270,23 +258,19 @@ export function ProductCard({
               </div>
               
               <motion.div whileTap={{ scale: 0.9 }}>
-                <Button
+                <Button3D
                   size="icon"
                   onClick={handleAddToCart}
                   disabled={stockStatus.text === 'Out of stock'}
-                  className={cn(
-                    "rounded-full h-9 w-9 shadow-lg",
-                    product.isFree 
-                      ? "bg-green-500 hover:bg-green-600 text-white" 
-                      : "bg-primary hover:bg-primary/90"
-                  )}
+                  variant={product.isFree ? "success" : "default"}
+                  className="h-9 w-9 shadow-lg"
                 >
                   {product.isFree ? (
                     <Gift className="w-4 h-4" />
                   ) : (
                     <ShoppingCart className="w-4 h-4" />
                   )}
-                </Button>
+                </Button3D>
               </motion.div>
             </div>
           </div>

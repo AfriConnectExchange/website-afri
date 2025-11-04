@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings, User, Heart, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
@@ -66,6 +66,18 @@ export function UserNav() {
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/orders">
+            <DropdownMenuItem>
+              <ShoppingBag className="mr-2 h-4 w-4" />
+              <span>My Orders</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/wishlist">
+            <DropdownMenuItem>
+              <Heart className="mr-2 h-4 w-4" />
+              <span>Wishlist</span>
             </DropdownMenuItem>
           </Link>
           <Link href="/profile?tab=settings">

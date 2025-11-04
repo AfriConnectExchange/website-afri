@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'link';
-import { MapPin, Navigation, Package, Truck, Heart, Share2 } from 'lucide-react';
+import { MapPin, Navigation, Package, Truck, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { WishlistButton } from '@/components/wishlist/wishlist-button';
 import { formatDistance } from '@/lib/geolocation';
 import type { RankedProduct } from '@/lib/product-ranking';
 
@@ -24,7 +25,6 @@ export default function ProductCard({
   product,
   showDistance = true,
 }: ProductCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   const primaryImage =
@@ -38,11 +38,6 @@ export default function ProductCard({
     showDistance && product.distanceFromUser !== undefined && product.distanceFromUser <= 5;
   const isFree = product.listing_type === 'freebie' || product.price === 0;
   const isBarter = product.listing_type === 'barter';
-
-  const handleFavoriteToggle = () => {
-    setIsFavorite(!isFavorite);
-    // TODO: Call API to save/remove favorite
-  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -94,23 +89,10 @@ export default function ProductCard({
 
             {/* Action Buttons */}
             <div className="flex gap-1">
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full bg-white/90 hover:bg-white shadow-md"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleFavoriteToggle();
-                }}
-              >
-                <Heart
-                  className={`w-4 h-4 ${
-                    isFavorite
-                      ? 'fill-red-500 text-red-500'
-                      : 'text-gray-600'
-                  }`}
-                />
-              </Button>
+              <WishlistButton 
+                productId={product.id!} 
+                className="h-8 w-8 shadow-md"
+              />
               <Button
                 variant="secondary"
                 size="icon"

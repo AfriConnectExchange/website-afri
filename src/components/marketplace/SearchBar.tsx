@@ -51,7 +51,7 @@ export function SearchBar({
           value={value}
           onChange={(e) => handleInputChange(e.target.value)}
           onKeyPress={handleKeyPress}
-          className={'pl-10 pr-4 h-10'}
+          className={'pl-10 pr-4 h-10 rounded-2xl border-2 shadow-[0_4px_0_0_rgba(0,0,0,0.03),0_6px_12px_-4px_rgba(0,0,0,0.08)] focus:shadow-[0_6px_0_0_rgba(0,0,0,0.04),0_8px_16px_-4px_rgba(0,0,0,0.1)]'}
         />
         {value && (
           <Button

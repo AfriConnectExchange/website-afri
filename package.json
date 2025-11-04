@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "seed:categories": "ts-node --esm scripts/seed-categories.ts",
-    "clear:categories": "ts-node --esm scripts/clear-categories.ts"
+    "clear:categories": "ts-node --esm scripts/clear-categories.ts",
+    "check:category-images": "ts-node --esm scripts/check-category-images.ts",
+    "migrate:category-images": "ts-node --esm scripts/migrate-category-images.ts",
+    "migrate:category-images:live": "ts-node --esm scripts/migrate-category-images.ts --live"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -101,12 +101,16 @@ export function CategoryFilter({
                   className="flex items-center gap-3 flex-1 cursor-pointer"
                   onClick={() => handleCategoryClick(category.id)}
                 >
-                  {/* Category image thumbnail */}
-                  {category.image && (
-                    <div className="w-6 h-6 rounded overflow-hidden bg-muted shrink-0">
-                      <ImageWithFallback src={category.image} alt={category.name} width={24} height={24} fallbackSrc="/images/categories/placeholder.svg" />
-                    </div>
-                  )}
+                  {/* Category image thumbnail - always show with fallback */}
+                  <div className="w-6 h-6 rounded overflow-hidden bg-muted shrink-0">
+                    <ImageWithFallback 
+                      src={category.image_url || category.image || '/images/categories/placeholder.svg'} 
+                      alt={category.name} 
+                      width={24} 
+                      height={24} 
+                      fallbackSrc="/images/categories/placeholder.svg" 
+                    />
+                  </div>
                   <span
                     className={`text-sm ${isSelected ? 'font-medium' : ''}`}
                   >

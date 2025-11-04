@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { CartProvider } from '@/context/cart-context';
+import { WishlistProvider } from '@/context/wishlist-context';
 import ConditionalFooter from '@/components/layout/ConditionalFooter';
 import { CookieConsentBanner } from '@/components/layout/CookieConsentBanner';
 
@@ -50,12 +51,14 @@ export default function RootLayout({
         <AuthProvider>
           <AdminAuthProvider>
           <CartProvider>
-            <div className="flex-1">
-              {children}
-            </div>
-            <ConditionalFooter />
-            <CookieConsentBanner />
-            <Toaster />
+            <WishlistProvider>
+              <div className="flex-1">
+                {children}
+              </div>
+              <ConditionalFooter />
+              <CookieConsentBanner />
+              <Toaster />
+            </WishlistProvider>
           </CartProvider>
           </AdminAuthProvider>
         </AuthProvider>

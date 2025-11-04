@@ -24,6 +24,8 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
+import { PromotionalBanner } from '@/components/marketplace/PromotionalBanner';
+import { QuickActionsBar } from '@/components/marketplace/QuickActionsBar';
 import type { Category } from '@/lib/types';
 
 export interface Product {
@@ -349,7 +351,16 @@ export default function MarketplacePage() {
         if (response.ok) {
           const data = await response.json();
           const categoryList = flattenCategories(data.categories || []);
-          setCategories(categoryList);
+          // Sort categories by count (highest first), then by name
+          const sortedCategories = categoryList.sort((a: Category, b: Category) => {
+            const countA = a.count || 0;
+            const countB = b.count || 0;
+            if (countB !== countA) {
+              return countB - countA; // Descending by count
+            }
+            return a.name.localeCompare(b.name); // Alphabetical if counts are equal
+          });
+          setCategories(sortedCategories);
         }
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -434,6 +445,87 @@ export default function MarketplacePage() {
     <>
     <Header cartCount={cartCount} />
     <div className="container mx-auto px-0 sm:px-4 py-6 md:py-8 relative">
+      {/* Promotional Banner */}
+      <div className="mb-6 px-4 sm:px-0">
+        <PromotionalBanner
+          banners={[
+            {
+              id: '1',
+              title: '🎉 Special Offers Today!',
+              description: 'Discover amazing deals from verified sellers',
+              ctaText: 'Shop Deals',
+              ctaAction: () => handleFiltersChange({ onSaleOnly: true }),
+              bgColor: 'from-orange-400 to-pink-500',
+              icon: 'sparkles',
+            },
+            {
+              id: '2',
+              title: '🆕 Fresh Arrivals',
+              description: 'Check out the newest products in marketplace',
+              ctaText: 'Explore New',
+              ctaAction: () => setSortBy('created_at_desc'),
+              bgColor: 'from-blue-400 to-purple-500',
+              icon: 'trending',
+            },
+            {
+              id: '3',
+              title: '🎁 Free Listings Available',
+              description: 'Get items for free from generous sellers',
+              ctaText: 'Browse Free',
+              ctaAction: () => handleFiltersChange({ freeListingsOnly: true }),
+              bgColor: 'from-green-400 to-teal-500',
+              icon: 'gift',
+            },
+          ]}
+        />
+      </div>
+
+      {/* Quick Actions Bar */}
+      <div className="mb-6">
+        <QuickActionsBar
+          actions={[
+            {
+              id: 'become-seller',
+              title: 'Start Selling',
+              description: 'List your items today',
+              icon: 'store',
+              bgColor: 'bg-blue-50',
+              textColor: 'text-blue-700',
+              action: () => router.push('/seller'),
+              badge: 'Free',
+            },
+            {
+              id: 'free-items',
+              title: 'Free Items',
+              description: 'Get freebies now',
+              icon: 'package',
+              bgColor: 'bg-green-50',
+              textColor: 'text-green-700',
+              action: () => handleFiltersChange({ freeListingsOnly: true }),
+            },
+            {
+              id: 'verified',
+              title: 'Verified Only',
+              description: 'Trusted sellers',
+              icon: 'shield',
+              bgColor: 'bg-purple-50',
+              textColor: 'text-purple-700',
+              action: () => handleFiltersChange({ verifiedSellersOnly: true }),
+            },
+            {
+              id: 'new-arrivals',
+              title: 'New Arrivals',
+              description: 'Latest products',
+              icon: 'zap',
+              bgColor: 'bg-orange-50',
+              textColor: 'text-orange-700',
+              action: () => setSortBy('created_at_desc'),
+              badge: '🔥',
+            },
+          ]}
+        />
+      </div>
+
       {/* Page Header */}
       <div className="mb-6 md:mb-8 px-4 sm:px-0">
         <h1 className="mb-1 text-2xl md:text-3xl font-bold tracking-tight">

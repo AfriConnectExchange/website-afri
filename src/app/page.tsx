@@ -167,7 +167,16 @@ export default function MarketplacePage() {
       const catResponse = await fetch('/api/categories/list?includeCounts=true');
       if (catResponse.ok) {
         const catData = await catResponse.json();
-        setCategories(catData.categories || []);
+        // Sort categories by count (highest first), then by name
+        const sortedCategories = (catData.categories || []).sort((a: Category, b: Category) => {
+          const countA = a.count || 0;
+          const countB = b.count || 0;
+          if (countB !== countA) {
+            return countB - countA; // Descending by count
+          }
+          return a.name.localeCompare(b.name); // Alphabetical if counts are equal
+        });
+        setCategories(sortedCategories);
       }
       
     } catch (error) {

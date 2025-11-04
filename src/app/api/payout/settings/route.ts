@@ -19,6 +19,14 @@ export async function GET(req: Request) {
     }
 
     const userId = decodedToken.uid;
+    if (payout_method === 'stripe_connect' && !stripe_connect) {
+      return NextResponse.json({ error: 'Stripe Connect details are required' }, { status: 400 });
+    }
+
+    if (payout_method === 'paypal' && (!paypal_email || String(paypal_email).trim() === '')) {
+      return NextResponse.json({ error: 'PayPal email is required' }, { status: 400 });
+    }
+
     const db = admin.firestore();
 
     const userDoc = await db.collection('users').doc(userId).get();
@@ -32,7 +40,6 @@ export async function GET(req: Request) {
       success: true,
       payout_method: userData.payout_method,
       bank_account: userData.bank_account,
-      mobile_money: userData.mobile_money,
       paypal_email: userData.paypal_email,
     });
   } catch (error: any) {
@@ -59,10 +66,18 @@ export async function POST(req: Request) {
 
     const userId = decodedToken.uid;
     const body = await req.json();
-    const { payout_method, bank_account, mobile_money, paypal_email } = body;
+  const { payout_method, bank_account, paypal_email } = body;
 
     if (!payout_method) {
       return NextResponse.json({ error: 'Payout method is required' }, { status: 400 });
+    }
+
+    if (payout_method === 'bank_transfer' && !bank_account) {
+      return NextResponse.json({ error: 'Bank account details are required' }, { status: 400 });
+    }
+
+    if (payout_method === 'paypal' && (!paypal_email || String(paypal_email).trim() === '')) {
+      return NextResponse.json({ error: 'PayPal email is required' }, { status: 400 });
     }
 
     const db = admin.firestore();
@@ -74,14 +89,11 @@ export async function POST(req: Request) {
 
     // Clear previous payout data
     updateData.bank_account = null;
-    updateData.mobile_money = null;
     updateData.paypal_email = null;
 
     // Set new payout data based on method
     if (payout_method === 'bank_transfer' && bank_account) {
       updateData.bank_account = bank_account;
-    } else if (payout_method === 'mobile_money' && mobile_money) {
-      updateData.mobile_money = mobile_money;
     } else if (payout_method === 'paypal' && paypal_email) {
       updateData.paypal_email = paypal_email;
     }

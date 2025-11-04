@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Search, 
   ShoppingCart,
+  Heart,
   User,
   Menu,
   MapPin,
@@ -24,6 +25,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { UserNav } from './UserNav';
 import { useAuth } from '@/context/auth-context';
+import { useWishlist } from '@/context/wishlist-context';
 import HeaderNotifications from '@/components/dashboard/HeaderNotifications';
 
 interface HeaderProps {
@@ -33,6 +35,7 @@ interface HeaderProps {
 export function Header({ cartCount = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useAuth();
+  const { wishlistCount } = useWishlist();
   const isSeller = !!user?.roles?.includes('seller');
   const pathname = usePathname();
   const router = useRouter();
@@ -250,6 +253,24 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
             {user ? (
               <div className="hidden md:flex items-center gap-2">
+                {/* Wishlist */}
+                <Link href="/wishlist" passHref>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative h-9 w-9"
+                    aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ''}`}
+                  >
+                    <Heart className="w-5 h-5" />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+
+                {/* Cart */}
                 <Link href="/cart" passHref>
                   <motion.div
                     animate={isCartAnimating ? { scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] } : {}}
@@ -282,6 +303,23 @@ export function Header({ cartCount = 0 }: HeaderProps) {
             )}
             
             <div className="flex md:hidden items-center gap-1">
+                {/* Mobile Wishlist */}
+                <Link href="/wishlist" passHref>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="relative h-9 w-9"
+                  >
+                    <Heart className="w-4 h-4" />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                        {wishlistCount > 9 ? '9+' : wishlistCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+
+                {/* Mobile Cart */}
                 <Link href="/cart" passHref>
                   <motion.div
                       animate={isCartAnimating ? { scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] } : {}}

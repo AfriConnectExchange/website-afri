@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle2, Package, X } from 'lucide-react';
 import { auth } from '@/lib/firebaseClient';
+import { SellerNavigation } from '@/components/seller/seller-navigation';
+import { SellerSidebar } from '@/components/seller/seller-sidebar';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated, profile } = useAuth();
@@ -17,6 +19,14 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const [profileComplete, setProfileComplete] = useState(false);
   const [hasSellerRole, setHasSellerRole] = useState(false);
   const [showVerifiedAlert, setShowVerifiedAlert] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const dismissed = window.localStorage.getItem('seller-verified-alert');
+    if (dismissed === 'hidden') {
+      setShowVerifiedAlert(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -210,7 +220,12 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
               <strong>Verified Seller</strong> - Your account is verified and ready to sell
             </AlertDescription>
             <button
-              onClick={() => setShowVerifiedAlert(false)}
+              onClick={() => {
+                setShowVerifiedAlert(false);
+                if (typeof window !== 'undefined') {
+                  window.localStorage.setItem('seller-verified-alert', 'hidden');
+                }
+              }}
               className="absolute top-2 sm:top-3 right-2 sm:right-3 text-green-600 hover:text-green-800 transition-colors"
               aria-label="Dismiss"
             >
@@ -218,7 +233,13 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             </button>
           </Alert>
         )}
-        {children}
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <SellerSidebar />
+          <div className="flex-1 min-w-0">
+            <SellerNavigation />
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

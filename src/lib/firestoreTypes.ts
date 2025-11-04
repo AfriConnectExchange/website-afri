@@ -71,16 +71,14 @@ export interface UserDoc {
   };
   
   // Payout settings (how seller RECEIVES money from escrow)
-  payout_method?: 'bank_transfer' | 'mobile_money' | 'paypal';
+  payout_method?: 'bank_transfer' | 'paypal';
   bank_account?: {
+    account_holder_name?: string;
     bank_name?: string;
-    account_name?: string;
     account_number?: string;
     sort_code?: string;
-  };
-  mobile_money?: {
-    provider?: string;
-    phone_number?: string;
+    iban?: string;
+    last_validated_at?: FirebaseFirestore.Timestamp | null;
   };
   paypal_email?: string;
   
@@ -158,6 +156,19 @@ export interface ProductDoc {
   
   // Specifications (flexible - varies by category)
   specifications?: Record<string, string | number | boolean>;
+  options?: Array<{
+    id: string;
+    name: string;
+    values: string[];
+  }>;
+  variants?: Array<{
+    id: string;
+    option_values: Record<string, string>;
+    price: number;
+    quantity: number;
+    sku?: string;
+    is_primary?: boolean;
+  }>;
   
   // Location (of the product/seller for pickup/shipping origin)
   location: {

@@ -38,6 +38,23 @@ export async function POST(req: Request) {
       .trim();
 
     // Create product object - NO DENORMALIZED SELLER DATA
+    const basePrice = typeof body.price === 'number' ? body.price : Number(body.price);
+
+    if (body.listing_type !== 'freebie' && (!Number.isFinite(basePrice) || basePrice <= 0)) {
+      return NextResponse.json({ error: 'Invalid price' }, { status: 400 });
+    }
+
+    const productVariants = Array.isArray(body.variants)
+      ? body.variants.map((variant: any) => ({
+          id: String(variant.id ?? ''),
+          option_values: variant.option_values || {},
+          price: typeof variant.price === 'number' ? variant.price : Number(variant.price) || 0,
+          quantity: typeof variant.quantity === 'number' ? variant.quantity : Number(variant.quantity) || 0,
+          sku: variant.sku || undefined,
+          is_primary: Boolean(variant.is_primary),
+        }))
+      : [];
+
     const product: Omit<Product, 'id'> = {
       // Identity & Relations (ONLY IDs - no denormalized seller info)
       seller_id: sellerId,
@@ -53,7 +70,7 @@ export async function POST(req: Request) {
       
       // Listing & pricing (prices in pence)
       listing_type: body.listing_type,
-      price: body.listing_type === 'freebie' ? 0 : body.price,
+  price: body.listing_type === 'freebie' ? 0 : basePrice,
       currency: body.currency || 'GBP',
       original_price: body.original_price,
       
@@ -77,6 +94,14 @@ export async function POST(req: Request) {
       
       // Specifications (flexible based on category)
       specifications: body.specifications,
+      options: Array.isArray(body.options)
+        ? body.options.map((option: any) => ({
+            id: String(option.id ?? ''),
+            name: option.name,
+            values: Array.isArray(option.values) ? option.values.map((val: any) => String(val)) : [],
+          }))
+        : undefined,
+      variants: productVariants.length > 0 ? productVariants : undefined,
       
       // Location
       location: body.location,
