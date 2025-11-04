@@ -23,7 +23,7 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
   const hasSME = !!profile?.roles?.includes('sme');
 
   const requiredProfileFields = useMemo(() => ([
-    { key: 'full_name', label: 'Full name' },
+    { key: 'fullName', label: 'Full name' },
     { key: 'phone', label: 'Phone number' },
     { key: 'address', label: 'Address' },
     { key: 'city', label: 'City' },
@@ -35,7 +35,9 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
     if (!profile) return requiredProfileFields.map(field => field.label);
     return requiredProfileFields
       .filter(field => {
-        const value = (profile as Record<string, any>)[field.key];
+        // use 'fullName' for checks but UserProfile has 'full_name'
+        const key = field.key === 'fullName' ? 'full_name' : field.key;
+        const value = (profile as Record<string, any>)[key];
         return !value || (typeof value === 'string' && value.trim() === '');
       })
       .map(field => field.label);

@@ -1,7 +1,10 @@
+
 // API to update order status
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 import type { OrderDoc } from '@/lib/firestoreTypes';
+import { sendDeliveryNotificationSMS } from '@/lib/sms-service';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function POST(req: Request) {
   try {
@@ -37,36 +40,41 @@ export async function POST(req: Request) {
 
     const orderData = orderDoc.data() as OrderDoc;
 
-    // Verify seller owns this order
     if (orderData.seller_id !== sellerId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Prepare update
     const updateData: any = {
       status,
       updated_at: admin.firestore.Timestamp.now(),
     };
 
-    // Add timestamp based on status
-    if (status === 'confirmed') {
-      updateData.confirmed_at = admin.firestore.Timestamp.now();
-    } else if (status === 'shipped') {
+    if (status === 'shipped' && tracking_number) {
+      updateData.tracking_number = tracking_number;
       updateData.shipped_at = admin.firestore.Timestamp.now();
-      if (tracking_number) {
-        updateData.tracking_number = tracking_number;
-      }
     } else if (status === 'delivered') {
-      updateData.delivered_at = admin.firestore.Timestamp.now();
-    } else if (status === 'completed') {
-      updateData.completed_at = admin.firestore.Timestamp.now();
-      // TODO: Trigger escrow release here
+        updateData.delivered_at = admin.firestore.Timestamp.now();
     }
-
+    
     await orderRef.update(updateData);
 
-    // TODO: Send notification to buyer about status update
-    // TODO: Log activity
+    const buyerDoc = await db.collection('users').doc(orderData.buyer_id).get();
+    const buyerData = buyerDoc.data();
+
+    // Send notifications based on status change
+    if (buyerData?.phone) {
+        if (status === 'shipped') {
+            await sendDeliveryNotificationSMS(buyerData.phone, order_id, `/tracking/${order_id}`, orderData.buyer_id);
+        }
+    }
+
+    await logActivity({
+        user_id: sellerId,
+        action: `order_${status}`,
+        entity_type: 'order',
+        entity_id: order_id,
+        changes: { new_status: status, tracking_number: tracking_number || null }
+    });
 
     return NextResponse.json({
       success: true,

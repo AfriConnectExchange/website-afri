@@ -20,6 +20,7 @@
         "status": { "type": "string", "enum": ["pending", "active", "suspended", "deleted"], "default": "pending" },
         "verificationStatus": { "type": "string", "enum": ["unverified", "pending", "verified", "rejected"], "default": "unverified" },
         "kycSubmittedAt": { "type": "string", "format": "date-time" },
+        "freeAccessExpiresAt": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

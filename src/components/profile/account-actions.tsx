@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { fetchWithAuth } from '@/lib/api';
 import { auth as clientAuth } from '@/lib/firebaseClient';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-
+import { Input } from '../ui/input';
 
 interface AccountActionsProps {
   onFeedback: (type: 'success' | 'error', message: string) => void;
@@ -24,6 +24,9 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   const router = useRouter();
   
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   
 
   const handleDeactivate = () => {
@@ -33,26 +36,56 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   const confirmDeactivate = async () => {
      setShowDeactivateConfirm(false);
      try {
-       // Call server endpoint to deactivate the account (disable Auth user + mark Firestore doc)
        const res = await fetchWithAuth('/api/account/deactivate', { method: 'POST' });
        const json = await res.json();
        if (res.ok && json.ok) {
          toast({ title: 'Account Deactivated', description: 'Your account was deactivated. You have been signed out.' });
-         // Ensure local sign out
          try { await logout(); } catch (e) {}
        } else {
-         // Fallback: sign out locally and show message
          try { await logout(); } catch (e) {}
          onFeedback('error', json.error || 'Failed to deactivate account.');
        }
      } catch (e: any) {
        console.error('Deactivation failed', e);
-       // fallback to just sign out locally
        try { await logout(); } catch (err) {}
        onFeedback('error', e?.message || 'Failed to deactivate account.');
      }
   }
 
+  const handleDeleteAccount = () => {
+    setDeletePassword('');
+    setShowDeleteConfirm(true);
+  }
+
+  const confirmDeleteAccount = async () => {
+    if (!clientAuth.currentUser || !clientAuth.currentUser.email) {
+      onFeedback('error', 'Could not verify identity. No active user found.');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const credential = EmailAuthProvider.credential(clientAuth.currentUser.email, deletePassword);
+      await reauthenticateWithCredential(clientAuth.currentUser, credential);
+      
+      // If re-authentication is successful, proceed with deletion
+      await clientAuth.currentUser.delete();
+      toast({ title: 'Account Deleted', description: 'Your account has been permanently deleted.' });
+      setShowDeleteConfirm(false);
+      await logout();
+
+    } catch (e: any) {
+      let errorMessage = 'Failed to delete account. Please try again.';
+      if (e.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Account deletion cancelled.';
+      } else if (e.code === 'auth/requires-recent-login') {
+        errorMessage = 'For security, please sign in again before deleting your account.';
+      }
+      onFeedback('error', errorMessage);
+    } finally {
+      setIsDeleting(false);
+      setDeletePassword('');
+    }
+  }
 
 
   // Change password flow
@@ -60,10 +93,15 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   const [isChangingPwd, setIsChangingPwd] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
+  const [oldPasswords, setOldPasswords] = useState<string[]>([]);
 
   const confirmChangePassword = async () => {
     if (!clientAuth.currentUser || !clientAuth.currentUser.email) {
       onFeedback('error', 'No authenticated user.');
+      return;
+    }
+    if (oldPasswords.includes(newPwd)) {
+      onFeedback('error', 'New password cannot be the same as a previous one.');
       return;
     }
     setIsChangingPwd(true);
@@ -71,6 +109,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
       const credential = EmailAuthProvider.credential(clientAuth.currentUser.email, currentPwd);
       await reauthenticateWithCredential(clientAuth.currentUser, credential);
       await updatePassword(clientAuth.currentUser, newPwd);
+      setOldPasswords(prev => [...prev, newPwd]);
       toast({ title: 'Password changed', description: 'Your password has been updated.' });
       setShowChangePwd(false);
       setCurrentPwd('');
@@ -83,8 +122,6 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
     }
   };
 
-  // (Deletion scheduling/cancellation removed for now)
-
 
   return (
     <>
@@ -94,7 +131,6 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
           <CardDescription>Manage your account status and data.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Scheduled deletion UI removed temporarily */}
           <div className="space-y-2">
             <h4 className="font-medium">Deactivate Account</h4>
             <p className="text-sm text-muted-foreground">
@@ -106,8 +142,17 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
           </div>
 
           <Separator />
+          
+          <div className="space-y-2">
+            <h4 className="font-medium text-destructive">Delete Account</h4>
+            <p className="text-sm text-muted-foreground">
+              Permanently delete your account and all associated data. This action cannot be undone.
+            </p>
+            <Button variant="destructive" onClick={handleDeleteAccount}>
+              Delete My Account
+            </Button>
+          </div>
 
-          {/* Account deletion flow removed temporarily */}
         </CardContent>
       </Card>
       
@@ -121,9 +166,25 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
         type="warning"
       />
 
-      {/* Deletion confirmation removed */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteAccount}
+        title="Confirm Permanent Deletion"
+        description="This action is irreversible. To confirm, please enter your password."
+        confirmText="Delete Account"
+        type="destructive"
+        isLoading={isDeleting}
+      >
+        <Input 
+          type="password"
+          placeholder="Enter your password"
+          value={deletePassword}
+          onChange={(e) => setDeletePassword(e.target.value)}
+          className="mt-4"
+        />
+      </ConfirmationModal>
 
-      {/* Inline change password area */}
       <div className="mt-4 space-y-4">
         <h4 className="font-medium">Change Password</h4>
         {!showChangePwd ? (

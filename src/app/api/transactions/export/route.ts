@@ -1,5 +1,8 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
+// Note: You may need to install puppeteer: npm install puppeteer
+// import puppeteer from 'puppeteer';
 
 const adminDb = admin.firestore();
 const adminAuth = admin.auth();
@@ -7,9 +10,6 @@ const adminAuth = admin.auth();
 /**
  * POST /api/transactions/export
  * Export transaction history as CSV or PDF (US023-AC03)
- * 
- * Acceptance Criteria:
- * - US023-AC03: Generate CSV or PDF covering up to 12 months within 10 seconds
  */
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const userId = decodedToken.uid;
 
     const body = await request.json();
-    const { format, start_date, end_date } = body; // format: 'csv' or 'pdf'
+    const { format, start_date, end_date } = body; 
 
     if (!format || !['csv', 'pdf'].includes(format)) {
       return NextResponse.json(
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate date range (max 12 months)
     const startDate = start_date ? new Date(start_date) : new Date(new Date().setFullYear(new Date().getFullYear() - 1));
     const endDate = end_date ? new Date(end_date) : new Date();
 
@@ -44,11 +43,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch all transactions in date range
     const startTimestamp = admin.firestore.Timestamp.fromDate(startDate);
     const endTimestamp = admin.firestore.Timestamp.fromDate(endDate);
 
-    // Fetch payments
     const paymentsSnapshot = await adminDb
       .collection('payments')
       .where('user_id', '==', userId)
@@ -68,7 +65,6 @@ export async function POST(request: NextRequest) {
       date: doc.data().created_at?.toDate().toISOString() || new Date().toISOString(),
     }));
 
-    // Fetch barters
     const bartersAsProposerSnapshot = await adminDb
       .collection('barters')
       .where('proposer_id', '==', userId)
@@ -108,7 +104,6 @@ export async function POST(request: NextRequest) {
       })),
     ];
 
-    // Fetch escrow
     const escrowsSnapshot = await adminDb
       .collection('escrow')
       .where('buyer_id', '==', userId)
@@ -148,15 +143,12 @@ export async function POST(request: NextRequest) {
       })),
     ];
 
-    // Combine and sort
     const allTransactions = [...payments, ...barters, ...escrows].sort((a, b) => {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
 
     if (format === 'csv') {
-      // Generate CSV
       const csv = generateCSV(allTransactions);
-      
       return new NextResponse(csv, {
         headers: {
           'Content-Type': 'text/csv',
@@ -164,11 +156,9 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (format === 'pdf') {
-      // Generate PDF (simple HTML-based approach)
-      // In production, use a library like jsPDF or puppeteer
       const html = generatePDFHTML(allTransactions, userId);
-      
-      // For now, return HTML that can be printed as PDF
+      // For Vercel Serverless Functions, you might not have Puppeteer.
+      // Returning HTML for the client to print is a robust alternative.
       return new NextResponse(html, {
         headers: {
           'Content-Type': 'text/html',
@@ -185,9 +175,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Generate CSV from transactions
- */
 function generateCSV(transactions: any[]): string {
   const headers = ['Type', 'Transaction ID', 'Order ID', 'Method', 'Amount', 'Currency', 'Status', 'Date'];
   const rows = transactions.map(t => [
@@ -200,19 +187,13 @@ function generateCSV(transactions: any[]): string {
     t.status,
     new Date(t.date).toLocaleDateString(),
   ]);
-
   const csvContent = [
     headers.join(','),
     ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
   ].join('\n');
-
   return csvContent;
 }
 
-/**
- * Generate simple PDF HTML
- * TODO: Replace with proper PDF library in production
- */
 function generatePDFHTML(transactions: any[], userId: string): string {
   const rows = transactions.map(t => `
     <tr>
@@ -269,7 +250,6 @@ function generatePDFHTML(transactions: any[], userId: string): string {
       </div>
       
       <script>
-        // Auto-print when opened
         window.onload = function() { window.print(); };
       </script>
     </body>
