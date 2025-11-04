@@ -74,7 +74,7 @@ export const DisputeRaisedEmail = ({
               <Text style={warningText}>
                 {role === 'admin' 
                   ? '🔔 This requires immediate attention. Please review the dispute details and take action within 24 hours.'
-                  : '⏰ Please respond within 48 hours to avoid automatic resolution in buyer's favor.'}
+                  : '⏰ Please respond within 48 hours to avoid automatic resolution in buyer\'s favor.'}
               </Text>
             </Section>
           )}

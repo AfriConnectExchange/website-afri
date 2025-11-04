@@ -269,9 +269,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const LOGIN_LOCKOUT_MINUTES = 15;
+
+  const postLoginAttempt = useCallback(async (email: string, action: 'precheck' | 'failure' | 'success') => {
+    try {
+      const res = await fetch('/api/auth/login-attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action }),
+      });
+      if (!res.ok) {
+        throw new Error('Login security check failed');
+      }
+      return res.json();
+    } catch (error) {
+      console.warn('login attempt tracking failed', error);
+      return null;
+    }
+  }, []);
+
   const login = useCallback(async (email: string, password: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const precheck = await postLoginAttempt(normalizedEmail, 'precheck');
+    if (precheck?.locked) {
+      const remainingMs = precheck.remainingMs as number | undefined;
+      const minutes = remainingMs ? Math.ceil(remainingMs / 60000) : LOGIN_LOCKOUT_MINUTES;
+      const error: any = new Error(`Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+      error.code = 'auth/account-locked';
+      throw error;
+    }
+
     try {
       await signInWithEmailAndPassword(clientAuth, email, password);
+      await postLoginAttempt(normalizedEmail, 'success');
     } catch (err: any) {
       // Show suspension modal when account is disabled
       if (err?.code === 'auth/user-disabled') {
@@ -279,9 +310,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setShowSuspensionModal(true);
         return;
       }
+
+      // Record failure for invalid credential attempts
+      if (['auth/wrong-password', 'auth/invalid-credential', 'auth/user-not-found'].includes(err?.code)) {
+        const failureResult = await postLoginAttempt(normalizedEmail, 'failure');
+        if (failureResult?.locked) {
+          const remainingMs = failureResult.remainingMs as number | undefined;
+          const minutes = remainingMs ? Math.ceil(remainingMs / 60000) : LOGIN_LOCKOUT_MINUTES;
+          const lockError: any = new Error(`Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+          lockError.code = 'auth/account-locked';
+          throw lockError;
+        }
+      }
+
       throw err;
     }
-  }, []);
+  }, [postLoginAttempt]);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     try {
@@ -343,15 +387,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [showSnackbar]);
 
+  const OTP_COOLDOWN_MINUTES = 60;
+
+  const callOtpAttempt = useCallback(async (phone: string, action: 'precheck' | 'record' | 'reset') => {
+    try {
+      const res = await fetch('/api/auth/otp-attempt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, action }),
+      });
+      if (!res.ok) throw new Error('OTP throttle failed');
+      return res.json();
+    } catch (error) {
+      console.warn('OTP attempt tracking failed', error);
+      return null;
+    }
+  }, []);
+
   const startPhoneAuth = useCallback(async (phone: string) => {
     // Ensure we have a fresh/valid verifier right before attempting phone auth.
     const appVerifier = ensureRecaptchaVerifier();
     if (!appVerifier) {
       throw new Error("reCAPTCHA verifier not initialized or could not be created.");
     }
+
+    const precheck = await callOtpAttempt(phone, 'precheck');
+    if (precheck?.blocked) {
+      const remainingMs = precheck.remainingMs as number | undefined;
+      const minutes = remainingMs ? Math.ceil(remainingMs / 60000) : OTP_COOLDOWN_MINUTES;
+      throw new Error(`Too many OTP requests. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+    }
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
       (window as any).confirmationResult = confirmationResult;
+      await callOtpAttempt(phone, 'record');
       try {
         showSnackbar({ title: 'OTP Sent', description: `A one-time code was sent to ${phone}.` }, 'success');
       } catch (snackErr) {
@@ -362,7 +431,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push(`/auth/verify-phone?phone=${encodeURIComponent(phone)}`);
     } catch (error: any) {
       console.error("Phone auth error:", error);
-      showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
+      if (error instanceof Error && error.message?.startsWith('Too many OTP requests')) {
+        showSnackbar({ title: 'OTP Limit Reached', description: error.message }, 'error');
+      } else {
+        showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error.message}` }, 'error');
+      }
       try {
         // RecaptchaVerifier.render() returns a Promise<number> in the modular SDK.
         if (appVerifier && typeof appVerifier.render === 'function') {
@@ -414,7 +487,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       throw error;
     }
-  }, [showSnackbar, router]);
+  }, [ensureRecaptchaVerifier, callOtpAttempt, showSnackbar, router]);
   
   // Non-redirecting phone OTP sender for modal flows. Returns the confirmationResult
   // and does not navigate to the dedicated /auth/verify-phone page.
@@ -423,9 +496,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!appVerifier) {
       throw new Error('reCAPTCHA verifier not initialized or could not be created.');
     }
+    const precheck = await callOtpAttempt(phone, 'precheck');
+    if (precheck?.blocked) {
+      const remainingMs = precheck.remainingMs as number | undefined;
+      const minutes = remainingMs ? Math.ceil(remainingMs / 60000) : OTP_COOLDOWN_MINUTES;
+      throw new Error(`Too many OTP requests. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+    }
     try {
       const confirmationResult = await signInWithPhoneNumber(clientAuth, phone, appVerifier);
       (window as any).confirmationResult = confirmationResult;
+      await callOtpAttempt(phone, 'record');
       try {
         showSnackbar({ title: 'OTP Sent', description: `A one-time code was sent to ${phone}.` }, 'success');
       } catch (snackErr) {
@@ -434,10 +514,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return confirmationResult;
     } catch (error: any) {
       console.error('sendPhoneOtp error:', error);
-      showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error?.message}` }, 'error');
+      if (error instanceof Error && error.message?.startsWith('Too many OTP requests')) {
+        showSnackbar({ title: 'OTP Limit Reached', description: error.message }, 'error');
+      } else {
+        showSnackbar({ code: error?.code, description: `Failed to send OTP: ${error?.message}` }, 'error');
+      }
       throw error;
     }
-  }, [ensureRecaptchaVerifier, showSnackbar]);
+  }, [ensureRecaptchaVerifier, callOtpAttempt, showSnackbar]);
 
   const resendOtp = useCallback(async (phone: string) => {
     await sendPhoneOtp(phone);
@@ -463,12 +547,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // non-fatal if snackbar fails
     }
 
+    // Reset OTP attempt counters now that verification succeeded
+    if (fbUser.phoneNumber) {
+      callOtpAttempt(fbUser.phoneNumber, 'reset').catch(() => {});
+    }
+
     // Continue with session handling (this will navigate to onboarding or home)
     await handleUserSession(fbUser, extraData);
 
     // Clean up stored display name after it's been applied
     try { localStorage.removeItem('phone_signup_displayName'); } catch (e) {}
-  }, [handleUserSession]);
+  }, [callOtpAttempt, handleUserSession, showSnackbar]);
 
   const logout = useCallback(async () => {
     try {

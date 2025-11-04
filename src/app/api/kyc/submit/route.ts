@@ -14,26 +14,72 @@ export async function POST(req: NextRequest) {
     const decoded = await admin.auth().verifyIdToken(token);
     const uid = decoded.uid;
 
-    const body = await req.json();
-    const { personal, documents } = body || {};
-    if (!personal || !documents || !documents.idDocumentUrl || !documents.proofOfAddressUrl) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(uid);
+    const userSnap = await userRef.get();
+    const userData = userSnap.data() || {} as any;
+
+    if (userData.verification_status === 'verified') {
+      return NextResponse.json({ error: 'Your account is already verified.' }, { status: 409 });
+    }
+
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid request payload.' }, { status: 400 });
+    }
+
+    const { personal, documents } = body as any;
+    if (!personal || typeof personal !== 'object') {
+      return NextResponse.json({ error: 'Missing personal details.' }, { status: 400 });
+    }
+
+    const requiredPersonalFields = ['fullName', 'dateOfBirth', 'nationality', 'idType', 'idNumber', 'address', 'city', 'primaryPhone'] as const;
+    const missingPersonal = requiredPersonalFields.filter((field) => {
+      const value = personal[field];
+      return typeof value !== 'string' || !value.trim();
+    });
+    if (missingPersonal.length > 0) {
+      return NextResponse.json({ error: `Missing required personal fields: ${missingPersonal.join(', ')}` }, { status: 400 });
+    }
+
+    if (!documents || typeof documents !== 'object') {
+      return NextResponse.json({ error: 'Missing documents payload.' }, { status: 400 });
+    }
+
+    const idDocumentUrl = typeof documents.idDocumentUrl === 'string' ? documents.idDocumentUrl.trim() : '';
+    const proofOfAddressUrl = typeof documents.proofOfAddressUrl === 'string' ? documents.proofOfAddressUrl.trim() : '';
+    if (!idDocumentUrl || !proofOfAddressUrl) {
+      return NextResponse.json({ error: 'Missing required document uploads.' }, { status: 400 });
+    }
+
+    const subRef = db.collection('kyc_submissions').doc(uid);
+    const existingSubmissionSnap = await subRef.get();
+    if (existingSubmissionSnap.exists) {
+      const submissionStatus = existingSubmissionSnap.data()?.status;
+      if (submissionStatus === 'approved') {
+        return NextResponse.json({ error: 'Your KYC submission is already approved.' }, { status: 409 });
+      }
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     // Write a submission document; use a deterministic id so re-submits overwrite pending
-    const subRef = admin.firestore().collection('kyc_submissions').doc(uid);
     await subRef.set({
       user_id: uid,
-      id_type: personal.idType,
-      id_number: personal.idNumber,
-      id_front_url: documents.idDocumentUrl,
+      full_name: personal.fullName.trim(),
+      primary_phone: personal.primaryPhone.trim(),
+      id_type: personal.idType.trim(),
+      id_number: personal.idNumber.trim(),
+      id_front_url: idDocumentUrl,
       // optional back for driver license can be added in UI later
       selfie_url: null,
-      proof_of_address_url: documents.proofOfAddressUrl,
-      date_of_birth: personal.dateOfBirth ?? null,
-      nationality: personal.nationality ?? null,
+      proof_of_address_url: proofOfAddressUrl,
+      address: personal.address.trim(),
+      city: personal.city.trim(),
+      state: typeof personal.state === 'string' && personal.state.trim() ? personal.state.trim() : null,
+      postal_code: typeof personal.postalCode === 'string' && personal.postalCode.trim() ? personal.postalCode.trim() : null,
+      date_of_birth: personal.dateOfBirth.trim(),
+      nationality: personal.nationality.trim(),
       status: 'pending',
       reviewed_by: null,
       reviewed_at: null,
@@ -43,17 +89,13 @@ export async function POST(req: NextRequest) {
     }, { merge: true });
 
     // Update user's verification status to pending
-    const userRef = admin.firestore().collection('users').doc(uid);
     await userRef.set({
       verification_status: 'pending',
       kyc_submitted_at: now,
     }, { merge: true });
 
-    // Fetch user details for email/notification
-    const userSnap = await userRef.get();
-    const userData = userSnap.data() || {} as any;
     const userEmail: string | undefined = userData.email || decoded.email;
-    const userName: string = userData.fullName || userData.display_name || decoded.name || 'there';
+    const userName: string = userData.fullName || userData.full_name || userData.display_name || decoded.name || 'there';
 
     // Create in-app notification (system type)
     try {
@@ -92,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Log
-    await logActivity({ user_id: uid, action: 'kyc_submitted', entity_type: 'kyc_submission', entity_id: uid, changes: { id_type: personal.idType } });
+  await logActivity({ user_id: uid, action: 'kyc_submitted', entity_type: 'kyc_submission', entity_id: uid, changes: { id_type: personal.idType.trim() } });
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
