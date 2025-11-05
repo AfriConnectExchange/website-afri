@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProfileSummaryCard } from './profile-summary-card';
 import { ProfileCompletionCard } from './profile-completion-card';
+import { ProfileCompletionMinimal } from './profile-completion-minimal';
 import { PersonalInfoForm } from './personal-info-form';
 import { AccountRoleForm } from './account-role-form';
 import { PreferencesForm } from './preferences-form';
@@ -84,14 +85,14 @@ export function ProfilePage() {
 
             {/* Completion Card - Gamification */}
             <div className="hidden lg:block">
-              <ProfileCompletionCard user={user} onNavigate={router.push} />
+              <ProfileCompletionMinimal user={user} onNavigate={router.push} />
             </div>
           </div>
 
           <div className="lg:col-span-3">
             {/* Mobile Completion Card - Above Tabs */}
             <div className="lg:hidden mb-6">
-              <ProfileCompletionCard user={user} onNavigate={router.push} />
+              <ProfileCompletionMinimal user={user} onNavigate={router.push} />
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

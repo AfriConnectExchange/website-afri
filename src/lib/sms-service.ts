@@ -63,16 +63,15 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
 
     const docRef = await db.collection('messages').add(messageData);
 
-    // Log SMS activity
+    // Log SMS activity (use `user_id` to match activity-logger expectations)
     if (options.userId) {
       await logActivity({
-        userId: options.userId,
+        user_id: options.userId,
         action: 'sms_queued',
-        category: 'notification',
-        status: 'success',
-        metadata: {
+        entity_type: 'sms',
+        entity_id: docRef.id,
+        changes: {
           to: options.to,
-          messageDocId: docRef.id,
           messageLength: body.length,
         },
       });
@@ -91,11 +90,10 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
     // Log failed SMS attempt
     if (options.userId) {
       await logActivity({
-        userId: options.userId,
+        user_id: options.userId,
         action: 'sms_failed',
-        category: 'notification',
-        status: 'failure',
-        metadata: {
+        entity_type: 'sms',
+        changes: {
           to: options.to,
           error: error.message,
         },

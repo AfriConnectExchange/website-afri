@@ -51,7 +51,9 @@ export function Step2_Payment({ method, cartItems, subtotal, onPaymentSuccess }:
       }
       
       clearCart();
-      
+
+      toast({ title: 'Order Created', description: 'Your order has been placed.' });
+
       onPaymentSuccess({
         orderIds: result.order_ids,
         paymentMethod: method.name,

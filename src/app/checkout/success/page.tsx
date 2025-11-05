@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-context';
+import { fetchWithAuth } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
@@ -13,6 +16,8 @@ export default function CheckoutSuccessPage() {
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [sessionData, setSessionData] = useState<any>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!sessionId) {
@@ -27,6 +32,64 @@ export default function CheckoutSuccessPage() {
         if (data.status === 'complete' && data.payment_status === 'paid') {
           setSessionData(data);
           setStatus('success');
+
+          // Attempt to create orders on behalf of the signed-in user using
+          // the session metadata if available. This addresses embedded
+          // Stripe flows which don't automatically call the orders API.
+          (async () => {
+            try {
+              const cartItemsJson = data.metadata?.cart_items;
+              if (!cartItemsJson) return;
+
+              const cartItems = JSON.parse(cartItemsJson);
+
+              // Build payload expected by /api/orders/create
+              const orderPayload = {
+                cartItems: cartItems.map((it: any) => ({
+                  id: it.id,
+                  title: it.title,
+                  quantity: it.quantity,
+                  price: it.price,
+                  seller_id: it.seller_id,
+                  images: it.images || [],
+                })),
+                subtotal: (data.amount_total || 0) / 100,
+                total: (data.amount_total || 0) / 100,
+                paymentMethod: 'card',
+                shippingAddress: data.shipping?.name ? {
+                  name: data.shipping.name,
+                  street: data.shipping.address?.line1,
+                  city: data.shipping.address?.city,
+                  postcode: data.shipping.address?.postal_code,
+                  country: data.shipping.address?.country,
+                } : undefined,
+                payment_details: { transactionId: sessionId, stripe_session: sessionId }
+              };
+
+              // If user is signed in, call the authenticated endpoint which will
+              // attach the buyer to the created order. If not signed in, skip and
+              // optionally log or surface to support.
+              if (user) {
+                const resp = await fetchWithAuth('/api/orders/create', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(orderPayload),
+                });
+
+                if (resp.ok) {
+                  const resJson = await resp.json();
+                  toast({ title: 'Order created', description: 'Your order has been recorded.' });
+                } else {
+                  const err = await resp.json();
+                  console.error('Failed to create orders after stripe success:', err);
+                }
+              } else {
+                console.warn('Stripe payment succeeded but no authenticated user present — skipping server-side order creation.');
+              }
+            } catch (err) {
+              console.error('Error creating orders from stripe session metadata:', err);
+            }
+          })();
         } else {
           setStatus('error');
         }

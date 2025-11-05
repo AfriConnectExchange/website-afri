@@ -292,7 +292,7 @@ export function CartPageComponent({
                     return (
                     <div key={itemKey} className="py-4">
                       <div className="flex gap-4">
-                        <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative">
                           <ImageWithFallback
                             src={imageSrc}
                             fallbackSrc="/placeholder.svg"
@@ -429,6 +429,16 @@ export function CartPageComponent({
         </div>
       </div>
       <StickyMobileFooter />
+
+      {/* Full-screen processing overlay shown while checkout is being prepared */}
+      {isProcessing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-3" />
+            <div className="text-white font-medium">Processing...</div>
+          </div>
+        </div>
+      )}
 
       <ConfirmationModal
         isOpen={showRemoveConfirm.isOpen}

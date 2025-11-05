@@ -85,6 +85,44 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Cleanup helper to remove any reCAPTCHA verifier and DOM container so
+  // subsequent attempts can recreate a fresh verifier without hitting the
+  // "already been rendered" error.
+  const cleanupRecaptcha = () => {
+    try {
+      const existing = (window as any).recaptchaVerifier;
+      if (existing && typeof existing.clear === 'function') {
+        try { existing.clear(); } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      const el = document.getElementById('recaptcha-container');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    } catch (e) {
+      // ignore
+    }
+
+    try { delete (window as any).recaptchaVerifier; } catch (e) {}
+    try { delete (window as any).confirmationResult; } catch (e) {}
+  };
+
+  // When the modal is closed (open -> false) or the component unmounts,
+  // remove any verifier so re-opening can reinitialize cleanly.
+  useEffect(() => {
+    if (!open) {
+      cleanupRecaptcha();
+      setStatus('idle');
+      setError(null);
+    }
+    return () => {
+      cleanupRecaptcha();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const handleComplete = async (otp: string) => {
     setStatus('verifying');
     try {
@@ -205,11 +243,14 @@ export function VerifyPhoneModal({ open, onOpenChange, phone }: VerifyPhoneModal
 
   // Prevent the dialog from being closed (via overlay click / Esc / programmatic)
   // while the OTP verification flow is active. Only allow closing when status === 'success'.
+  // Only block closing the dialog while actively sending/verifying. Allow
+  // closing on error or idle so the user isn't trapped when reCAPTCHA fails.
   const handleOpenChange = (val: boolean) => {
-    if (!val && status !== 'success') {
-      // ignore attempts to close while verifying
+    if (!val && (status === 'sending' || status === 'verifying')) {
+      // ignore attempts to close while actively in-flight
       return;
     }
+    // If user closes, run cleanup (handled by effect too) and propagate
     onOpenChange(val);
   };
 

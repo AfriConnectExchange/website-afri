@@ -231,7 +231,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return null;
 
     let container = document.getElementById('recaptcha-container');
-    if (!container) {
+    if (container) {
+      // If the container already has child nodes (grecaptcha widget), remove
+      // and recreate it so grecaptcha doesn't complain about being rendered
+      // into the same element twice.
+      try {
+        if (container.childElementCount > 0) {
+          const parent = container.parentNode;
+          if (parent) parent.removeChild(container);
+          container = document.createElement('div');
+          container.id = 'recaptcha-container';
+          // keep it out of layout
+          container.style.position = 'absolute';
+          container.style.width = '1px';
+          container.style.height = '1px';
+          container.style.overflow = 'hidden';
+          container.style.left = '-9999px';
+          document.body.appendChild(container);
+        }
+      } catch (e) {
+        // non-fatal — fall back to attempting to reuse the element
+        console.warn('Error while checking/recreating recaptcha container:', e);
+      }
+    } else {
       container = document.createElement('div');
       container.id = 'recaptcha-container';
       // keep it out of layout

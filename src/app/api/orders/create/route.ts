@@ -23,7 +23,24 @@ export async function POST(request: NextRequest) {
     const userId = decodedToken.uid;
 
     const body = await request.json();
-    const { cartItems, subtotal, total, paymentMethod, shippingAddress } = body;
+    const { cartItems, subtotal, total, paymentMethod, shippingAddress, payment_details } = body;
+
+    // Idempotency: if this payload includes a Stripe session id, and orders
+    // already exist for that session, return existing order IDs instead of
+    // creating duplicates. This covers webhook/client reconciliation races.
+    const stripeSession = payment_details?.stripe_session || null;
+    if (stripeSession) {
+      try {
+        const existing = await db.collection('orders').where('stripe_session', '==', stripeSession).get();
+        if (!existing.empty) {
+          const existingIds: string[] = [];
+          existing.forEach(d => existingIds.push(d.id));
+          return NextResponse.json({ success: true, order_ids: existingIds, already_exists: true });
+        }
+      } catch (e) {
+        console.warn('Idempotency check failed, proceeding to create orders:', e);
+      }
+    }
 
     if (!cartItems || cartItems.length === 0) {
       return NextResponse.json({ error: 'No items in order' }, { status: 400 });
@@ -69,6 +86,10 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        // Attach payment details and stripe session (if available) for
+        // idempotency and reconciliation.
+        payment_details: payment_details || null,
+        stripe_session: stripeSession,
       };
       
       await orderRef.set(orderData);
