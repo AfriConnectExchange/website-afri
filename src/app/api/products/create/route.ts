@@ -1,7 +1,9 @@
+
 // API Route to create a new product
 import { NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 import type { Product, CreateProductFormData } from '@/lib/productTypes';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const sellerId = decodedToken.uid;
-    const body: CreateProductFormData = await req.json();
+    const body = await req.json();
 
     // Validate required fields
     if (!body.title || !body.description || !body.category_id) {
@@ -40,39 +42,27 @@ export async function POST(req: Request) {
     // Create product object - NO DENORMALIZED SELLER DATA
     const basePrice = typeof body.price === 'number' ? body.price : Number(body.price);
 
-    if (body.listing_type !== 'freebie' && (!Number.isFinite(basePrice) || basePrice <= 0)) {
+    if (body.listing_type !== 'freebie' && (!Number.isFinite(basePrice) || basePrice < 0)) {
       return NextResponse.json({ error: 'Invalid price' }, { status: 400 });
     }
-
-    const productVariants = Array.isArray(body.variants)
-      ? body.variants.map((variant: any) => ({
-          id: String(variant.id ?? ''),
-          option_values: variant.option_values || {},
-          price: typeof variant.price === 'number' ? variant.price : Number(variant.price) || 0,
-          quantity: typeof variant.quantity === 'number' ? variant.quantity : Number(variant.quantity) || 0,
-          sku: variant.sku || undefined,
-          is_primary: Boolean(variant.is_primary),
-        }))
-      : [];
+    
+    // Set status to 'pending_review' so admins can approve it
+    const status = 'pending_review';
 
     const product: Omit<Product, 'id'> = {
-      // Identity & Relations (ONLY IDs - no denormalized seller info)
+      // Identity & Relations
       seller_id: sellerId,
+      category_id: body.category_id,
       
-      // Basic info
+      // Core Product Info
       title: body.title,
       description: body.description,
-      product_type: body.product_type,
+      product_type: body.product_type || 'product',
       
-      // Category
-      category_id: body.category_id,
-      tags: body.tags || [],
-      
-      // Listing & pricing (prices in pence)
-      listing_type: body.listing_type,
-  price: body.listing_type === 'freebie' ? 0 : basePrice,
+      // Pricing
+      listing_type: body.listing_type || 'sale',
+      price: body.listing_type === 'freebie' ? 0 : basePrice,
       currency: body.currency || 'GBP',
-      original_price: body.original_price,
       
       // Barter
       accepts_barter: body.accepts_barter || body.listing_type === 'barter',
@@ -80,10 +70,9 @@ export async function POST(req: Request) {
       
       // Inventory
       quantity_available: body.quantity_available,
-      sku: body.sku,
       condition: body.condition,
       
-      // Media - proper format with objects
+      // Media
       images: Array.isArray(body.images) ? body.images.map((img: any, index: number) => ({
         url: typeof img === 'string' ? img : img.url,
         alt: body.title,
@@ -92,64 +81,55 @@ export async function POST(req: Request) {
       })) : [],
       video_url: body.video_url,
       
-      // Specifications (flexible based on category)
+      // Specifications
       specifications: body.specifications,
-      options: Array.isArray(body.options)
-        ? body.options.map((option: any) => ({
-            id: String(option.id ?? ''),
-            name: option.name,
-            values: Array.isArray(option.values) ? option.values.map((val: any) => String(val)) : [],
-          }))
-        : undefined,
-      variants: productVariants.length > 0 ? productVariants : undefined,
       
       // Location
       location: body.location,
-      location_text: `${body.location.city || ''}${body.location.city && body.location.country ? ', ' : ''}${body.location.country}`,
+      location_text: `${body.location.city || ''}, ${body.location.country || ''}`.trim().replace(/^,|,$/g, ''),
       
-      // Shipping - proper UK-focused structure
+      // Shipping - new detailed structure
       shipping_options: body.shipping_options || [],
-      free_shipping_threshold: body.free_shipping_threshold,
+      package_details: body.package_details || {}, // weight, dimensions
       is_local_pickup_only: body.is_local_pickup_only || false,
-      shipping_policy: body.shipping_policy, // Legacy support
+      ships_internationally: body.ships_internationally || false,
       
       // Status
-      status: body.status || 'draft',
-      featured: false,
+      status: status,
       
       // Engagement
       view_count: 0,
       favorite_count: 0,
-      click_count: 0,
       review_count: 0,
       
-      // Timestamps (store as ISO strings for consistency)
+      // Timestamps
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      published_at: body.status === 'active' ? new Date().toISOString() : undefined,
+      published_at: undefined,
       
       // SEO
       slug: slug,
       search_keywords: [
         ...body.title.toLowerCase().split(' '),
-        ...(body.tags || []).map(t => t.toLowerCase()),
+        ...(body.tags || []).map((t: string) => t.toLowerCase()),
         body.category_id,
       ],
     };
 
-    // Add product to Firestore
     const productRef = await db.collection('products').add(product);
 
-    // Update category product count
-    const categoryRef = db.collection('categories').doc(body.category_id);
-    await categoryRef.update({
-      product_count: admin.firestore.FieldValue.increment(1),
+    await logActivity({
+      user_id: sellerId,
+      action: 'product_created',
+      entity_type: 'product',
+      entity_id: productRef.id,
+      changes: { title: body.title, status: status },
     });
 
     return NextResponse.json({
       success: true,
       product_id: productRef.id,
-      message: body.status === 'active' ? 'Product published successfully!' : 'Product saved as draft',
+      message: 'Product submitted for review. It will be live once approved.',
     });
   } catch (error: any) {
     console.error('Error creating product:', error);

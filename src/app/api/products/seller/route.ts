@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
 
@@ -32,11 +33,11 @@ export async function GET(req: NextRequest) {
         ...data,
         // Handle both Firestore Timestamp and ISO string formats
         created_at: data.created_at?.toMillis 
-          ? data.created_at.toMillis() 
-          : (data.created_at ? new Date(data.created_at).getTime() : null),
+          ? new Date(data.created_at.toMillis()).toISOString()
+          : (data.created_at ? new Date(data.created_at).toISOString() : null),
         updated_at: data.updated_at?.toMillis 
-          ? data.updated_at.toMillis() 
-          : (data.updated_at ? new Date(data.updated_at).getTime() : null),
+          ? new Date(data.updated_at.toMillis()).toISOString()
+          : (data.updated_at ? new Date(data.updated_at).toISOString() : null),
       };
     });
 

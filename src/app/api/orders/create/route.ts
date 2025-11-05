@@ -1,6 +1,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
+import { logActivity } from '@/lib/activity-logger';
+import { OrderConfirmationEmail } from '@/components/emails/order-confirmation-template';
+import { NewOrderAlertEmail } from '@/components/emails/new-order-alert-template';
+import { sendEmail } from '@/lib/email-service';
+import { sendOrderConfirmationSMS } from '@/lib/sms-service';
+import { render } from '@react-email/render';
+
+const db = admin.firestore();
+const auth = admin.auth();
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,75 +19,152 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
     const body = await request.json();
     const { cartItems, subtotal, total, paymentMethod, shippingAddress } = body;
 
-    // Validate
     if (!cartItems || cartItems.length === 0) {
-      return NextResponse.json(
-        { error: 'No items in order' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No items in order' }, { status: 400 });
     }
     
-    // Group items by seller to create separate orders if necessary
-    const ordersBySeller: { [key: string]: any[] } = {};
+    const buyerDoc = await db.collection('users').doc(userId).get();
+    const buyerData = buyerDoc.data();
+
+    // Group items by seller
+    const ordersBySeller: { [sellerId: string]: any[] } = {};
     for (const item of cartItems) {
-        if (!item.seller_id) {
-            return NextResponse.json({ error: `Missing seller information for product ${item.title}`}, { status: 400 });
-        }
-        if (!ordersBySeller[item.seller_id]) {
-            ordersBySeller[item.seller_id] = [];
-        }
-        ordersBySeller[item.seller_id].push({
-            product_id: item.product_id,
-            title: item.title,
-            quantity: item.quantity,
-            price: item.price,
-        });
+      if (!item.seller_id) {
+        return NextResponse.json({ error: `Missing seller ID for product ${item.title}`}, { status: 400 });
+      }
+      if (!ordersBySeller[item.seller_id]) {
+        ordersBySeller[item.seller_id] = [];
+      }
+      ordersBySeller[item.seller_id].push({
+        product_id: item.id, // Use item.id which is the product ID
+        title: item.title,
+        quantity: item.quantity,
+        price: item.price,
+        image: item.images?.[0]?.url || item.image || null, // Include an image
+      });
     }
 
-    const db = admin.firestore();
-    const orderPromises = Object.keys(ordersBySeller).map(async (sellerId) => {
-        const sellerItems = ordersBySeller[sellerId];
-        const sellerSubtotal = sellerItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const orderCreationPromises = Object.keys(ordersBySeller).map(async (sellerId) => {
+      const sellerItems = ordersBySeller[sellerId];
+      const sellerSubtotal = sellerItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-        // Create order
-        const orderData = {
-          buyer_id: userId,
-          seller_id: sellerId,
-          items: sellerItems,
-          shipping_address: shippingAddress,
-          payment_method: paymentMethod,
-          subtotal: sellerSubtotal,
-          shipping: 0, // No platform shipping
-          tax: 0, // No platform tax
-          total: sellerSubtotal, // Total for this seller's order
-          status: 'pending',
+      // Create order document
+      const orderRef = db.collection('orders').doc();
+      const orderData = {
+        buyer_id: userId,
+        seller_id: sellerId,
+        buyer_name: buyerData?.full_name || buyerData?.display_name || 'Customer',
+        items: sellerItems,
+        shipping_address: shippingAddress,
+        payment_method: paymentMethod,
+        subtotal: sellerSubtotal,
+        shipping_cost: 0, // Determined by seller later
+        total_amount: sellerSubtotal,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      await orderRef.set(orderData);
+      
+      const orderId = orderRef.id;
+
+      // Log activity
+      await logActivity({
+        user_id: userId,
+        action: 'order_created',
+        entity_type: 'order',
+        entity_id: orderId,
+        changes: { total: orderData.total_amount, items: orderData.items.length },
+      });
+
+      // Create notifications for buyer and seller
+      const notificationPromises = [
+        db.collection('notifications').add({
+          user_id: userId, // Buyer
+          type: 'order',
+          title: 'Order Placed!',
+          message: `Your order #${orderId.substring(0, 6)} has been placed successfully.`,
+          link_url: `/orders`,
+          read: false,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+        }),
+        db.collection('notifications').add({
+          user_id: sellerId, // Seller
+          type: 'order',
+          title: 'New Order Received!',
+          message: `You have received a new order: #${orderId.substring(0, 6)}.`,
+          link_url: `/seller/orders`,
+          read: false,
+          created_at: new Date().toISOString(),
+        })
+      ];
+      await Promise.all(notificationPromises);
 
-        const orderRef = await db.collection('orders').add(orderData);
+      // Send emails and SMS
+      const sellerDoc = await db.collection('users').doc(sellerId).get();
+      const sellerData = sellerDoc.data();
 
-        // Update product quantities
-        for (const item of sellerItems) {
-            const productRef = db.collection('products').doc(item.product_id);
-            const productDoc = await productRef.get();
-            if (productDoc.exists) {
-                const currentQty = productDoc.data()?.quantity_available || 0;
-                await productRef.update({
-                quantity_available: Math.max(0, currentQty - item.quantity),
-                });
-            }
-        }
-        return orderRef.id;
+      // Buyer Email
+      if (buyerData?.email) {
+        const emailHtml = render(
+            OrderConfirmationEmail({
+                customerName: buyerData.full_name || 'Customer',
+                orderNumber: orderId,
+                orderDate: new Date().toLocaleDateString(),
+                items: sellerItems,
+                total: sellerSubtotal,
+                trackingUrl: `${process.env.NEXT_PUBLIC_APP_URL}/tracking/${orderId}`,
+            })
+        );
+        sendEmail({
+            to: buyerData.email,
+            subject: `Your AfriConnect order ${orderId} is confirmed!`,
+            html: emailHtml,
+            text: `Your order ${orderId} has been placed. Total: £${sellerSubtotal.toFixed(2)}.`,
+        }).catch(console.error);
+      }
+
+      // Seller Email
+      if (sellerData?.email) {
+          const emailHtml = render(
+              NewOrderAlertEmail({
+                  sellerName: sellerData.full_name || 'Seller',
+                  orderNumber: orderId,
+                  buyerName: buyerData?.full_name || 'A customer',
+                  items: sellerItems,
+                  total: sellerSubtotal,
+                  orderUrl: `${process.env.NEXT_PUBLIC_APP_URL}/seller/orders`,
+              })
+          );
+        sendEmail({
+            to: sellerData.email,
+            subject: `New Order Received - #${orderId}`,
+            html: emailHtml,
+            text: `You have a new order: #${orderId}. Total: £${sellerSubtotal.toFixed(2)}.`,
+        }).catch(console.error);
+      }
+
+      // Buyer SMS
+      if (buyerData?.phone) {
+        sendOrderConfirmationSMS(
+            buyerData.phone,
+            orderId,
+            sellerSubtotal,
+            userId
+        ).catch(console.error);
+      }
+
+      return orderId;
     });
 
-    const orderIds = await Promise.all(orderPromises);
+    const orderIds = await Promise.all(orderCreationPromises);
 
     return NextResponse.json({
       success: true,
@@ -86,9 +172,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Create order error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create order' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
 }

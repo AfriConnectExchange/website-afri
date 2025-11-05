@@ -11,13 +11,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingCart } from 'lucide-react';
 import { ProfileSummaryCard } from '../profile/profile-summary-card';
 import { useAuth } from '@/context/auth-context';
+import { fetchWithAuth } from '@/lib/api';
 
 // This would be a more detailed type in a real app
 interface Order {
     id: string;
-    date: string;
+    created_at: string;
     status: string;
-    total: number;
+    total_amount: number;
+    items: Array<{
+      product_title: string;
+    }>
 }
 
 function OrdersSkeleton() {
@@ -32,24 +36,24 @@ function OrdersSkeleton() {
 
 
 export function MyOrdersPage() {
-  const [ongoingOrders, setOngoingOrders] = useState<Order[]>([]);
-  const [canceledOrders, setCanceledOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('ongoing');
 
   useEffect(() => {
     const fetchOrders = async () => {
       if (!user) return;
       setIsLoading(true);
       try {
-        // This would fetch from a real API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // For now, we simulate an empty state
-        setOngoingOrders([]);
-        setCanceledOrders([]);
-
+        const res = await fetchWithAuth(`/api/orders/buyer`);
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to fetch orders');
+        }
+        setOrders(data.orders || []);
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch orders.' });
       } finally {
@@ -60,6 +64,27 @@ export function MyOrdersPage() {
     fetchOrders();
   }, [user, toast]);
   
+  const ongoingOrders = orders.filter(o => o.status !== 'cancelled' && o.status !== 'completed' && o.status !== 'delivered');
+  const pastOrders = orders.filter(o => o.status === 'cancelled' || o.status === 'completed' || o.status === 'delivered');
+
+
+  const OrderCard = ({ order }: {order: Order}) => (
+    <Card>
+      <CardContent className="p-4 flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex-1">
+          <div className="font-semibold">Order #{order.id.substring(0, 8)}</div>
+          <div className="text-sm text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</div>
+          <div className="text-sm mt-2">{order.items.map(i => i.product_title).join(', ')}</div>
+        </div>
+        <div className="flex flex-col items-end gap-2 text-right">
+          <div className="font-bold">£{order.total_amount.toFixed(2)}</div>
+          <Badge variant={order.status === 'completed' || order.status === 'delivered' ? 'default' : 'secondary'} className="capitalize">{order.status}</Badge>
+          <Button variant="outline" size="sm" onClick={() => router.push(`/tracking/${order.id}`)}>Track Order</Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   const EmptyOrdersState = () => (
     <Card className="border-dashed">
         <CardContent className="py-20 text-center">
@@ -83,26 +108,26 @@ export function MyOrdersPage() {
              <ProfileSummaryCard 
                 user={user} 
                 onNavigate={router.push} 
-                activeTab="orders"
+                activeTab={activeTab}
                 setActiveTab={(tab) => router.push(`/${tab}`)}
              />
         </div>
 
         <div className="lg:col-span-3">
              <h1 className="text-2xl font-bold mb-4">Orders</h1>
-             <Tabs defaultValue="ongoing">
+             <Tabs defaultValue="ongoing" onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="ongoing">ONGOING/DELIVERED ({ongoingOrders.length})</TabsTrigger>
-                    <TabsTrigger value="canceled">CANCELED/RETURNED ({canceledOrders.length})</TabsTrigger>
+                    <TabsTrigger value="ongoing">ONGOING ({ongoingOrders.length})</TabsTrigger>
+                    <TabsTrigger value="past">PAST ({pastOrders.length})</TabsTrigger>
                 </TabsList>
-                <TabsContent value="ongoing">
+                <TabsContent value="ongoing" className="space-y-4">
                     {isLoading ? <OrdersSkeleton /> : 
-                        ongoingOrders.length === 0 ? <EmptyOrdersState /> : <div>Ongoing orders list</div>
+                        ongoingOrders.length === 0 ? <EmptyOrdersState /> : ongoingOrders.map(o => <OrderCard key={o.id} order={o} />)
                     }
                 </TabsContent>
-                 <TabsContent value="canceled">
+                 <TabsContent value="past" className="space-y-4">
                      {isLoading ? <OrdersSkeleton /> : 
-                        canceledOrders.length === 0 ? <EmptyOrdersState /> : <div>Canceled orders list</div>
+                        pastOrders.length === 0 ? <EmptyOrdersState /> : pastOrders.map(o => <OrderCard key={o.id} order={o} />)
                     }
                 </TabsContent>
             </Tabs>

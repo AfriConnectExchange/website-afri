@@ -27,18 +27,18 @@ const paymentMethods: PaymentMethod[] = [
         name: 'Secure Escrow Payment',
         type: 'online',
         icon: <Shield className="w-5 h-5" />,
-        description: 'Visa, Mastercard, etc. via Stripe',
+        description: 'Visa, Mastercard, etc. Your payment is held until delivery is confirmed.',
         fees: '~2.9% + £0.30',
         rank: 1,
         recommended: true,
     },
     {
-        id: 'paypal',
-        name: 'PayPal',
+        id: 'card',
+        name: 'Credit/Debit Card',
         type: 'online',
-        icon: <Image src="/paypal.svg" alt="PayPal" width={60} height={15} />,
-        description: 'Pay with your PayPal account',
-        fees: 'Varies',
+        icon: <CreditCard className="w-5 h-5" />,
+        description: 'Direct payment via Stripe.',
+        fees: '~2.9% + £0.30',
         rank: 2,
     },
     {
@@ -46,7 +46,7 @@ const paymentMethods: PaymentMethod[] = [
       name: 'Cash on Delivery',
       type: 'direct',
       icon: <Truck className="w-5 h-5" />,
-      description: 'Pay when you receive your order',
+      description: 'Pay the seller in person upon receiving your order.',
       maxAmount: 1000,
       fees: 'Free',
       rank: 3,
@@ -56,7 +56,7 @@ const paymentMethods: PaymentMethod[] = [
       name: 'Barter Exchange',
       type: 'direct',
       icon: <Handshake className="w-5 h-5" />,
-      description: 'Exchange goods or services',
+      description: 'Propose a trade of goods or services instead of cash.',
       fees: 'Free',
       rank: 4,
     }
@@ -70,8 +70,9 @@ interface PaymentMethodSelectorProps {
 
 export function PaymentMethodSelector({ orderTotal, onSelectMethod, selectedMethod }: PaymentMethodSelectorProps) {
 
+  // FR03: Rank payment options and pre-select the highest-ranked one
   const sortedMethods = [...paymentMethods].sort((a, b) => a.rank - b.rank);
-  const [selectedId, setSelectedId] = useState<string | undefined>(selectedMethod || sortedMethods[0]?.id);
+  const [selectedId, setSelectedId] = useState<string | undefined>(selectedMethod || sortedMethods.find(m => !(m.maxAmount && orderTotal > m.maxAmount))?.id);
 
   const handleSelect = (method: PaymentMethod) => {
     setSelectedId(method.id);
@@ -85,7 +86,7 @@ export function PaymentMethodSelector({ orderTotal, onSelectMethod, selectedMeth
         </CardHeader>
         <CardContent className="space-y-4">
             {sortedMethods.map(method => {
-                const isDisabled = method.maxAmount && orderTotal > method.maxAmount;
+                const isDisabled = !!(method.maxAmount && orderTotal > method.maxAmount);
                 const isSelected = selectedId === method.id;
 
                 return (

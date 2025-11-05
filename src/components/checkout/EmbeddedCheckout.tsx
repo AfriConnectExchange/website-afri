@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useCallback } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
@@ -6,7 +7,6 @@ import {
   EmbeddedCheckout,
 } from '@stripe/react-stripe-js';
 import { useToast } from '@/hooks/use-toast';
-import { PageLoader } from '../ui/loader';
 import { useCart } from '@/context/cart-context';
 
 if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {

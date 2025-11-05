@@ -13,7 +13,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/');
+      router.push('/auth/signin?redirect=/orders');
     }
   }, [isLoading, isAuthenticated, router]);
 
