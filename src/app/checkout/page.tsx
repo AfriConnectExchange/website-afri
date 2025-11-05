@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
@@ -27,8 +28,8 @@ function CheckoutPageContent() {
   const [checkoutStep, setCheckoutStep] = useState<'summary' | 'payment' | 'confirmation'>('summary');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
 
-  const deliveryFee = subtotal > 50 ? 0 : 4.99;
-  const total = subtotal + deliveryFee;
+  // Shipping is determined by the seller, not the platform. This is removed.
+  const total = subtotal;
 
   const handlePaymentSuccess = async (paymentDetails: any = {}) => {
     // This is the successful payment callback
@@ -37,12 +38,12 @@ function CheckoutPageContent() {
     const orderPayload = {
       cartItems: cart.map(item => ({
         product_id: item.id,
+        title: item.title,
         quantity: item.quantity,
         price: item.price,
-        seller_id: item.seller_id, // Pass seller_id to the API
+        seller_id: item.seller_id,
       })),
       subtotal,
-      deliveryFee,
       total,
       paymentMethod: selectedPaymentMethod?.id || 'card',
       shippingAddress: {
@@ -63,33 +64,24 @@ function CheckoutPageContent() {
       const result = await response.json();
 
       if (!response.ok) {
-        // Use the detailed error message from the API response
-        throw new Error(result.details || result.error || 'Failed to create order.');
+        throw new Error(result.error || 'Failed to create order.');
       }
       
-      // 1. Store the successful order details for the confirmation page
       setOrderData({
         confirmedOrderItems: cart,
         confirmedOrderTotal: total,
       });
 
-      // Pass the successful API result to the confirmation page
-      setPaymentData({ ...result.order, ...paymentDetails, shipping_address: orderPayload.shippingAddress });
-
-      // 2. NOW it's safe to clear the cart
+      setPaymentData({ ...result, ...paymentDetails, shipping_address: orderPayload.shippingAddress });
       clearCart();
-
-      // 3. Move to the final confirmation screen
       setCheckoutStep('confirmation');
 
     } catch (error: any) {
         toast({
             variant: 'destructive',
             title: 'Order Creation Failed',
-            // Display the detailed error message in the toast
             description: error.message,
         });
-        // Do not clear cart, allow user to retry
     }
   };
 
@@ -100,14 +92,11 @@ function CheckoutPageContent() {
    useEffect(() => {
     const sessionId = searchParams.get('session_id');
     if (sessionId) {
-        // Here you would typically fetch session details from your backend to verify the payment
-        // and then call handlePaymentSuccess. For this demo, we'll assume success.
         handlePaymentSuccess({ stripeSessionId: sessionId });
     }
   }, [searchParams]);
 
    useEffect(() => {
-    // If the user lands on the checkout page with an empty cart and it's not a confirmation, redirect them.
     if (cart.length === 0 && checkoutStep !== 'confirmation' && !searchParams.get('session_id')) {
       router.push('/cart');
     }

@@ -1,73 +1,97 @@
 
-import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebaseAdmin'
+'use client';
+import { NextRequest, NextResponse } from 'next/server';
+import admin from '@/lib/firebaseAdmin';
 
 const adminDb = admin.firestore();
 const adminAuth = admin.auth();
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
+    const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await adminAuth.verifyIdToken(token)
-    const userId = decodedToken.uid
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    const userId = decodedToken.uid;
 
-    const body = await request.json()
-    const { items, shipping_address, payment_method, subtotal, shipping, tax, total } = body
+    const body = await request.json();
+    const { cartItems, subtotal, total, paymentMethod, shippingAddress } = body;
 
     // Validate
-    if (!items || items.length === 0) {
-      return NextResponse.json({ error: 'No items in order' }, { status: 400 })
+    if (!cartItems || cartItems.length === 0) {
+      return NextResponse.json(
+        { error: 'No items in order' },
+        { status: 400 }
+      );
+    }
+    
+    // Group items by seller to create separate orders if necessary
+    const ordersBySeller: { [key: string]: any[] } = {};
+    for (const item of cartItems) {
+        if (!item.seller_id) {
+            return NextResponse.json({ error: `Missing seller information for product ${item.title}`}, { status: 400 });
+        }
+        if (!ordersBySeller[item.seller_id]) {
+            ordersBySeller[item.seller_id] = [];
+        }
+        ordersBySeller[item.seller_id].push({
+            product_id: item.product_id,
+            title: item.title,
+            quantity: item.quantity,
+            price: item.price,
+        });
     }
 
-    // Create order
-    const orderData = {
-      buyer_id: userId,
-      items: items.map((item: any) => ({
-        product_id: item.id,
-        title: item.title,
-        quantity: item.quantity,
-        price: item.price,
-        seller_id: item.seller_id || ''
-      })),
-      shipping_address,
-      payment_method,
-      subtotal,
-      shipping,
-      tax,
-      total,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
+    const orderPromises = Object.keys(ordersBySeller).map(async (sellerId) => {
+        const sellerItems = ordersBySeller[sellerId];
+        const sellerSubtotal = sellerItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-    const orderRef = await adminDb.collection('orders').add(orderData)
+        // Create order
+        const orderData = {
+          buyer_id: userId,
+          seller_id: sellerId,
+          items: sellerItems,
+          shipping_address: shippingAddress,
+          payment_method: paymentMethod,
+          subtotal: sellerSubtotal,
+          shipping: 0, // No platform shipping
+          tax: 0, // No platform tax
+          total: sellerSubtotal, // Total for this seller's order
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
 
-    // Update product quantities
-    for (const item of items) {
-      const productRef = adminDb.collection('products').doc(item.id)
-      const productDoc = await productRef.get()
-      if (productDoc.exists) {
-        const currentQty = productDoc.data()?.quantity || 0
-        await productRef.update({
-          quantity: Math.max(0, currentQty - item.quantity)
-        })
-      }
-    }
+        const orderRef = await adminDb.collection('orders').add(orderData);
+
+        // Update product quantities
+        for (const item of sellerItems) {
+            const productRef = adminDb.collection('products').doc(item.product_id);
+            const productDoc = await productRef.get();
+            if (productDoc.exists) {
+                const currentQty = productDoc.data()?.quantity_available || 0;
+                await productRef.update({
+                quantity_available: Math.max(0, currentQty - item.quantity),
+                });
+            }
+        }
+        return orderRef.id;
+    });
+
+    const orderIds = await Promise.all(orderPromises);
 
     return NextResponse.json({
       success: true,
-      order_id: orderRef.id
-    })
+      order_ids: orderIds,
+    });
   } catch (error) {
-    console.error('Create order error:', error)
+    console.error('Create order error:', error);
     return NextResponse.json(
       { error: 'Failed to create order' },
       { status: 500 }
-    )
+    );
   }
 }

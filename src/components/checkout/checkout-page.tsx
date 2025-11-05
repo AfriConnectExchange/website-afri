@@ -46,11 +46,9 @@ export function CheckoutPageComponent({
     },
   };
 
-  const deliveryFee = subtotal > 50 ? 0 : 4.99;
-  const total = subtotal + deliveryFee;
+  const total = subtotal; // Shipping is handled by seller, not at platform checkout
 
   useEffect(() => {
-    // If the user lands on the checkout page with an empty cart or an invalid item, redirect them.
     if (cartItems.length === 0 || cartItems.some(item => item.quantity > item.quantity_available)) {
       if (checkoutStep !== 'confirmation') {
          onNavigate('cart');
@@ -116,7 +114,7 @@ export function CheckoutPageComponent({
             </Button>
             <h1 className="text-2xl font-bold mt-2">Checkout</h1>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2 space-y-6">
             {checkoutStep === 'summary' && (
               <>
@@ -154,28 +152,7 @@ export function CheckoutPageComponent({
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
-                        <div>
-                          <p className="font-medium">Standard Delivery</p>
-                          <p className="text-sm text-muted-foreground">
-                            3-5 business days
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">
-                            {deliveryFee === 0
-                              ? 'FREE'
-                              : `£${deliveryFee.toFixed(2)}`}
-                          </p>
-                          {deliveryFee === 0 && (
-                            <p className="text-xs text-green-600">
-                              Orders over £50
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      <p className="text-sm text-muted-foreground">Shipping costs and times are determined by individual sellers and will be confirmed after your order is placed.</p>
                   </CardContent>
                 </Card>
 
@@ -201,7 +178,7 @@ export function CheckoutPageComponent({
               <CardContent className="space-y-4">
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                   {cartItems.map((item) => {
-                    const imageSrc = item.images && item.images.length > 0 ? item.images[0] : '';
+                    const imageSrc = item.images && item.images.length > 0 ? (typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url) : '';
                     return (
                     <div key={item.id} className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-muted rounded-lg flex-shrink-0">
@@ -231,9 +208,7 @@ export function CheckoutPageComponent({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Delivery:</span>
-                    <span>
-                      {deliveryFee === 0 ? 'FREE' : `£${deliveryFee.toFixed(2)}`}
-                    </span>
+                    <span>Calculated by seller</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg">
