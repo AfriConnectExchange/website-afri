@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { auth } from '@/lib/firebaseClient';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card3D, Card3DContent, Card3DDescription, Card3DHeader, Card3DTitle, Card3DFooter } from '@/components/ui/card-3d';
+import { Button3D } from '@/components/ui/button-3d';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,7 +57,7 @@ interface ProductFormData {
 }
 
 // Category-specific specification fields
-const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; type?: string; required?: boolean }>> = {
+const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; type?: 'text' | 'number' | 'select'; required?: boolean; options?: string[] }>> = {
   'electronics': [
     { key: 'brand', label: 'Brand', required: true },
     { key: 'model', label: 'Model', required: true },
@@ -75,7 +75,7 @@ const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; t
     { key: 'color', label: 'Color', required: true },
     { key: 'material', label: 'Material' },
     { key: 'style', label: 'Style' },
-    { key: 'gender', label: 'Gender' },
+    { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Unisex'] },
     { key: 'season', label: 'Season' },
   ],
   'furniture': [
@@ -84,7 +84,7 @@ const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; t
     { key: 'weight', label: 'Weight' },
     { key: 'color', label: 'Color' },
     { key: 'style', label: 'Style' },
-    { key: 'assembly_required', label: 'Assembly Required' },
+    { key: 'assembly_required', label: 'Assembly Required', type: 'select', options: ['Yes', 'No'] },
     { key: 'room', label: 'Room Type' },
   ],
   'home': [
@@ -150,10 +150,10 @@ const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; t
     { key: 'model', label: 'Model', required: true },
     { key: 'year', label: 'Year', type: 'number', required: true },
     { key: 'mileage', label: 'Mileage', type: 'number' },
-    { key: 'fuel_type', label: 'Fuel Type' },
-    { key: 'transmission', label: 'Transmission' },
+    { key: 'fuel_type', label: 'Fuel Type', type: 'select', options: ['Petrol', 'Diesel', 'Electric', 'Hybrid'] },
+    { key: 'transmission', label: 'Transmission', type: 'select', options: ['Automatic', 'Manual'] },
     { key: 'engine_size', label: 'Engine Size' },
-    { key: 'body_type', label: 'Body Type' },
+    { key: 'body_type', label: 'Body Type', type: 'select', options: ['Saloon', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'MPV'] },
     { key: 'color', label: 'Color' },
     { key: 'doors', label: 'Number of Doors', type: 'number' },
     { key: 'seats', label: 'Number of Seats', type: 'number' },
@@ -163,17 +163,17 @@ const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; t
     { key: 'model', label: 'Model', required: true },
     { key: 'year', label: 'Year', type: 'number', required: true },
     { key: 'mileage', label: 'Mileage', type: 'number' },
-    { key: 'fuel_type', label: 'Fuel Type' },
-    { key: 'transmission', label: 'Transmission' },
+    { key: 'fuel_type', label: 'Fuel Type', type: 'select', options: ['Petrol', 'Diesel', 'Electric', 'Hybrid'] },
+    { key: 'transmission', label: 'Transmission', type: 'select', options: ['Automatic', 'Manual'] },
     { key: 'engine_size', label: 'Engine Size' },
     { key: 'color', label: 'Color' },
   ],
   'real-estate': [
-    { key: 'property_type', label: 'Property Type', required: true },
+    { key: 'property_type', label: 'Property Type', type: 'select', options: ['Apartment', 'House', 'Bungalow', 'Commercial'], required: true },
     { key: 'bedrooms', label: 'Bedrooms', type: 'number' },
     { key: 'bathrooms', label: 'Bathrooms', type: 'number' },
     { key: 'area', label: 'Area (sq ft)', type: 'number' },
-    { key: 'furnished', label: 'Furnished Status' },
+    { key: 'furnished', label: 'Furnished Status', type: 'select', options: ['Furnished', 'Unfurnished', 'Part-Furnished'] },
     { key: 'year_built', label: 'Year Built', type: 'number' },
     { key: 'parking', label: 'Parking Spaces', type: 'number' },
   ],
@@ -191,11 +191,11 @@ const SPECIFICATION_FIELDS: Record<string, Array<{ key: string; label: string; t
     { key: 'publication_year', label: 'Publication Year', type: 'number' },
     { key: 'language', label: 'Language' },
     { key: 'pages', label: 'Number of Pages', type: 'number' },
-    { key: 'format', label: 'Format (Hardcover/Paperback)' },
+    { key: 'format', label: 'Format', type: 'select', options: ['Hardcover', 'Paperback', 'E-book'] },
   ],
 };
 
-const getCategorySpecFields = (categoryId: string, categoryName: string): Array<{ key: string; label: string; type?: string; required?: boolean }> => {
+const getCategorySpecFields = (categoryId: string, categoryName: string): Array<{ key: string; label: string; type?: 'text' | 'number' | 'select'; required?: boolean; options?: string[] }> => {
   const searchText = `${categoryId} ${categoryName}`.toLowerCase();
   
   for (const [key, fields] of Object.entries(SPECIFICATION_FIELDS)) {
@@ -459,12 +459,12 @@ export default function CreateProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Basic Information</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Essential details about your product</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card3D>
+          <Card3DHeader>
+            <Card3DTitle className="text-lg sm:text-xl">Basic Information</Card3DTitle>
+            <Card3DDescription className="text-xs sm:text-sm">Essential details about your product</Card3DDescription>
+          </Card3DHeader>
+          <Card3DContent className="space-y-4">
             <div>
               <Label htmlFor="title">Product Title *</Label>
               <Input
@@ -527,16 +527,16 @@ export default function CreateProductPage() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card3DContent>
+        </Card3D>
 
         {/* Pricing & Inventory */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Pricing & Inventory</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Set your price and stock levels</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card3D>
+          <Card3DHeader>
+            <Card3DTitle className="text-lg sm:text-xl">Pricing & Inventory</Card3DTitle>
+            <Card3DDescription className="text-xs sm:text-sm">Set your price and stock levels</Card3DDescription>
+          </Card3DHeader>
+          <Card3DContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="price">Price (£) *</Label>
@@ -563,47 +563,64 @@ export default function CreateProductPage() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card3DContent>
+        </Card3D>
 
         {/* Product Specifications */}
         {currentSpecFields.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Product Specifications</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
+          <Card3D>
+            <Card3DHeader>
+              <Card3DTitle className="text-lg sm:text-xl">Product Specifications</Card3DTitle>
+              <Card3DDescription className="text-xs sm:text-sm">
                 Provide specific details about your {categories.find(c => c.id === formData.category)?.name || 'product'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </Card3DDescription>
+            </Card3DHeader>
+            <Card3DContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {currentSpecFields.map((field) => (
                   <div key={field.key}>
                     <Label htmlFor={field.key}>
                       {field.label} {field.required && '*'}
                     </Label>
-                    <Input
-                      id={field.key}
-                      type={field.type || 'text'}
-                      placeholder={`Enter ${field.label.toLowerCase()}`}
-                      value={formData.specifications[field.key] || ''}
-                      onChange={(e) => handleSpecificationChange(field.key, e.target.value)}
-                      required={field.required}
-                    />
+                    {field.type === 'select' ? (
+                      <Select
+                        value={formData.specifications[field.key] || ''}
+                        onValueChange={(value) => handleSpecificationChange(field.key, value)}
+                        required={field.required}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options?.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id={field.key}
+                        type={field.type || 'text'}
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                        value={formData.specifications[field.key] || ''}
+                        onChange={(e) => handleSpecificationChange(field.key, e.target.value)}
+                        required={field.required}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </Card3DContent>
+          </Card3D>
         )}
 
         {/* Images */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Product Images *</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Upload up to 4 images (max 2MB each, JPEG/PNG)</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card3D>
+          <Card3DHeader>
+            <Card3DTitle className="text-lg sm:text-xl">Product Images *</Card3DTitle>
+            <Card3DDescription className="text-xs sm:text-sm">Upload up to 4 images (max 2MB each, JPEG/PNG)</Card3DDescription>
+          </Card3DHeader>
+          <Card3DContent>
             <div className="space-y-4">
               {formData.imageUrls.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
@@ -650,16 +667,16 @@ export default function CreateProductPage() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </Card3DContent>
+        </Card3D>
 
         {/* Shipping (Optional) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Shipping Information (Optional)</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Add shipping details for better delivery estimates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card3D>
+          <Card3DHeader>
+            <Card3DTitle className="text-lg sm:text-xl">Shipping Information (Optional)</Card3DTitle>
+            <Card3DDescription className="text-xs sm:text-sm">Add shipping details for better delivery estimates</Card3DDescription>
+          </Card3DHeader>
+          <Card3DContent className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div>
                 <Label htmlFor="weight">Weight (kg)</Label>
@@ -713,16 +730,16 @@ export default function CreateProductPage() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card3DContent>
+        </Card3D>
 
         {/* Location */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Product Location *</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Where is this product located? This helps buyers find nearby items.</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card3D>
+          <Card3DHeader>
+            <Card3DTitle className="text-lg sm:text-xl">Product Location *</Card3DTitle>
+            <Card3DDescription className="text-xs sm:text-sm">Where is this product located? This helps buyers find nearby items.</Card3DDescription>
+          </Card3DHeader>
+          <Card3DContent>
             <LocationAutocomplete
               onLocationSelect={(locationData) => {
                 setFormData(prev => ({
@@ -753,16 +770,16 @@ export default function CreateProductPage() {
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </Card3DContent>
+        </Card3D>
 
         {/* Payment Methods */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Accepted Payment Methods *</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">Select which payment methods you accept</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <Card3D>
+          <Card3DHeader>
+            <Card3DTitle className="text-lg sm:text-xl">Accepted Payment Methods *</Card3DTitle>
+            <Card3DDescription className="text-xs sm:text-sm">Select which payment methods you accept</Card3DDescription>
+          </Card3DHeader>
+          <Card3DContent className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -815,12 +832,12 @@ export default function CreateProductPage() {
                 You must select at least one payment method to list your product.
               </AlertDescription>
             </Alert>
-          </CardContent>
-        </Card>
+          </Card3DContent>
+        </Card3D>
 
         {/* Submit Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pb-6">
-          <Button
+          <Button3D
             type="button"
             variant="outline"
             onClick={() => router.back()}
@@ -828,8 +845,8 @@ export default function CreateProductPage() {
             className="w-full sm:flex-1"
           >
             Cancel
-          </Button>
-          <Button
+          </Button3D>
+          <Button3D
             type="submit"
             disabled={isSubmitting || isUploading}
             className="w-full sm:flex-1"
@@ -845,9 +862,10 @@ export default function CreateProductPage() {
                 List Product
               </>
             )}
-          </Button>
+          </Button3D>
         </div>
       </form>
     </div>
   );
 }
+

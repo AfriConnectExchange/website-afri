@@ -1,3 +1,4 @@
+
 'use client';
 import { useWishlist } from '@/context/wishlist-context';
 import { useAuth } from '@/context/auth-context';

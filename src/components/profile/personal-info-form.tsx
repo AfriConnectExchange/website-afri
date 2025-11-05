@@ -1,9 +1,10 @@
+
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button3D } from '@/components/ui/button-3d';
-import { Card3D } from '@/components/ui/card-3d';
+import { Card3D, Card3DContent, Card3DDescription, Card3DHeader, Card3DTitle } from '@/components/ui/card-3d';
 import {
   Form,
   FormControl,
@@ -16,12 +17,13 @@ import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { fetchWithAuth } from '@/lib/api';
-import 'react-phone-number-input/style.css';
-import PhoneInput from 'react-phone-number-input';
+// @ts-ignore - import CSS for react-phone-number-input (no types)
+import 'react-phone-number-input/style.css'
+import PhoneInput from 'react-phone-number-input'
 import { useAuth } from '@/context/auth-context';
 
 const formSchema = z.object({
-  fullName: z.string(),
+  fullName: z.string().min(2, 'Please enter your full name.'),
   phone: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
 });
 
