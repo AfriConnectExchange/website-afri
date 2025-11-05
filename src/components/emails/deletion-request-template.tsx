@@ -1,38 +1,87 @@
+
 import * as React from 'react';
-import { Html, Head, Preview, Body, Container, Section, Heading, Text, Button, Hr, Img } from '@react-email/components';
+import { Html, Head, Preview, Body, Container, Section, Heading, Text, Button, Img, Hr } from '@react-email/components';
 
-interface Props { userName?: string; scheduledAt?: string }
+interface DeletionRequestEmailProps {
+  userName?: string;
+  scheduledAt?: string;
+  cancelUrl?: string;
+  homeUrl?: string;
+  supportEmail?: string;
+  appName?: string;
+}
 
-export const DeletionRequestEmail = ({ userName = 'User', scheduledAt }: Props) => {
-  const preview = `Your account deletion is scheduled for ${scheduledAt}`;
+export const DeletionRequestEmail = ({
+  userName = 'User',
+  scheduledAt = '24 hours',
+  cancelUrl = '#',
+  homeUrl = '#',
+  supportEmail = 'support@africonnect-exchange.org',
+  appName = 'AfriConnect Exchange'
+}: DeletionRequestEmailProps) => {
+  const year = new Date().getFullYear();
+  const previewText = `Your account deletion is scheduled`;
+
   return (
     <Html>
-      <Head />
-      <Preview>{preview}</Preview>
-      <Body style={{ backgroundColor: '#f6f9fc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, sans-serif', margin: 0, padding: '30px 0' }}>
-        <Container style={{ backgroundColor: '#ffffff', maxWidth: '600px', margin: '0 auto', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.06)'}}>
-          <Section style={{ textAlign: 'center', padding: '30px 0 20px' }}>
-            <Img src="https://fkwcbvackexaqwlbecaz.supabase.co/storage/v1/object/public/assets/ae-logo.png" width={140} alt="logo" />
-          </Section>
-          <Section style={{ padding: '0 40px' }}>
-            <Heading as="h1" style={{ color: '#222', fontSize: 20, textAlign: 'center', marginBottom: 12 }}>Account Deletion Scheduled</Heading>
-            <Text style={{ color: '#555', fontSize: 15, lineHeight: '24px', textAlign: 'center' }}>Hi {userName},</Text>
-            <Text style={{ color: '#555', fontSize: 15, lineHeight: '24px', textAlign: 'center', marginTop: 12 }}>We received a request to delete your account. Your account is scheduled for permanent deletion on <strong>{scheduledAt}</strong>. If you did not request this, or you would like to cancel, please sign in and cancel the request within 24 hours.</Text>
-          </Section>
-          <Section style={{ textAlign: 'center', padding: '24px 40px 0' }}>
-            <Button href="__PROFILE_CANCEL_URL__" style={{ backgroundColor: '#e00707', color: '#fff', borderRadius: 5, padding: '10px 20px', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Cancel Deletion</Button>
-          </Section>
-          <Section style={{ padding: '24px 40px' }}>
-            <Text style={{ color: '#555', fontSize: 14, lineHeight: '22px', textAlign: 'center' }}>If you need help, visit our <a href="/help" style={{ color: '#e00707' }}>Help Center</a> or contact support.</Text>
-          </Section>
-          <Hr style={{ borderColor: '#e6ebf1', margin: '0 40px' }} />
-          <Section style={{ padding: '16px 40px 30px', textAlign: 'center' }}>
-            <Text style={{ color: '#8898aa', fontSize: 11 }}>© {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.</Text>
-          </Section>
-        </Container>
+      <Head>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet" />
+      </Head>
+      <Preview>{previewText}</Preview>
+      <Body style={main}>
+        <table width="100%" cellPadding={0} cellSpacing={0} role="presentation" style={{ background: "#f7f7f7", width: "100%" }}>
+          <tbody>
+            <tr>
+              <td align="center" style={{ padding: "28px 16px" }}>
+                <Container style={container}>
+                  <table width="100%" cellPadding={0} cellSpacing={0} role="presentation" style={{ background: "#ffffff", borderRadius: 10, overflow: "hidden", border: "1px solid #e6e6e9" }}>
+                    <tbody>
+                      {/* Header */}
+                      <tr>
+                        <td style={{ padding: "18px 20px", borderBottom: "1px solid #f0f0f2" }}>
+                           <a href={homeUrl} style={{ textDecoration: 'none', display: 'inline-block' }}>
+                             <span style={{ fontFamily: "'Montserrat', Arial, sans-serif", fontWeight: 700, fontSize: 16, color: '#000000' }}>
+                               AFRICONNECT<span style={{ color: '#F4B400' }}> EXCHANGE</span>
+                             </span>
+                           </a>
+                        </td>
+                      </tr>
+                      {/* Content */}
+                      <tr>
+                        <td style={{ padding: "28px 28px 8px 28px" }}>
+                          <Heading style={h1}>Account Deletion Scheduled</Heading>
+                          <Text style={text}>Hi {userName},</Text>
+                          <Text style={text}>We received a request to delete your account. Your account is scheduled for permanent deletion on <strong>{scheduledAt}</strong>.</Text>
+                          <Text style={text}>If you did not request this, or if you've changed your mind, you can cancel this process by clicking the button below.</Text>
+                          <Section style={buttonContainer}>
+                            <Button style={button} href={cancelUrl}>Cancel Deletion Request</Button>
+                          </Section>
+                        </td>
+                      </tr>
+                      {/* Footer */}
+                      <tr>
+                        <td style={{ background: "#2C2A4A", padding: "20px 28px", color: "#ffffff" }}>
+                          <p style={{ margin: 0, fontSize: 12, color: "#bfc0c9" }}>© {year} {appName}. All rights reserved.</p>
+                          <a href={`mailto:${supportEmail}`} style={{ color: "#F4B400", textDecoration: "none", fontSize: 12 }}>{supportEmail}</a>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </Container>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </Body>
     </Html>
   );
 };
 
 export default DeletionRequestEmail;
+
+const main = { margin: 0, padding: 0, background: '#f7f7f7', fontFamily: "'Open Sans', Arial, sans-serif" };
+const container = { maxWidth: '600px', padding: 0 };
+const h1 = { margin: '0 0 16px', fontFamily: "'Montserrat', Arial, sans-serif", fontSize: '22px', color: '#B91C1C', lineHeight: 1.2 };
+const text = { margin: '0 0 16px', fontSize: '15px', color: '#374151', lineHeight: 1.6 };
+const buttonContainer = { textAlign: 'center' as const, margin: '24px 0' };
+const button = { backgroundColor: '#DC2626', borderRadius: '6px', color: '#ffffff', padding: '12px 24px', fontSize: '14px', fontWeight: 'bold', textDecoration: 'none' };
