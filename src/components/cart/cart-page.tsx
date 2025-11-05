@@ -109,7 +109,7 @@ export function CartPageComponent({
 
   const calculateShipping = () => {
      // For simplicity, using a flat rate. This can be complex logic.
-    const baseShipping = 5.99;
+    const baseShipping = 0;
     const shippingMultiplier =
       selectedShipping === 'express'
         ? 1.5
@@ -297,8 +297,7 @@ export function CartPageComponent({
                             src={imageSrc}
                             fallbackSrc="/placeholder.svg"
                             alt={productName}
-                            width={96}
-                            height={96}
+                            fill
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -395,23 +394,6 @@ export function CartPageComponent({
                     Apply Code
                   </Button>
                   <Separator />
-
-                  <Select onValueChange={setSelectedShipping} defaultValue={selectedShipping}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select shipping option" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">
-                        Standard Shipping
-                      </SelectItem>
-                      <SelectItem value="express">
-                        Express Shipping (+50%)
-                      </SelectItem>
-                      <SelectItem value="overnight">
-                        Overnight Shipping (+150%)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
 
                   <div className="flex items-center space-x-2">
                     <Checkbox

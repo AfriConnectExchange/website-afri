@@ -1,12 +1,22 @@
-"use client";
+
+'use client';
 import React, { useState } from 'react';
 import Image, { ImageProps } from 'next/image';
 
-interface ImageWithFallbackProps extends ImageProps {
+interface ImageWithFallbackProps extends Omit<ImageProps, 'width' | 'height'> {
   fallbackSrc?: string;
+  width?: number;
+  height?: number;
 }
 
-export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({ src, fallbackSrc, ...props }) => {
+export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
+  src,
+  fallbackSrc,
+  fill,
+  width,
+  height,
+  ...props
+}) => {
   const [error, setError] = useState(false);
 
   const handleError = () => {
@@ -24,13 +34,18 @@ export const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({ src, fallb
     return null;
   }
 
-  return (
-    <Image
-      {...props}
-      src={imageSrc}
-      onError={handleError}
-      width={props.width || 300}
-      height={props.height || 200}
-    />
-  );
+  const imageProps: ImageProps = {
+    ...props,
+    src: imageSrc,
+    onError: handleError,
+  };
+
+  if (fill) {
+    imageProps.fill = true;
+  } else {
+    imageProps.width = width || 300;
+    imageProps.height = height || 200;
+  }
+
+  return <Image {...imageProps} />;
 };

@@ -12,6 +12,8 @@ import { ShoppingCart } from 'lucide-react';
 import { ProfileSummaryCard } from '../profile/profile-summary-card';
 import { useAuth } from '@/context/auth-context';
 import { fetchWithAuth } from '@/lib/api';
+import { Badge } from '../ui/badge';
+import Image from 'next/image';
 
 // This would be a more detailed type in a real app
 interface Order {
@@ -21,6 +23,7 @@ interface Order {
     total_amount: number;
     items: Array<{
       product_title: string;
+      image: string;
     }>
 }
 
@@ -74,7 +77,18 @@ export function MyOrdersPage() {
         <div className="flex-1">
           <div className="font-semibold">Order #{order.id.substring(0, 8)}</div>
           <div className="text-sm text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</div>
-          <div className="text-sm mt-2">{order.items.map(i => i.product_title).join(', ')}</div>
+           <div className="flex items-center gap-2 mt-2">
+            {order.items.slice(0, 3).map((item, index) => (
+                <div key={index} className="w-12 h-12 rounded bg-muted overflow-hidden">
+                    <Image src={item.image || '/placeholder.svg'} alt={item.product_title} width={48} height={48} className="object-cover w-full h-full" />
+                </div>
+            ))}
+            {order.items.length > 3 && (
+                <div className="w-12 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                    +{order.items.length - 3} more
+                </div>
+            )}
+           </div>
         </div>
         <div className="flex flex-col items-end gap-2 text-right">
           <div className="font-bold">£{order.total_amount.toFixed(2)}</div>

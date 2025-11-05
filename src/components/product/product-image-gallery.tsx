@@ -43,8 +43,7 @@ export function ProductImageGallery({ images, productName }: ProductImageGallery
           src={imageUrls[selectedImageIndex]}
           fallbackSrc="/placeholder.svg"
           alt={productName}
-          width={600}
-          height={600}
+          fill
           className="w-full h-full object-cover"
         />
       </div>

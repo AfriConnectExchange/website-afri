@@ -14,9 +14,8 @@ const formatCurrency = (amount: number, currency: string = 'GBP') => {
   const formatter = new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: currency,
-    minimumFractionDigits: 2,
   });
-  return formatter.format(amount / 100);
+  return formatter.format(amount);
 };
 
 export function WishlistPage() {
