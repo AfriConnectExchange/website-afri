@@ -1,5 +1,9 @@
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb, adminAuth } from '@/lib/firebaseAdmin'
+import admin from '@/lib/firebaseAdmin'
+
+const adminDb = admin.firestore();
+const adminAuth = admin.auth();
 
 const BANNED_WORDS = ['spam', 'scam', 'fake', 'fraud'] // Add more as needed
 

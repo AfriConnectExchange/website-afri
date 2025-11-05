@@ -1,5 +1,8 @@
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebaseAdmin'
+import admin from '@/lib/firebaseAdmin'
+
+const adminDb = admin.firestore();
 
 export async function GET(
   request: NextRequest,

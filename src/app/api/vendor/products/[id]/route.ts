@@ -1,5 +1,9 @@
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb, adminAuth } from '@/lib/firebaseAdmin'
+import admin from '@/lib/firebaseAdmin'
+
+const adminDb = admin.firestore();
+const adminAuth = admin.auth();
 
 export async function DELETE(
   request: NextRequest,

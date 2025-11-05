@@ -1,6 +1,9 @@
+
 import { NextRequest, NextResponse } from 'next/server'
-import { adminDb } from '@/lib/firebaseAdmin'
+import admin from '@/lib/firebaseAdmin'
 import { FieldValue } from 'firebase-admin/firestore'
+
+const adminDb = admin.firestore();
 
 export async function POST(
   request: NextRequest,
