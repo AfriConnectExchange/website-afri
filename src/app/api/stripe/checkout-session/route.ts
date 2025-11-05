@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -6,7 +7,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2024-06-20',
 });
 
 interface CartItem {
@@ -14,7 +15,7 @@ interface CartItem {
   title: string;
   price: number;
   quantity: number;
-  image?: string;
+  images?: Array<{ url: string, alt?: string }> | string[]; // Can be array of objects or strings
   seller_id?: string;
 }
 
@@ -40,27 +41,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculate total
-    const total = cartItems.reduce((sum: number, item: CartItem) => 
-      sum + (item.price * item.quantity), 0
-    );
+    // Create line items for Stripe, ensuring image URLs are public and not base64
+    const lineItems = cartItems.map((item: CartItem) => {
+      let imageUrl: string | undefined;
 
-    // Create line items for Stripe
-    const lineItems = cartItems.map((item: CartItem) => ({
-      price_data: {
-        currency: 'gbp',
-        product_data: {
-          name: item.title,
-          images: item.image ? [item.image] : [],
-          metadata: {
-            product_id: item.id,
-            seller_id: item.seller_id || 'unknown',
+      if (item.images && item.images.length > 0) {
+        const firstImage = item.images[0];
+        if (typeof firstImage === 'string') {
+          imageUrl = firstImage;
+        } else if (typeof firstImage === 'object' && firstImage.url) {
+          imageUrl = firstImage.url;
+        }
+      }
+
+      // Filter out base64 data URIs
+      const finalImages = imageUrl && !imageUrl.startsWith('data:') ? [imageUrl] : [];
+
+      return {
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: item.title,
+            images: finalImages,
+            metadata: {
+              product_id: item.id,
+              seller_id: item.seller_id || 'unknown',
+            },
           },
+          unit_amount: Math.round(item.price * 100), // Convert to pence
         },
-        unit_amount: Math.round(item.price * 100), // Convert to pence
-      },
-      quantity: item.quantity,
-    }));
+        quantity: item.quantity,
+      };
+    });
 
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -82,9 +94,7 @@ export async function POST(req: NextRequest) {
           integration_check: 'accept_a_payment',
         },
       },
-      // Enable billing address collection
       billing_address_collection: 'required',
-      // Enable shipping address collection
       shipping_address_collection: {
         allowed_countries: ['GB', 'US', 'CA', 'NG', 'KE', 'GH', 'ZA'],
       },
