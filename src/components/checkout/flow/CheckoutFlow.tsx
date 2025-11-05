@@ -19,6 +19,7 @@ export interface PaymentMethod {
   description: string;
   rank: number;
   maxAmount?: number;
+  icon: React.ComponentType<{ className?: string }>;
 }
 export interface OrderResult {
   orderIds: string[];

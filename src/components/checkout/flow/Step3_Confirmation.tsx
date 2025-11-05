@@ -26,7 +26,7 @@ export function Step3_Confirmation({ result }: Step3_ConfirmationProps) {
         <div className="bg-muted rounded-lg p-4 text-left space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Order ID(s):</span>
-            <span className="font-mono">{result.orderIds.join(', ').substring(0, 20)}...</span>
+            <span className="font-mono">#{result.orderIds.join(', ').substring(0, 20)}...</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Payment Method:</span>

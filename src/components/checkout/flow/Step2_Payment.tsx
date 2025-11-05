@@ -25,11 +25,12 @@ export function Step2_Payment({ method, cartItems, subtotal, onPaymentSuccess }:
     try {
       const orderPayload = {
         cartItems: cartItems.map(item => ({
-          product_id: item.id,
+          id: item.id, // Pass product ID
           title: item.title,
           quantity: item.quantity,
           price: item.price,
           seller_id: item.seller_id,
+          images: item.images, // Pass images for notifications
         })),
         subtotal,
         total: subtotal, // Total is same as subtotal as per requirements
