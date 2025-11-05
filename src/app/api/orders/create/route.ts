@@ -1,10 +1,6 @@
 
-'use client';
 import { NextRequest, NextResponse } from 'next/server';
 import admin from '@/lib/firebaseAdmin';
-
-const adminDb = admin.firestore();
-const adminAuth = admin.auth();
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token);
     const userId = decodedToken.uid;
 
     const body = await request.json();
@@ -45,6 +41,7 @@ export async function POST(request: NextRequest) {
         });
     }
 
+    const db = admin.firestore();
     const orderPromises = Object.keys(ordersBySeller).map(async (sellerId) => {
         const sellerItems = ordersBySeller[sellerId];
         const sellerSubtotal = sellerItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -65,11 +62,11 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         };
 
-        const orderRef = await adminDb.collection('orders').add(orderData);
+        const orderRef = await db.collection('orders').add(orderData);
 
         // Update product quantities
         for (const item of sellerItems) {
-            const productRef = adminDb.collection('products').doc(item.product_id);
+            const productRef = db.collection('products').doc(item.product_id);
             const productDoc = await productRef.get();
             if (productDoc.exists) {
                 const currentQty = productDoc.data()?.quantity_available || 0;
