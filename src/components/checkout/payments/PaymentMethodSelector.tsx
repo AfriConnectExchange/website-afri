@@ -101,10 +101,10 @@ export function PaymentMethodSelector({ orderTotal, onSelectMethod, selectedMeth
                         <div className="flex items-center gap-4">
                             {method.icon}
                             <div>
-                                <p className="font-medium text-sm flex items-center gap-2">
+                                <div className="font-medium text-sm flex items-center gap-2">
                                     {method.name}
                                     {method.recommended && <Badge className="bg-green-100 text-green-700">Recommended</Badge>}
-                                </p>
+                                </div>
                                 <p className="text-xs text-muted-foreground">{method.description}</p>
                                 {isDisabled && <p className="text-xs text-destructive mt-1">Not available for orders over £{method.maxAmount}</p>}
                             </div>
