@@ -334,7 +334,30 @@ export default function CreateProductPage() {
   };
 
   const validateForm = (): boolean => {
-    // ... same validation logic ...
+    const errors: string[] = [];
+    if (formData.title.length < 3) errors.push('Title must be at least 3 characters.');
+    if (formData.description.length < 20) errors.push('Description must be at least 20 characters.');
+    if (!formData.category) errors.push('Please select a category.');
+    if (parseFloat(formData.price) <= 0) errors.push('Price must be greater than zero.');
+    if (parseInt(formData.stock_quantity) < 1) errors.push('Stock must be at least 1.');
+    if (formData.imageUrls.length === 0) errors.push('At least one image is required.');
+    if (!formData.location.address || !formData.location.city) errors.push('A valid product location is required.');
+    if (!formData.accepts_cash && !formData.accepts_online && !formData.accepts_escrow && !formData.accepts_barter) {
+      errors.push('Please select at least one payment method.');
+    }
+  
+    if (errors.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Errors',
+        description: (
+          <ul className="list-disc list-inside">
+            {errors.map((error, i) => <li key={i}>{error}</li>)}
+          </ul>
+        ),
+      });
+      return false;
+    }
     return true;
   };
 
