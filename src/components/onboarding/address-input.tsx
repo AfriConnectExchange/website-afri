@@ -30,6 +30,7 @@ export default function AddressInput({ value = '', onChange, onSelect, country, 
   const [loading, setLoading] = useState(false);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('Select an address from suggestions');
 
   useEffect(() => {
     setLoading(true);
@@ -44,7 +45,7 @@ export default function AddressInput({ value = '', onChange, onSelect, country, 
         // types: ['address'] gives address suggestions
         opts.types = ['address'];
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, opts);
-        autocompleteRef.current.addListener('place_changed', () => {
+        autocompleteRef.current.addListener('place_changed', async () => {
           const place = autocompleteRef.current.getPlace();
           if (!place) return;
           const formatted = place.formatted_address ?? null;
@@ -61,13 +62,29 @@ export default function AddressInput({ value = '', onChange, onSelect, country, 
           });
 
           const city = components.locality || components.postal_town || components.administrative_area_level_2 || null;
-          const postcode = components.postal_code || null;
+          let postcode = components.postal_code || null;
           const countryName = components.country || null;
 
           setLat(latitude);
           setLng(longitude);
+
+          // If postal_code missing, attempt server-side reverse geocode to fetch it
+          if (!postcode && latitude != null && longitude != null) {
+            try {
+              const resp = await fetch(`/api/geocode/reverse?lat=${latitude}&lng=${longitude}`);
+              if (resp.ok) {
+                const json = await resp.json();
+                if (json && json.postal_code) postcode = json.postal_code;
+              }
+            } catch (err) {
+              // Non-fatal: we'll continue without postcode
+              console.warn('Reverse geocode failed', err);
+            }
+          }
+
           if (onChange) onChange(formatted ?? '');
           if (onSelect) onSelect({ formatted_address: formatted, place_id: placeId, latitude, longitude, city, postcode, country: countryName });
+          setStatusMessage(`${city || ''}${postcode ? `, ${postcode}` : ''}`.trim() || 'Location selected');
         });
       } catch (err) {
         // ignore
@@ -95,7 +112,7 @@ export default function AddressInput({ value = '', onChange, onSelect, country, 
         className="w-full rounded-md border p-2"
       />
       <div className="mt-2 text-sm text-muted-foreground">
-        {loading ? 'Loading address suggestions…' : (lat && lng ? `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}` : 'Select an address from suggestions')}
+        {loading ? 'Loading address suggestions…' : statusMessage}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 
+import React, { Suspense } from 'react';
 import { ResetPasswordForm } from '@/components/auth/reset-password-form';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
@@ -11,7 +12,9 @@ export default function ResetPasswordPage() {
         <div className="flex justify-center">
           <Logo />
         </div>
-        <ResetPasswordForm />
+        <Suspense fallback={<div>Loading...</div>}>
+          <ResetPasswordForm />
+        </Suspense>
          <div className="text-center text-sm">
           <Link
             href="/auth"

@@ -31,7 +31,22 @@ function VerifyEmailContent() {
             setIsVerifying(true);
             setVerificationError('');
             applyActionCode(auth, oobCode)
-                .then(() => {
+                .then(async () => {
+                    // applyActionCode updates the backend but the local Firebase User
+                    // object may still show emailVerified = false until it is reloaded.
+                    // Reload the current user so onAuthStateChanged and other
+                    // client-side checks see the updated emailVerified flag.
+                    try {
+                        if (auth.currentUser && typeof auth.currentUser.reload === 'function') {
+                            await auth.currentUser.reload();
+                        }
+                    } catch (reloadErr) {
+                        // Non-fatal: log and continue — we still show success and
+                        // redirect to sign in, but without reload some codepaths
+                        // may still see the old emailVerified value.
+                        console.warn('Failed to reload auth user after email verification', reloadErr);
+                    }
+
                     setVerificationSuccess(true);
                     showSnackbar({ title: 'Email Verified!', description: 'Your email has been verified. Please sign in to continue.' }, 'success');
                 })

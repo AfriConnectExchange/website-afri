@@ -22,7 +22,8 @@ type Props = {};
 export default function SignInCard({}: Props) {
     const { login, handleSocialLogin, signInWithPhone } = useAuth() as any; // Use `as any` to access new methods
     const { showSnackbar } = useGlobal();
-    const [formData, setFormData] = useState({ email: 'test@example.com', password: 'password', phone: '' });
+    // Remove prefilled test credentials to avoid exposing demo creds in the UI
+    const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
@@ -126,7 +127,7 @@ export default function SignInCard({}: Props) {
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="test@example.com"
+                                    placeholder="you@example.com"
                                     className="pl-10"
                                     value={formData.email}
                                     onChange={(e) => setFormData((prev: any) => ({ ...prev, email: e.target.value }))}
@@ -140,7 +141,7 @@ export default function SignInCard({}: Props) {
                                 <Input
                                     id="password"
                                     type={showPassword ? 'text' : 'password'}
-                                    placeholder="password"
+                                    placeholder="Password"
                                     value={formData.password}
                                     onChange={(e) => setFormData((prev: any) => ({ ...prev, password: e.target.value }))}
                                     required
